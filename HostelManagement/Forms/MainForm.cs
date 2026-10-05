@@ -195,7 +195,8 @@ public partial class MainForm : Form
         navPanel.BackColor = UiTheme.NavBackground;
         brandPanel.BackColor = UiTheme.NavBackground;
         brandLabel.Font = UiTheme.BrandFont;
-        brandLabel.ForeColor = Color.White;
+        brandLabel.ForeColor = UiTheme.NavSelected;
+        AddMenuPhoto();
         brandLabel.AutoEllipsis = true;
 
         headerPanel.BackColor = UiTheme.HeaderBackground;
@@ -205,6 +206,28 @@ public partial class MainForm : Form
         pageDescriptionLabel.ForeColor = UiTheme.TextMuted;
 
         contentPanel.BackColor = UiTheme.ContentBackground;
+    }
+
+    /// <summary>The hostel photo at the bottom of the menu, with a thin line between menu and content.</summary>
+    private void AddMenuPhoto()
+    {
+        Image? photo = AppImages.LoadHostelPhoto();
+        if (photo is not null)
+        {
+            var pictureBox = new PictureBox
+            {
+                Name = "menuPhoto",
+                Dock = DockStyle.Bottom,
+                Height = navPanel.Width * photo.Height / photo.Width,
+                SizeMode = PictureBoxSizeMode.Zoom,
+                Image = photo,
+                BackColor = UiTheme.NavBackground,
+            };
+            Disposed += (_, _) => photo.Dispose();
+            navPanel.Controls.Add(pictureBox);
+        }
+
+        navPanel.Controls.Add(new Panel { Dock = DockStyle.Right, Width = 1, BackColor = UiTheme.Border });
     }
 
     private void CreateNavButtons()

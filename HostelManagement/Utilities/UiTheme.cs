@@ -16,11 +16,12 @@ public static class UiTheme
     public static readonly Font BrandFont = new("Segoe UI Semibold", 12f);
 
     // Colours
-    public static readonly Color NavBackground = Color.FromArgb(33, 47, 61);
-    public static readonly Color NavText = Color.FromArgb(220, 226, 232);
-    public static readonly Color NavGroupText = Color.FromArgb(140, 155, 170);
-    public static readonly Color NavHover = Color.FromArgb(47, 64, 80);
-    public static readonly Color NavSelected = Color.FromArgb(0, 102, 170);
+    // Menu: porcelain background, selected item in the terracotta of the hostel facade.
+    public static readonly Color NavBackground = Color.FromArgb(243, 240, 232);
+    public static readonly Color NavText = Color.FromArgb(45, 50, 56);
+    public static readonly Color NavGroupText = Color.FromArgb(150, 125, 95);
+    public static readonly Color NavHover = Color.FromArgb(230, 223, 210);
+    public static readonly Color NavSelected = Color.FromArgb(192, 101, 43);
 
     public static readonly Color HeaderBackground = Color.White;
     public static readonly Color ContentBackground = Color.FromArgb(245, 236, 220); // beige, like the hostel walls

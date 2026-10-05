@@ -53,7 +53,7 @@ public sealed class LoginForm : Form
         ClientSize = new Size(WindowWidth, WindowHeight);
         DoubleBuffered = true;
 
-        _background = LoadBackground();
+        _background = AppImages.LoadHostelPhoto();
 
         var titleLabel = CreateLabel(AppInfo.BusinessName, new Point(InnerLeft - 2, Y(22)),
             _titleFont, Gold);
@@ -209,25 +209,6 @@ public sealed class LoginForm : Form
         MaxLength = 50,
         TabIndex = tabIndex,
     };
-
-    private static Image? LoadBackground()
-    {
-        try
-        {
-            using Stream? stream = typeof(LoginForm).Assembly.GetManifestResourceStream("HostelManagement.LoginBackground.jpg");
-            if (stream is null)
-            {
-                return null;
-            }
-            using var image = Image.FromStream(stream);
-            return new Bitmap(image);
-        }
-        catch (Exception ex) when (ex is ArgumentException or OutOfMemoryException or IOException)
-        {
-            AppLogger.Error("Could not load the sign in background photo.", ex);
-            return null;
-        }
-    }
 
     private void SignIn()
     {

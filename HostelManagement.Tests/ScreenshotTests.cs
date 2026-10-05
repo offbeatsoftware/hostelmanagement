@@ -25,25 +25,52 @@ public sealed class ScreenshotTests : TestDatabase
         }
 
         AddHostel("Boys Hostel");
+        Print("LOGIN", () => new LoginForm(HostelService.GetHostels()));
+    }
+
+    [Fact]
+    public void MainScreen()
+    {
+        if (Environment.GetEnvironmentVariable("PRINT_SCREENSHOTS") is null)
+        {
+            return;
+        }
+
+        HostelContext.Select(HostelId);
+        Print("MAIN", () => new MainForm { WindowState = FormWindowState.Normal, Size = new Size(1280, 760) });
+    }
+
+    /// <summary>Shows the form, renders it to a small JPEG and writes it to the test output as base64.</summary>
+    private void Print(string name, Func<Form> createForm)
+    {
         string? base64 = null;
+        Exception? failure = null;
         var thread = new Thread(() =>
         {
-            using var form = new LoginForm(HostelService.GetHostels());
-            form.Show();
-            Application.DoEvents();
+            try
+            {
+                using Form form = createForm();
+                form.Show();
+                Application.DoEvents();
 
-            using var full = new Bitmap(form.ClientSize.Width, form.ClientSize.Height);
-            form.DrawToBitmap(full, new Rectangle(Point.Empty, full.Size));
-            using var small = new Bitmap(full, new Size(full.Width * 3 / 5, full.Height * 3 / 5));
-            using var stream = new MemoryStream();
-            small.Save(stream, ImageFormat.Jpeg);
-            base64 = Convert.ToBase64String(stream.ToArray());
-            form.Close();
+                using var full = new Bitmap(form.ClientSize.Width, form.ClientSize.Height);
+                form.DrawToBitmap(full, new Rectangle(Point.Empty, full.Size));
+                using var small = new Bitmap(full, new Size(full.Width * 3 / 5, full.Height * 3 / 5));
+                using var stream = new MemoryStream();
+                small.Save(stream, ImageFormat.Jpeg);
+                base64 = Convert.ToBase64String(stream.ToArray());
+                form.Close();
+            }
+            catch (Exception ex)
+            {
+                failure = ex;
+            }
         });
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
         thread.Join();
 
-        _output.WriteLine("SCREENSHOT-LOGIN-BEGIN" + base64 + "SCREENSHOT-LOGIN-END");
+        Assert.Null(failure);
+        _output.WriteLine($"SCREENSHOT-{name}-BEGIN{base64}SCREENSHOT-{name}-END");
     }
 }
