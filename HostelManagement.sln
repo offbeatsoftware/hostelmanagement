@@ -5,6 +5,8 @@ VisualStudioVersion = 17.8.34330.188
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HostelManagement", "HostelManagement\HostelManagement.csproj", "{6C1E2F3A-4B5D-4E6F-8A7B-9C0D1E2F3A4B}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HostelManagement.Tests", "HostelManagement.Tests\HostelManagement.Tests.csproj", "{8D2B3C4E-5F60-4A71-9B82-C3D4E5F6A7B8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -15,6 +17,10 @@ Global
 		{6C1E2F3A-4B5D-4E6F-8A7B-9C0D1E2F3A4B}.Debug|x64.Build.0 = Debug|x64
 		{6C1E2F3A-4B5D-4E6F-8A7B-9C0D1E2F3A4B}.Release|x64.ActiveCfg = Release|x64
 		{6C1E2F3A-4B5D-4E6F-8A7B-9C0D1E2F3A4B}.Release|x64.Build.0 = Release|x64
+		{8D2B3C4E-5F60-4A71-9B82-C3D4E5F6A7B8}.Debug|x64.ActiveCfg = Debug|x64
+		{8D2B3C4E-5F60-4A71-9B82-C3D4E5F6A7B8}.Debug|x64.Build.0 = Debug|x64
+		{8D2B3C4E-5F60-4A71-9B82-C3D4E5F6A7B8}.Release|x64.ActiveCfg = Release|x64
+		{8D2B3C4E-5F60-4A71-9B82-C3D4E5F6A7B8}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

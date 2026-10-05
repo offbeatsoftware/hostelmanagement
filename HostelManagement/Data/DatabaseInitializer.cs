@@ -24,8 +24,8 @@ public static class DatabaseInitializer
         "Please install the \"Microsoft Access Database Engine 2016 Redistributable\" (64 bit version, " +
         "file accessdatabaseengine_X64.exe) from Microsoft and start the application again.";
 
-    private const string CreateFailedMessage =
-        "The database file could not be created in " + AppPaths.DataFolder + ".\n\n" +
+    private static string CreateFailedMessage =>
+        $"The database file could not be created in {AppPaths.DataFolder}.\n\n" +
         "Please check that the folder exists and is not read only, then start the application again.";
 
     private const string SetupFailedMessage =

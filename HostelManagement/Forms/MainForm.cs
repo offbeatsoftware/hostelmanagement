@@ -35,7 +35,7 @@ public partial class MainForm : Form
     /// The application menu. Each module replaces its PlaceholderView with a real
     /// screen when it is implemented in its phase.
     /// </summary>
-    private static List<NavigationItem> BuildNavigation() =>
+    internal static List<NavigationItem> BuildNavigation() =>
     [
         new("OVERVIEW", "Dashboard", "Summary of students, rooms, payments and dues.",
             () => new PlaceholderView("Dashboard", "Phase 12")),

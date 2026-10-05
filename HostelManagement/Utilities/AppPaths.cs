@@ -8,7 +8,12 @@ namespace HostelManagement.Utilities;
 /// </summary>
 public static class AppPaths
 {
-    public const string DataFolder = @"C:\HostelData";
+    public const string DefaultDataFolder = @"C:\HostelData";
+
+    public static string DataFolder { get; private set; } = DefaultDataFolder;
+
+    /// <summary>Points the application at another data folder. Used by the automated tests.</summary>
+    internal static void UseDataFolder(string folder) => DataFolder = folder;
 
     public static string DatabaseFolder => Path.Combine(DataFolder, "Database");
     public static string DatabaseFile => Path.Combine(DatabaseFolder, "HostelManagement.accdb");
