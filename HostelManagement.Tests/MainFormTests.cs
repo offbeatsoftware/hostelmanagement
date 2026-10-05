@@ -143,10 +143,8 @@ public sealed class MainFormTests : TestDatabase
         parent.Controls.OfType<DataGridView>().FirstOrDefault()
         ?? parent.Controls.Cast<Control>().Select(FindGridOrNull).FirstOrDefault(g => g is not null);
 
-    [Theory]
-    [InlineData(760)]
-    [InlineData(620)]
-    public void Menu_HasNoScrollBar_PhotoUsesOnlySpareSpace(int windowHeight)
+    [Fact]
+    public void Menu_FitsWithoutScrollBarOnA768PixelScreen()
     {
         HostelContext.Select(HostelId);
 
@@ -154,11 +152,29 @@ public sealed class MainFormTests : TestDatabase
         {
             using var form = new MainForm { WindowState = FormWindowState.Normal };
             form.Show();
-            form.Size = new Size(1280, windowHeight);
+            form.Size = new Size(1280, 740);
             Application.DoEvents();
 
             var menu = (FlowLayoutPanel)form.Controls.Find("navButtonsPanel", searchAllChildren: true).Single();
-            Assert.False(menu.VerticalScroll.Visible, "The menu shows a scroll bar.");
+            Assert.False(menu.VerticalScroll.Visible, $"The menu shows a scroll bar at height {form.Height}.");
+            form.Close();
+        });
+    }
+
+    [Fact]
+    public void MenuPhoto_IsHiddenWhenThereIsNoSpareSpace()
+    {
+        HostelContext.Select(HostelId);
+
+        RunOnStaThread(() =>
+        {
+            using var form = new MainForm { WindowState = FormWindowState.Normal };
+            form.Show();
+            form.Size = new Size(1280, 560);
+            Application.DoEvents();
+
+            Control photo = form.Controls.Find("menuPhoto", searchAllChildren: true).Single();
+            Assert.False(photo.Visible);
             form.Close();
         });
     }

@@ -286,8 +286,8 @@ public partial class MainForm : Form
         Text = text,
         Font = UiTheme.NavGroupFont,
         ForeColor = UiTheme.NavGroupText,
-        Height = 30,
-        Padding = new Padding(16, 10, 0, 0),
+        Height = 26,
+        Padding = new Padding(16, 8, 0, 0),
         Margin = Padding.Empty,
     };
 
@@ -302,7 +302,7 @@ public partial class MainForm : Form
             FlatStyle = FlatStyle.Flat,
             TextAlign = ContentAlignment.MiddleLeft,
             Padding = new Padding(16, 0, 0, 0),
-            Height = 36,
+            Height = 32,
             Margin = Padding.Empty,
             Cursor = Cursors.Hand,
             UseVisualStyleBackColor = false,
