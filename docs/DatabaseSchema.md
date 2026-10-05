@@ -38,7 +38,7 @@ Hostel 1──* Room
 
 ## Schema version
 
-The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **4**).
+The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **5**).
 At startup the application refuses a database with an older or newer version and explains what to do,
 instead of failing later with confusing errors. Increase the version whenever a table or column changes.
 
@@ -48,6 +48,7 @@ instead of failing later with confusing errors. Increase the version whenever a 
 | 2 | Phase 3: College table; Student.CollegeName replaced by Student.CollegeId; college columns removed from Hostel |
 | 3 | Phase 4: SharingType table (capacity and rent per sharing type); Room keeps only SharingTypeId |
 | 4 | Several hostels: HostelId on College, SharingType and Room; Student.CollegeId required |
+| 5 | Phase 5: full Aadhaar number and Aadhaar card file on Student; student mobile and admission date required; parent mobile and email required |
 
 ## Tables
 
@@ -116,22 +117,27 @@ instead). Students can only be allocated to an active room with a free bed.
 |---|---|---|
 | StudentId | AutoNumber | Primary key |
 | StudentName | Text(150) | Required, indexed for search |
-| DateOfBirth | Date/Time | |
-| Gender | Text(20) | |
+| DateOfBirth | Date/Time | Must be in the past |
+| Gender | Text(20) | Male / Female / Other |
 | Address | Text(255) | |
-| CollegeId | Number | Required, → College (the student's hostel is the college's hostel) |
+| CollegeId | Number | Required, → College (the student's hostel is the college's hostel; cannot move to another hostel's college) |
 | Course | Text(100) | |
 | ClassName | Text(50) | The specification's "Class" (renamed: `Class` is a risky name in Access SQL) |
-| Mobile | Text(20) | Indexed for search |
+| Mobile | Text(20) | Required, indexed for search |
 | Email | Text(150) | |
-| PhotoPath | Text(255) | Path relative to the data folder |
-| AadhaarLast4 | Text(4) | **Last 4 digits only** (see open questions) |
-| AdmissionDate | Date/Time | |
-| Status | Text(20) | Required: e.g. Active / Left |
+| PhotoPath | Text(255) | Relative to the application folder, e.g. `Photos\Students\S12_photo_20261005103000123.jpg` |
+| AadhaarNumber | Text(12) | Full 12 digit number (client decision), checked with the Verhoeff check digit, unique; shown masked (`XXXX XXXX 1234`) in lists |
+| AadhaarCardPath | Text(255) | Scanned Aadhaar card (PDF/JPG/PNG), e.g. `Documents\Students\S12_aadhaar_....pdf` |
+| AdmissionDate | Date/Time | Required; after the date of birth |
+| Status | Text(20) | Required: Active / Left |
 | Remarks | Text(255) | |
 
+Files are copied into the application's folders under generated names (never the original file name),
+max 5 MB; photos must be readable images and PDFs must be real PDFs. A student with room, invoice, payment or
+email history cannot be deleted (set the status to Left instead).
+
 ### Parent
-Parents/guardians; a student can have more than one.
+Parents/guardians; a student has at least one, and exactly one primary contact.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -139,10 +145,13 @@ Parents/guardians; a student can have more than one.
 | StudentId | Number | Required, → Student |
 | ParentName | Text(150) | Required |
 | Relationship | Text(50) | |
-| Mobile | Text(20) | |
-| Email | Text(150) | |
+| Mobile | Text(20) | Required |
+| Email | Text(150) | Required |
 | Address | Text(255) | |
-| IsPrimaryContact | Yes/No | Which parent receives invoice and reminder emails |
+| IsPrimaryContact | Yes/No | Exactly one per student: receives invoice and reminder emails |
+
+The primary parent is entered together with the student; more guardians are added on the Parents / Guardians
+screen. A student's only parent cannot be deleted; deleting the primary contact makes another parent primary.
 
 ### RoomAllocation
 | Column | Type | Notes |
@@ -225,20 +234,14 @@ Invoice lines (rent and each service).
 | Room: `Capacity`, `SharingType`, `Rent` replaced by `SharingTypeId`; added SharingType table | Capacity equals the sharing type and rent is per sharing type (client decisions, Phase 4). |
 | Room: `Status` became `IsActive` | The only stated statuses are active/inactive; occupancy is calculated. |
 | Student: `Class` became `ClassName` | Avoids an Access reserved word problem. |
-| Student: `AadhaarReference` became `AadhaarLast4` | Store only what is needed (see open questions). |
+| Student: `AadhaarReference` became `AadhaarNumber` + `AadhaarCardPath` | Client decision: store the full number and a scan of the card. |
 | Parent: added `IsPrimaryContact` | Invoice and reminder emails need one recipient when a student has several parents. |
 | EmailHistory: added `InvoiceId` | Shows which invoice an email was about. |
 
 ## Open questions
 
-1. **Aadhaar:** is storing the last 4 digits enough for identification? Storing full Aadhaar numbers is not
-   recommended for a private hostel. If the full number is needed, the column has to be widened before go-live.
-2. **Room capacity vs sharing type:** is capacity always the same as the sharing type
-   (Single = 1, Double = 2, Triple = 3)? If so, Phase 4 will set capacity automatically.
-3. **Payments without an invoice (advance payments):** `Payment.InvoiceId` allows empty values so this is
+1. **Payments without an invoice (advance payments):** `Payment.InvoiceId` allows empty values so this is
    possible later, but until confirmed the application will require an invoice for every payment.
-4. **Student documents:** the specification mentions a Documents folder, but no document screen or table.
-   If documents (ID copies, admission forms) are needed, a small `StudentDocument` table will be added in Phase 5.
 
 ## Changing the schema
 

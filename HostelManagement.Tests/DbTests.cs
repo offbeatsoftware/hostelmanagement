@@ -61,8 +61,8 @@ public sealed class DbTests : TestDatabase
         // DateTime.Now has milliseconds, which cause "Data type mismatch" unless OleDbType.Date is used.
         DateTime now = DateTime.Now;
         int id = Db.Insert(
-            "INSERT INTO [Student] ([StudentName], [CollegeId], [DateOfBirth], [AdmissionDate], [Status]) " +
-            "VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO [Student] ([StudentName], [CollegeId], [Mobile], [DateOfBirth], [AdmissionDate], [Status]) " +
+            "VALUES (?, ?, '9876543210', ?, ?, ?)",
             Db.Param("@StudentName", "Date Test"),
             Db.Param("@CollegeId", CollegeId),
             Db.Param("@DateOfBirth", new DateTime(2006, 2, 28)),
@@ -129,7 +129,8 @@ public sealed class DbTests : TestDatabase
     public void ForeignKey_RejectsParentForUnknownStudent()
     {
         var ex = Assert.Throws<OleDbException>(() => Db.Execute(
-            "INSERT INTO [Parent] ([StudentId], [ParentName], [IsPrimaryContact]) VALUES (?, ?, ?)",
+            "INSERT INTO [Parent] ([StudentId], [ParentName], [Mobile], [Email], [IsPrimaryContact]) " +
+                "VALUES (?, ?, '9876543210', 'parent@example.com', ?)",
             Db.Param("@StudentId", 9999), Db.Param("@ParentName", "Nobody"), Db.Param("@IsPrimaryContact", true)));
 
         Assert.False(Db.IsDuplicateKeyError(ex));
@@ -140,7 +141,8 @@ public sealed class DbTests : TestDatabase
     public void RequiredColumn_RejectsNull()
     {
         Assert.Throws<OleDbException>(() => Db.Execute(
-            "INSERT INTO [Student] ([StudentName], [CollegeId], [Status]) VALUES (?, ?, ?)",
+            "INSERT INTO [Student] ([StudentName], [CollegeId], [Mobile], [AdmissionDate], [Status]) " +
+            "VALUES (?, ?, '9876543210', #01/15/2026#, ?)",
             Db.Param("@StudentName", null), Db.Param("@CollegeId", CollegeId), Db.Param("@Status", "Active")));
     }
 
@@ -148,7 +150,8 @@ public sealed class DbTests : TestDatabase
     public void Student_WithoutCollege_IsRejected()
     {
         Assert.Throws<OleDbException>(() => Db.Execute(
-            "INSERT INTO [Student] ([StudentName], [Status]) VALUES (?, ?)",
+            "INSERT INTO [Student] ([StudentName], [Mobile], [AdmissionDate], [Status]) " +
+            "VALUES (?, '9876543210', #01/15/2026#, ?)",
             Db.Param("@StudentName", "No College"), Db.Param("@Status", "Active")));
     }
 
@@ -159,10 +162,12 @@ public sealed class DbTests : TestDatabase
         int studentId = Db.InTransaction((connection, transaction) =>
         {
             int id = Db.Insert(connection, transaction,
-                "INSERT INTO [Student] ([StudentName], [CollegeId], [Status]) VALUES (?, ?, ?)",
+                "INSERT INTO [Student] ([StudentName], [CollegeId], [Mobile], [AdmissionDate], [Status]) " +
+            "VALUES (?, ?, '9876543210', #01/15/2026#, ?)",
                 Db.Param("@StudentName", "With Parent"), Db.Param("@CollegeId", collegeId), Db.Param("@Status", "Active"));
             Db.Execute(connection, transaction,
-                "INSERT INTO [Parent] ([StudentId], [ParentName], [IsPrimaryContact]) VALUES (?, ?, ?)",
+                "INSERT INTO [Parent] ([StudentId], [ParentName], [Mobile], [Email], [IsPrimaryContact]) " +
+                "VALUES (?, ?, '9876543210', 'parent@example.com', ?)",
                 Db.Param("@StudentId", id), Db.Param("@ParentName", "Parent"), Db.Param("@IsPrimaryContact", true));
             return id;
         });
@@ -179,7 +184,8 @@ public sealed class DbTests : TestDatabase
         Assert.Throws<InvalidOperationException>(() => Db.InTransaction((connection, transaction) =>
         {
             Db.Execute(connection, transaction,
-                "INSERT INTO [Student] ([StudentName], [CollegeId], [Status]) VALUES (?, ?, ?)",
+                "INSERT INTO [Student] ([StudentName], [CollegeId], [Mobile], [AdmissionDate], [Status]) " +
+            "VALUES (?, ?, '9876543210', #01/15/2026#, ?)",
                 Db.Param("@StudentName", "Rolled Back"), Db.Param("@CollegeId", collegeId), Db.Param("@Status", "Active"));
             throw new InvalidOperationException("Simulated failure");
         }));

@@ -19,7 +19,7 @@ public static class DatabaseSchema
     /// Increase by one whenever a table or column changes, so databases with an older
     /// layout are detected at startup. Stored in the SchemaInfo table.
     /// </summary>
-    public const int Version = 4;
+    public const int Version = 5;
 
     /// <summary>
     /// The sharing types added to every new hostel. Capacity always equals the sharing type
@@ -102,11 +102,12 @@ public static class DatabaseSchema
                 [CollegeId]     INTEGER NOT NULL,
                 [Course]        TEXT(100),
                 [ClassName]     TEXT(50),
-                [Mobile]        TEXT(20),
+                [Mobile]        TEXT(20) NOT NULL,
                 [Email]         TEXT(150),
-                [PhotoPath]     TEXT(255),
-                [AadhaarLast4]  TEXT(4),
-                [AdmissionDate] DATETIME,
+                [PhotoPath]       TEXT(255),
+                [AadhaarNumber]   TEXT(12),
+                [AadhaarCardPath] TEXT(255),
+                [AdmissionDate] DATETIME NOT NULL,
                 [Status]        TEXT(20) NOT NULL,
                 [Remarks]       TEXT(255),
                 CONSTRAINT [FK_Student_College] FOREIGN KEY ([CollegeId]) REFERENCES [College] ([CollegeId])
@@ -121,8 +122,8 @@ public static class DatabaseSchema
                 [StudentId]        INTEGER NOT NULL,
                 [ParentName]       TEXT(150) NOT NULL,
                 [Relationship]     TEXT(50),
-                [Mobile]           TEXT(20),
-                [Email]            TEXT(150),
+                [Mobile]           TEXT(20) NOT NULL,
+                [Email]            TEXT(150) NOT NULL,
                 [Address]          TEXT(255),
                 [IsPrimaryContact] BIT NOT NULL,
                 CONSTRAINT [FK_Parent_Student] FOREIGN KEY ([StudentId]) REFERENCES [Student] ([StudentId])

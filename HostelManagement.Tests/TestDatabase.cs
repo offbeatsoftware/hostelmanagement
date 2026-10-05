@@ -49,7 +49,8 @@ public abstract class TestDatabase : IDisposable
         CollegeService.Save(new College { HostelId = hostelId, CollegeName = name }).CollegeId;
 
     protected int AddStudent(string name = "Test Student", int? collegeId = null) =>
-        Db.Insert("INSERT INTO [Student] ([StudentName], [CollegeId], [Status]) VALUES (?, ?, ?)",
+        Db.Insert("INSERT INTO [Student] ([StudentName], [CollegeId], [Mobile], [AdmissionDate], [Status]) " +
+            "VALUES (?, ?, '9876543210', #01/15/2026#, ?)",
             Db.Param("@StudentName", name),
             Db.Param("@CollegeId", collegeId ?? CollegeId),
             Db.Param("@Status", "Active"));

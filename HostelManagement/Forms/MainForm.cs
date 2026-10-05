@@ -72,10 +72,10 @@ public partial class MainForm : Form
         new("HOSTEL", "Services", "Additional services such as Wi-Fi and transport.",
             _ => PlaceholderView.Create("Services", "Phase 7")),
 
-        new("STUDENTS", "Students", "Student records, photos and search.",
-            _ => PlaceholderView.Create("Students", "Phase 5"), RequiresHostel: true),
+        new("STUDENTS", "Students", "Student records, parents, photos and Aadhaar cards.",
+            hostel => new StudentsView(hostel!), RequiresHostel: true),
         new("STUDENTS", "Parents / Guardians", "Parent and guardian contact details.",
-            _ => PlaceholderView.Create("Parents / Guardians", "Phase 5"), RequiresHostel: true),
+            hostel => new ParentsView(hostel!), RequiresHostel: true),
 
         new("BILLING", "Invoices", "Create, print and export invoices.",
             _ => PlaceholderView.Create("Invoices", "Phase 8"), RequiresHostel: true),
