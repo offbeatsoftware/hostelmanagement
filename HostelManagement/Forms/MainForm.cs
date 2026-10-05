@@ -208,7 +208,10 @@ public partial class MainForm : Form
         contentPanel.BackColor = UiTheme.ContentBackground;
     }
 
-    /// <summary>The hostel photo at the bottom of the menu, with a thin line between menu and content.</summary>
+    /// <summary>
+    /// The hostel photo at the bottom of the menu, with a thin line between menu and content.
+    /// The photo only uses the space the menu does not need, so the menu never needs a scroll bar.
+    /// </summary>
     private void AddMenuPhoto()
     {
         Image? photo = AppImages.LoadHostelPhoto();
@@ -218,16 +221,31 @@ public partial class MainForm : Form
             {
                 Name = "menuPhoto",
                 Dock = DockStyle.Bottom,
-                Height = navPanel.Width * photo.Height / photo.Width,
+                Height = 0,
                 SizeMode = PictureBoxSizeMode.Zoom,
                 Image = photo,
                 BackColor = UiTheme.NavBackground,
             };
             Disposed += (_, _) => photo.Dispose();
             navPanel.Controls.Add(pictureBox);
+            navPanel.Resize += (_, _) => FitMenuPhoto(pictureBox, photo);
+            Shown += (_, _) => FitMenuPhoto(pictureBox, photo);
         }
 
         navPanel.Controls.Add(new Panel { Dock = DockStyle.Right, Width = 1, BackColor = UiTheme.Border });
+    }
+
+    private void FitMenuPhoto(PictureBox pictureBox, Image photo)
+    {
+        const int minimumHeight = 70;
+        int menuHeight = navButtonsPanel.Padding.Vertical +
+            navButtonsPanel.Controls.Cast<Control>().Sum(c => c.Height + c.Margin.Vertical);
+        int spare = navPanel.ClientSize.Height - brandPanel.Height - menuHeight - 8;
+        int natural = navPanel.ClientSize.Width * photo.Height / photo.Width;
+        int height = Math.Min(natural, spare);
+
+        pictureBox.Visible = height >= minimumHeight;
+        pictureBox.Height = Math.Max(height, 0);
     }
 
     private void CreateNavButtons()
