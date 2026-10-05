@@ -9,6 +9,8 @@ obj/
 # Runtime data created by the application (never commit student data)
 **/Database/*.accdb
 **/Database/*.laccdb
+# ...except the empty database template that ships with the application
+!HostelManagement/Database/HostelManagement.accdb
 **/Photos/
 **/Documents/
 **/Backups/

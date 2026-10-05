@@ -32,6 +32,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Empty database (all tables, no data) copied to C:\HostelData on first start. -->
+    <None Update="Database\HostelManagement.accdb" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="HostelManagement.Tests" />
   </ItemGroup>
 

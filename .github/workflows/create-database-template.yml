@@ -1,0 +1,55 @@
+name: Create database template
+
+# Builds the empty database (all tables, no data) on Windows with the application's own
+# schema code and commits it as HostelManagement/Database/HostelManagement.accdb.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'HostelManagement/Data/DatabaseSchema.cs'
+      - '.github/workflows/create-database-template.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: database-template-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  create-template:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install Microsoft Access Database Engine 2016 (x64)
+        shell: pwsh
+        run: |
+          $installer = Join-Path $env:RUNNER_TEMP 'accessdatabaseengine_X64.exe'
+          Invoke-WebRequest 'https://download.microsoft.com/download/3/5/C/35C84C36-661A-44E6-9324-8786B8DBE231/accessdatabaseengine_X64.exe' -OutFile $installer
+          $process = Start-Process $installer -ArgumentList '/quiet' -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Access Database Engine install failed with exit code $($process.ExitCode)" }
+
+      - name: Create empty database
+        shell: pwsh
+        env:
+          HOSTEL_TEMPLATE_OUT: ${{ github.workspace }}\HostelManagement\Database\HostelManagement.accdb
+        run: |
+          dotnet test HostelManagement.sln -c Release --filter "FullyQualifiedName~DatabaseTemplateExport"
+          if (-not (Test-Path $env:HOSTEL_TEMPLATE_OUT)) { throw 'The database template was not created.' }
+          Get-Item $env:HOSTEL_TEMPLATE_OUT | Format-List Name, Length
+
+      - name: Commit database template
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f HostelManagement/Database/HostelManagement.accdb
+          git commit -m 'Add empty database template (all tables, no data)'
+          git push

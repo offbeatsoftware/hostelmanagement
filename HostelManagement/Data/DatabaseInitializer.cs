@@ -41,8 +41,16 @@ public static class DatabaseInitializer
 
         if (!File.Exists(AppPaths.DatabaseFile))
         {
-            CreateDatabaseFile(provider);
-            AppLogger.Info($"Created database {AppPaths.DatabaseFile}.");
+            if (File.Exists(AppPaths.DatabaseTemplateFile))
+            {
+                CopyTemplate();
+                AppLogger.Info($"Copied empty database template to {AppPaths.DatabaseFile}.");
+            }
+            else
+            {
+                CreateDatabaseFile(provider);
+                AppLogger.Info($"Created database {AppPaths.DatabaseFile}.");
+            }
         }
 
         CreateMissingTables();
@@ -83,11 +91,26 @@ public static class DatabaseInitializer
         }
     }
 
+    private static void CopyTemplate()
+    {
+        try
+        {
+            File.Copy(AppPaths.DatabaseTemplateFile, AppPaths.DatabaseFile);
+            // Files from the install folder can be read only; the working database must not be.
+            File.SetAttributes(AppPaths.DatabaseFile, FileAttributes.Normal);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            TryDeletePartialFile();
+            throw new DatabaseException(CreateFailedMessage, ex);
+        }
+    }
+
     /// <summary>
     /// Creates an empty .accdb file with ADOX, which is part of Windows, so Microsoft Access
     /// itself does not need to be installed.
     /// </summary>
-    private static void CreateDatabaseFile(string provider)
+    internal static void CreateDatabaseFile(string provider)
     {
         // The .accdb extension makes the ACE provider create an Access 2007+ format file.
         string connectionString = Db.BuildConnectionString(provider, AppPaths.DatabaseFile);

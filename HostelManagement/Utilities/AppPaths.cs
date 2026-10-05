@@ -18,6 +18,10 @@ public static class AppPaths
     public static string DatabaseFolder => Path.Combine(DataFolder, "Database");
     public static string DatabaseFile => Path.Combine(DatabaseFolder, "HostelManagement.accdb");
 
+    /// <summary>Empty database shipped with the application; copied to the data folder on first start.</summary>
+    public static string DatabaseTemplateFile =>
+        Path.Combine(AppContext.BaseDirectory, "Database", "HostelManagement.accdb");
+
     public static string StudentPhotosFolder => Path.Combine(DataFolder, "Photos", "Students");
     public static string StudentDocumentsFolder => Path.Combine(DataFolder, "Documents", "Students");
 

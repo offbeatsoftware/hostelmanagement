@@ -28,12 +28,17 @@ public abstract class TestDatabase : IDisposable
             Db.Param("@StudentName", name),
             Db.Param("@Status", "Active"));
 
-    public void Dispose()
+    /// <summary>Releases pooled connections so the .accdb file is no longer locked.</summary>
+    internal static void ReleaseDatabaseFile()
     {
-        // Release pooled connections so the .accdb file is no longer locked.
         OleDbConnection.ReleaseObjectPool();
         GC.Collect();
         GC.WaitForPendingFinalizers();
+    }
+
+    public void Dispose()
+    {
+        ReleaseDatabaseFile();
         try
         {
             Directory.Delete(DataFolder, recursive: true);

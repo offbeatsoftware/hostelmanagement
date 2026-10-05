@@ -21,6 +21,19 @@ public sealed class DatabaseInitializerTests : TestDatabase
     }
 
     [Fact]
+    public void CreateDatabaseFile_WithoutTemplate_CreatesEmptyAccessFile()
+    {
+        ReleaseDatabaseFile();
+        File.Delete(AppPaths.DatabaseFile);
+
+        DatabaseInitializer.CreateDatabaseFile(Db.ProviderName);
+        DatabaseInitializer.Initialize();
+
+        Assert.True(File.Exists(AppPaths.DatabaseFile));
+        Assert.Equal(0, Count("Student"));
+    }
+
+    [Fact]
     public void Initialize_CreatesAllTables()
     {
         using OleDbConnection connection = Db.OpenConnection();
