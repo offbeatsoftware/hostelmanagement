@@ -89,8 +89,8 @@ public static class DatabaseInitializer
     /// </summary>
     private static void CreateDatabaseFile(string provider)
     {
-        string connectionString = Db.BuildConnectionString(provider, AppPaths.DatabaseFile)
-            + ";Jet OLEDB:Engine Type=6"; // 6 = .accdb (Access 2007 and later) format
+        // The .accdb extension makes the ACE provider create an Access 2007+ format file.
+        string connectionString = Db.BuildConnectionString(provider, AppPaths.DatabaseFile);
 
         object? catalog = null;
         object? connection = null;

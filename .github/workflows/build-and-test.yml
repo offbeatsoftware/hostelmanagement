@@ -25,38 +25,6 @@ jobs:
           $process = Start-Process $installer -ArgumentList '/quiet' -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw "Access Database Engine install failed with exit code $($process.ExitCode)" }
 
-      - name: Diagnose database creation (temporary)
-        shell: pwsh
-        continue-on-error: true
-        run: |
-          $variants = @(
-            'Provider=Microsoft.ACE.OLEDB.16.0;Data Source={0}',
-            'Provider=Microsoft.ACE.OLEDB.16.0;Data Source={0};Persist Security Info=False',
-            'Provider=Microsoft.ACE.OLEDB.16.0;Data Source={0};Jet OLEDB:Engine Type=6',
-            'Provider=Microsoft.ACE.OLEDB.16.0;Data Source={0};Persist Security Info=False;Jet OLEDB:Engine Type=6',
-            'Provider=Microsoft.ACE.OLEDB.12.0;Data Source={0}'
-          )
-          $i = 0
-          foreach ($v in $variants) {
-            $i++
-            $file = Join-Path $env:RUNNER_TEMP "adox$i.accdb"
-            try {
-              $cat = New-Object -ComObject ADOX.Catalog
-              $conn = $cat.Create(($v -f $file))
-              $conn.Close()
-              Write-Host "ADOX OK    : $v"
-            } catch { Write-Host "ADOX FAIL  : $v :: $($_.Exception.Message)" }
-          }
-          try {
-            $dao = New-Object -ComObject DAO.DBEngine.120
-            $db = $dao.CreateDatabase((Join-Path $env:RUNNER_TEMP 'dao.accdb'), ';LANGID=0x0409;CP=1252;COUNTRY=0')
-            $db.Close()
-            Write-Host 'DAO OK'
-          } catch { Write-Host "DAO FAIL :: $($_.Exception.Message)" }
-          $b = New-Object System.Data.OleDb.OleDbConnectionStringBuilder
-          $b.Provider = 'Microsoft.ACE.OLEDB.16.0'; $b.DataSource = 'C:\x\y.accdb'; $b.PersistSecurityInfo = $false
-          Write-Host "Builder output: $($b.ConnectionString)"
-
       - name: Build
         run: dotnet build HostelManagement.sln -c Release
 

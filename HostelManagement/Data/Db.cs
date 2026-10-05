@@ -32,12 +32,13 @@ public static class Db
         _connectionString = BuildConnectionString(providerName, databaseFile);
     }
 
+    // Keep this to Provider and Data Source only: ADOX refuses to create a database
+    // when other settings such as "Persist Security Info" are present.
     internal static string BuildConnectionString(string providerName, string databaseFile) =>
         new OleDbConnectionStringBuilder
         {
             Provider = providerName,
             DataSource = databaseFile,
-            PersistSecurityInfo = false,
         }.ConnectionString;
 
     /// <summary>Opens a new connection. Always dispose it with <c>using</c>.</summary>
