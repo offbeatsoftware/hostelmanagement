@@ -28,10 +28,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Data\" />
+    <PackageReference Include="System.Data.OleDb" Version="8.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Models\" />
     <Folder Include="Reports\" />
-    <Folder Include="Services\" />
   </ItemGroup>
 
 </Project>

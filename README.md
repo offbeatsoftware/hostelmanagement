@@ -2,17 +2,20 @@
 
 A single admin Windows desktop application for managing a private student hostel.
 
-**Stack:** C# · .NET 8 · Windows Forms · Microsoft Access (.accdb) · Microsoft.Data.OleDb
+**Stack:** C# · .NET 8 · Windows Forms · Microsoft Access (.accdb) · System.Data.OleDb
 
-**Status:** Phase 1 (project setup, main window, navigation). Module screens show a placeholder until their phase is built.
+**Status:** Phase 2 (Access database). Module screens show a placeholder until their phase is built.
 
 ## Requirements
 
 - Windows 10 or Windows 11
 - Visual Studio 2022 (17.8 or later) with the **.NET desktop development** workload
 - .NET 8 SDK (installed with that workload)
-- From Phase 2 onwards: **Microsoft Access Database Engine 2016 Redistributable, x64**
-  (not needed if 64 bit Microsoft Office/Access is already installed)
+- **Microsoft Access Database Engine, 64 bit.** Start the application first: if it reports that the engine
+  was not found, install the *Microsoft Access Database Engine 2016 Redistributable*
+  (`accessdatabaseengine_X64.exe`) from Microsoft. Microsoft 365 (Click-to-Run) Office does not always
+  make its engine available to other programs, so the redistributable may be needed even with Office installed.
+  Microsoft Access itself is not required.
 
 ## Open, build and run
 
@@ -24,9 +27,11 @@ A single admin Windows desktop application for managing a private student hostel
 
 From the command line: `dotnet build HostelManagement.sln` and `dotnet run --project HostelManagement`.
 
+NuGet package: `System.Data.OleDb` 8.0.1 (restored automatically on build).
+
 ## 32 bit vs 64 bit
 
-The application is built as **x64**. The Access Database Engine (ACE OLE DB provider) must have the same
+The application is built as **x64**, matching the hostel PC's 64 bit Office. The Access Database Engine (ACE OLE DB provider) must have the same
 bitness as the application. If the hostel PC has **32 bit** Office installed, the 64 bit engine cannot be
 installed alongside it; in that case change `<PlatformTarget>` and `<Platforms>` in
 `HostelManagement/HostelManagement.csproj` to `x86` and use the 32 bit engine.
@@ -39,24 +44,28 @@ HostelManagement/
   Program.cs              Startup, folder creation, global error handling
   Forms/                  Main window, navigation and module screens
     Views/                Module screens (UserControls) shown inside the main window
-  Models/                 Data classes (from Phase 2)
-  Data/                   Access database access, parameterized queries only (from Phase 2)
-  Services/               Business logic: allocation, billing, email (later phases)
+  Models/                 Data classes (from Phase 3)
+  Data/                   Access database: connection helper (Db), schema, startup initializer
+  Services/               Business logic: database check; allocation, billing, email in later phases
   Reports/                Invoice and report output (later phases)
   Utilities/              Paths, logging, dialogs, error handling, UI theme
 ```
 
-The following folders are created automatically next to `HostelManagement.exe` on first start:
+All data is kept in **`C:\HostelData`**, separate from the program, so the application can be installed
+under Program Files. These folders are created automatically on first start:
 
 | Folder               | Purpose                                         |
 |----------------------|-------------------------------------------------|
-| `Database`           | `HostelManagement.accdb`                        |
+| `Database`           | `HostelManagement.accdb` (created with all tables on first start) |
 | `Photos/Students`    | Student photos (only the file path is stored in the database) |
 | `Documents/Students` | Student documents (only the file path is stored in the database) |
 | `Backups`            | Database backups                                |
 | `Logs`               | Technical error logs (`app-yyyyMMdd.log`)       |
 
-These folders contain real student data and are excluded from Git.
+These folders contain real student data and must never be committed to Git.
+
+The database design is documented in [docs/DatabaseSchema.md](docs/DatabaseSchema.md).
+To check the database at any time, open **Application Settings** and click **Test Database**.
 
 ## UI conventions
 
@@ -72,5 +81,7 @@ All screens follow these rules so the application stays consistent and easy to u
   (No is the default button). Avoid popups for routine success messages; use the status bar instead.
 - **Errors:** catch exceptions at the screen level and call `ErrorHandler.Handle(ex, "friendly message")`.
   The admin never sees a stack trace; details go to the log file.
-- **Data access:** no SQL in forms. Forms call services/data classes, which use parameterized queries.
+- **Data access:** no SQL in forms. Forms call services/data classes, which use `Db` with `?` placeholders
+  and `Db.Param(...)` (positional, in placeholder order). Bracket all table and column names.
+  Use `Db.InTransaction` for actions that change more than one row or table.
 - **Tab order:** set a logical `TabIndex` on every input control, top to bottom, left to right.

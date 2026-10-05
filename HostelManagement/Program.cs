@@ -1,3 +1,4 @@
+using HostelManagement.Data;
 using HostelManagement.Forms;
 using HostelManagement.Utilities;
 
@@ -27,8 +28,24 @@ internal static class Program
         catch (Exception ex)
         {
             ErrorHandler.Handle(ex,
-                "The application could not create its data folders.\n\n" +
-                "Please make sure the application folder is not read only and try again.");
+                $"The application could not create its data folder {AppPaths.DataFolder}.\n\n" +
+                "Please make sure the drive is available and the folder is not read only, then try again.");
+            return;
+        }
+
+        try
+        {
+            DatabaseInitializer.Initialize();
+        }
+        catch (DatabaseException ex)
+        {
+            AppLogger.Error("Database initialization failed.", ex);
+            Dialogs.Error(ex.Message);
+            return;
+        }
+        catch (Exception ex)
+        {
+            ErrorHandler.Handle(ex, "The database could not be prepared. The application will now close.");
             return;
         }
 

@@ -67,8 +67,8 @@ public partial class MainForm : Form
             () => new PlaceholderView("Email Settings", "Phase 11")),
         new("SETTINGS", "Backup / Restore", "Back up and restore the database.",
             () => new PlaceholderView("Backup / Restore", "Phase 14")),
-        new("SETTINGS", "Application Settings", "General application preferences.",
-            () => new PlaceholderView("Application Settings", "a later phase, scope to be confirmed")),
+        new("SETTINGS", "Application Settings", "Database location and database check.",
+            () => new ApplicationSettingsView()),
     ];
 
     private void ApplyTheme()
