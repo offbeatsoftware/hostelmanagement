@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>HostelManagement</RootNamespace>
+    <AssemblyName>HostelManagement</AssemblyName>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationVisualStyles>true</ApplicationVisualStyles>
+    <ApplicationDefaultFont>Segoe UI, 9.75pt</ApplicationDefaultFont>
+
+    <!--
+      The Microsoft Access Database Engine (ACE OLE DB provider) must have the same
+      bitness as this process. x64 matches 64 bit Office / the 64 bit Access Database
+      Engine redistributable. Switch both to x86 if the target PC uses 32 bit Office.
+    -->
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+
+    <Product>Hostel Management System</Product>
+    <Version>0.1.0</Version>
+
+    <!-- Allows the project to be compiled on non Windows build machines (CI). -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Data\" />
+    <Folder Include="Models\" />
+    <Folder Include="Reports\" />
+    <Folder Include="Services\" />
+  </ItemGroup>
+
+</Project>
