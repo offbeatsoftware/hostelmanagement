@@ -26,11 +26,7 @@ public sealed class DatabaseTemplateExport
         AppPaths.EnsureFolders();
 
         // Build from scratch with ADOX and the schema, never from an older template.
-        DatabaseInitializer.Initialize();
-        TestDatabase.ReleaseDatabaseFile();
-        File.Delete(AppPaths.DatabaseFile);
-        DatabaseInitializer.CreateDatabaseFile(Db.ProviderName);
-        DatabaseInitializer.Initialize();
+        TestDatabase.CreateFreshDatabase();
 
         using (OleDbConnection connection = Db.OpenConnection())
         {

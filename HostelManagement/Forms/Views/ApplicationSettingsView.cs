@@ -134,11 +134,11 @@ public sealed class ApplicationSettingsView : UserControl
             {
                 int index = _resultsGrid.Rows.Add(step.Step, step.Passed ? "Passed" : "Failed", step.Details);
                 _resultsGrid.Rows[index].Cells["Result"].Style.ForeColor =
-                    step.Passed ? Color.FromArgb(25, 135, 84) : UiTheme.Danger;
+                    step.Passed ? UiTheme.Success : UiTheme.Danger;
             }
 
             bool allPassed = steps.Count > 0 && steps.All(step => step.Passed);
-            _summaryLabel.ForeColor = allPassed ? Color.FromArgb(25, 135, 84) : UiTheme.Danger;
+            _summaryLabel.ForeColor = allPassed ? UiTheme.Success : UiTheme.Danger;
             _summaryLabel.Text = allPassed
                 ? $"All checks passed ({DateTime.Now:HH:mm:ss})."
                 : "One or more checks failed. See the details below.";

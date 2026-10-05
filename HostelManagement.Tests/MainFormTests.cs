@@ -1,4 +1,6 @@
 using HostelManagement.Forms;
+using HostelManagement.Models;
+using HostelManagement.Services;
 using Xunit;
 
 namespace HostelManagement.Tests;
@@ -61,6 +63,36 @@ public sealed class MainFormTests : TestDatabase
             }
 
             form.Close();
+        });
+    }
+
+    [Fact]
+    public void MainForm_ShowsHostelNameAndUpdatesItAfterSave()
+    {
+        HostelService.Save(new HostelDetails { HostelName = "Green Valley Hostel" });
+
+        RunOnStaThread(() =>
+        {
+            using var form = new MainForm();
+            Control brand = form.Controls.Find("brandLabel", searchAllChildren: true).Single();
+
+            Assert.StartsWith("Green Valley Hostel", form.Text);
+            Assert.Equal("Green Valley Hostel", brand.Text);
+
+            HostelService.Save(new HostelDetails { HostelName = "Blue Hills Hostel" });
+
+            Assert.StartsWith("Blue Hills Hostel", form.Text);
+            Assert.Equal("Blue Hills Hostel", brand.Text);
+        });
+    }
+
+    [Fact]
+    public void LoginForm_CanBeCreated()
+    {
+        RunOnStaThread(() =>
+        {
+            using var form = new LoginForm("Green Valley Hostel");
+            Assert.Equal("Sign in", form.Text);
         });
     }
 

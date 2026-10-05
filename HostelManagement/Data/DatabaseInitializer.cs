@@ -28,6 +28,12 @@ public static class DatabaseInitializer
         $"The database file could not be created in {AppPaths.DataFolder}.\n\n" +
         "Please check that the folder exists and is not read only, then start the application again.";
 
+    // Shown while the application is in development and no real data exists yet.
+    private static string OutdatedMessage =>
+        "This database was created by an earlier version of the application and its layout has changed.\n\n" +
+        $"Close the application, delete the file {AppPaths.DatabaseFile} and start the application again. " +
+        "A new, empty database will be created.";
+
     private const string SetupFailedMessage =
         "The database tables could not be prepared.\n\n" +
         "Please close any other program that is using the database (for example Microsoft Access) " +
@@ -35,9 +41,7 @@ public static class DatabaseInitializer
 
     public static void Initialize()
     {
-        string provider = FindInstalledProvider() ?? throw new DatabaseException(EngineMissingMessage);
-        Db.Configure(provider, AppPaths.DatabaseFile);
-        AppLogger.Info($"Using OLE DB provider {provider}.");
+        string provider = ConfigureProvider();
 
         if (!File.Exists(AppPaths.DatabaseFile))
         {
@@ -54,6 +58,15 @@ public static class DatabaseInitializer
         }
 
         CreateMissingTables();
+    }
+
+    /// <summary>Finds the installed Access Database Engine and points <see cref="Db"/> at the database file.</summary>
+    internal static string ConfigureProvider()
+    {
+        string provider = FindInstalledProvider() ?? throw new DatabaseException(EngineMissingMessage);
+        Db.Configure(provider, AppPaths.DatabaseFile);
+        AppLogger.Info($"Using OLE DB provider {provider}.");
+        return provider;
     }
 
     /// <summary>Names of the application tables that exist in the database.</summary>
@@ -153,6 +166,13 @@ public static class DatabaseInitializer
             using OleDbConnection connection = Db.OpenConnection();
             HashSet<string> existing = GetExistingTableNames(connection);
 
+            // A database that already has tables but no SchemaInfo was built before versioning.
+            bool isEmptyDatabase = existing.Count == 0;
+            if (!isEmptyDatabase && !existing.Contains("SchemaInfo"))
+            {
+                throw new DatabaseException(OutdatedMessage);
+            }
+
             foreach (TableDefinition table in DatabaseSchema.Tables)
             {
                 if (!existing.Contains(table.Name))
@@ -161,6 +181,8 @@ public static class DatabaseInitializer
                     AppLogger.Info($"Created table {table.Name}.");
                 }
             }
+
+            CheckSchemaVersion(connection);
         }
         catch (DatabaseException)
         {
@@ -169,6 +191,29 @@ public static class DatabaseInitializer
         catch (Exception ex)
         {
             throw new DatabaseException(SetupFailedMessage, ex);
+        }
+    }
+
+    private static void CheckSchemaVersion(OleDbConnection connection)
+    {
+        object? stored = Db.Scalar(connection, null, "SELECT MAX([Version]) FROM [SchemaInfo]");
+        if (stored is null)
+        {
+            Db.Execute(connection, null, "INSERT INTO [SchemaInfo] ([Version]) VALUES (?)",
+                Db.Param("@Version", DatabaseSchema.Version));
+            return;
+        }
+
+        int version = Convert.ToInt32(stored);
+        if (version < DatabaseSchema.Version)
+        {
+            throw new DatabaseException(OutdatedMessage);
+        }
+        if (version > DatabaseSchema.Version)
+        {
+            throw new DatabaseException(
+                "This database was created by a newer version of the application.\n\n" +
+                "Please install the latest version of the application.");
         }
     }
 

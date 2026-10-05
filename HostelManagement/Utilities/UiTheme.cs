@@ -30,6 +30,7 @@ public static class UiTheme
 
     public static readonly Color Primary = Color.FromArgb(0, 102, 170);
     public static readonly Color Danger = Color.FromArgb(192, 57, 43);
+    public static readonly Color Success = Color.FromArgb(25, 135, 84);
 
     // Standard sizes
     public static readonly Size ButtonSize = new(110, 34);

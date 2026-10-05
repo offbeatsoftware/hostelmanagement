@@ -107,6 +107,10 @@ public static class Db
         return parameter;
     }
 
+    /// <summary>Text parameter that stores an empty value as NULL (for optional fields).</summary>
+    public static OleDbParameter OptionalText(string name, string value) =>
+        Param(name, string.IsNullOrEmpty(value) ? null : value);
+
     // ---- Single statement helpers (open and close their own connection) ----
 
     /// <summary>Runs an INSERT, UPDATE or DELETE and returns the number of affected rows.</summary>

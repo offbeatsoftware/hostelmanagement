@@ -17,22 +17,48 @@ The DDL is in `Data/DatabaseSchema.cs`.
   `C:\HostelData\Documents`; only the file path is stored.
 - **Money** uses the Access `Currency` type (exact, no rounding errors).
 
+## Schema version
+
+The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **2**).
+At startup the application refuses a database with an older or newer version and explains what to do,
+instead of failing later with confusing errors. Increase the version whenever a table or column changes.
+
+| Version | Change |
+|---|---|
+| 1 | Initial schema (Phase 2), no SchemaInfo table |
+| 2 | Phase 3: College table; Student.CollegeName replaced by Student.CollegeId; college columns removed from Hostel |
+
 ## Tables
 
+### SchemaInfo
+| Column | Type | Notes |
+|---|---|---|
+| Version | Number | Required; one row |
+
 ### Hostel
-One row with hostel and college details.
+One row with the hostel's own details.
 
 | Column | Type | Notes |
 |---|---|---|
 | HostelId | AutoNumber | Primary key |
-| HostelName | Text(150) | Required |
+| HostelName | Text(150) | Required (the only required field) |
 | Address | Text(255) | |
 | Phone | Text(20) | |
 | Email | Text(150) | |
-| CollegeName | Text(150) | |
-| CollegeAddress | Text(255) | |
 | CreatedDate | Date/Time | Required |
 | UpdatedDate | Date/Time | |
+
+### College
+Colleges that students attend (students come from several colleges).
+
+| Column | Type | Notes |
+|---|---|---|
+| CollegeId | AutoNumber | Primary key |
+| CollegeName | Text(150) | Required, **unique** (also checked ignoring upper/lower case) |
+| Address | Text(255) | |
+| Phone | Text(20) | |
+
+A college cannot be deleted while students are linked to it.
 
 ### Room
 | Column | Type | Notes |
@@ -54,7 +80,7 @@ One row with hostel and college details.
 | DateOfBirth | Date/Time | |
 | Gender | Text(20) | |
 | Address | Text(255) | |
-| CollegeName | Text(150) | |
+| CollegeId | Number | → College (picked from the college list) |
 | Course | Text(100) | |
 | ClassName | Text(50) | The specification's "Class" (renamed: `Class` is a risky name in Access SQL) |
 | Mobile | Text(20) | Indexed for search |
@@ -153,6 +179,9 @@ Invoice lines (rent and each service).
 | Invoice: removed `RentAmount`, `ServiceAmount` | Already held as invoice items. |
 | Invoice: removed `PaidAmount`, `PendingAmount`, `Status` | Calculated from payments (Pending = Total − Payments), so they can never disagree. |
 | RoomAllocation: removed `SharingType` | Already held on the room. |
+| Hostel: removed `CollegeName`, `CollegeAddress`; added College table | Students come from several colleges (client decision, Phase 3). |
+| Student: `CollegeName` became `CollegeId` | Each student is linked to a college from the list. |
+| Added `SchemaInfo` | Detects databases with an outdated layout. |
 | Room: `Status` became `IsActive` | The only stated statuses are active/inactive; occupancy is calculated. |
 | Student: `Class` became `ClassName` | Avoids an Access reserved word problem. |
 | Student: `AadhaarReference` became `AadhaarLast4` | Store only what is needed (see open questions). |
@@ -170,8 +199,11 @@ Invoice lines (rent and each service).
 4. **Student documents:** the specification mentions a Documents folder, but no document screen or table.
    If documents (ID copies, admission forms) are needed, a small `StudentDocument` table will be added in Phase 5.
 
-## Changing the schema before go-live
+## Changing the schema
 
-While there is no real data, the simplest way to apply a schema change is to close the application, delete
-`C:\HostelData\Database\HostelManagement.accdb` and start the application again. After go-live,
-schema changes will be applied with explicit upgrade steps instead.
+1. Change `Data/DatabaseSchema.cs` and increase `DatabaseSchema.Version`.
+2. Push: the **Create database template** workflow rebuilds `HostelManagement/Database/HostelManagement.accdb`
+   on Windows and commits it.
+3. While there is no real data, existing databases are replaced: close the application, delete
+   `C:\HostelData\Database\HostelManagement.accdb` and start the application again (it says so itself).
+   After go-live, schema changes will be applied with upgrade steps that keep the data.

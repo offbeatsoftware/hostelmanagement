@@ -1,4 +1,5 @@
 using HostelManagement.Forms.Views;
+using HostelManagement.Services;
 using HostelManagement.Utilities;
 
 namespace HostelManagement.Forms;
@@ -21,9 +22,35 @@ public partial class MainForm : Form
         _navigationItems = BuildNavigation();
         CreateNavButtons();
 
-        Text = $"{AppInfo.ProductName}  (v{AppInfo.Version})";
         dateStatusLabel.Text = DateTime.Today.ToString("dddd, dd MMM yyyy");
+
+        ShowHostelName();
+        HostelService.DetailsSaved += OnHostelDetailsSaved;
+        FormClosed += (_, _) => HostelService.DetailsSaved -= OnHostelDetailsSaved;
     }
+
+    /// <summary>Shows the hostel's name in the title bar and at the top of the menu.</summary>
+    private void ShowHostelName()
+    {
+        string hostelName = string.Empty;
+        try
+        {
+            hostelName = HostelService.GetHostelName();
+        }
+        catch (Exception ex)
+        {
+            // Not critical: fall back to the product name.
+            AppLogger.Error("Could not read the hostel name.", ex);
+        }
+
+        bool hasName = hostelName.Length > 0;
+        brandLabel.Text = hasName ? hostelName : "Hostel Management";
+        Text = hasName
+            ? $"{hostelName} | {AppInfo.ProductName} (v{AppInfo.Version})"
+            : $"{AppInfo.ProductName} (v{AppInfo.Version})";
+    }
+
+    private void OnHostelDetailsSaved(object? sender, EventArgs e) => ShowHostelName();
 
     protected override void OnShown(EventArgs e)
     {
@@ -40,8 +67,8 @@ public partial class MainForm : Form
         new("OVERVIEW", "Dashboard", "Summary of students, rooms, payments and dues.",
             () => new PlaceholderView("Dashboard", "Phase 12")),
 
-        new("HOSTEL", "Hostel Details", "Hostel, college and contact information.",
-            () => new PlaceholderView("Hostel Details", "Phase 3")),
+        new("HOSTEL", "Hostel Details", "Hostel contact details and the colleges students attend.",
+            () => new HostelDetailsView()),
         new("HOSTEL", "Rooms", "Rooms, sharing types, capacity and rent.",
             () => new PlaceholderView("Rooms", "Phase 4")),
         new("HOSTEL", "Room Allocation", "Check-in, room transfer and check-out.",
@@ -77,6 +104,7 @@ public partial class MainForm : Form
         brandPanel.BackColor = UiTheme.NavBackground;
         brandLabel.Font = UiTheme.BrandFont;
         brandLabel.ForeColor = Color.White;
+        brandLabel.AutoEllipsis = true;
 
         headerPanel.BackColor = UiTheme.HeaderBackground;
         pageTitleLabel.Font = UiTheme.HeadingFont;

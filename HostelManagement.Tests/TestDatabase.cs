@@ -15,6 +15,14 @@ public abstract class TestDatabase : IDisposable
         DataFolder = Path.Combine(Path.GetTempPath(), "HostelManagementTests", Guid.NewGuid().ToString("N"));
         AppPaths.UseDataFolder(DataFolder);
         AppPaths.EnsureFolders();
+        CreateFreshDatabase();
+    }
+
+    /// <summary>Builds the database from the schema with ADOX, ignoring any shipped template.</summary>
+    internal static void CreateFreshDatabase()
+    {
+        DatabaseInitializer.ConfigureProvider();
+        DatabaseInitializer.CreateDatabaseFile(Db.ProviderName);
         DatabaseInitializer.Initialize();
     }
 

@@ -1,5 +1,6 @@
 using HostelManagement.Data;
 using HostelManagement.Forms;
+using HostelManagement.Services;
 using HostelManagement.Utilities;
 
 namespace HostelManagement;
@@ -50,7 +51,30 @@ internal static class Program
         }
 
         AppLogger.Info("Application started.");
+
+        using (var login = new LoginForm(GetHostelNameForLogin()))
+        {
+            if (login.ShowDialog() != DialogResult.OK)
+            {
+                AppLogger.Info("Sign in cancelled.");
+                return;
+            }
+        }
+
         Application.Run(new MainForm());
         AppLogger.Info("Application closed.");
+    }
+
+    private static string GetHostelNameForLogin()
+    {
+        try
+        {
+            return HostelService.GetHostelName();
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("Could not read the hostel name for the sign in screen.", ex);
+            return string.Empty;
+        }
     }
 }

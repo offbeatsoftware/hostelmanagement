@@ -43,7 +43,49 @@ public sealed class DatabaseInitializerTests : TestDatabase
         {
             Assert.Contains(table.Name, tables);
         }
-        Assert.Equal(10, DatabaseSchema.Tables.Count);
+        Assert.Equal(12, DatabaseSchema.Tables.Count);
+    }
+
+    [Fact]
+    public void Initialize_StoresCurrentSchemaVersion()
+    {
+        Assert.Equal(DatabaseSchema.Version, Convert.ToInt32(Db.Scalar("SELECT MAX([Version]) FROM [SchemaInfo]")));
+        Assert.Equal(1, Count("SchemaInfo"));
+
+        DatabaseInitializer.Initialize();
+
+        Assert.Equal(1, Count("SchemaInfo"));
+    }
+
+    [Fact]
+    public void Initialize_DatabaseFromBeforeVersioning_IsRejectedWithFriendlyMessage()
+    {
+        Db.Execute("DROP TABLE [SchemaInfo]");
+
+        var ex = Assert.Throws<DatabaseException>(DatabaseInitializer.Initialize);
+
+        Assert.Contains("earlier version", ex.Message);
+        Assert.Contains(AppPaths.DatabaseFile, ex.Message);
+    }
+
+    [Fact]
+    public void Initialize_OlderSchemaVersion_IsRejected()
+    {
+        Db.Execute("UPDATE [SchemaInfo] SET [Version] = ?", Db.Param("@Version", DatabaseSchema.Version - 1));
+
+        var ex = Assert.Throws<DatabaseException>(DatabaseInitializer.Initialize);
+
+        Assert.Contains("earlier version", ex.Message);
+    }
+
+    [Fact]
+    public void Initialize_NewerSchemaVersion_IsRejected()
+    {
+        Db.Execute("UPDATE [SchemaInfo] SET [Version] = ?", Db.Param("@Version", DatabaseSchema.Version + 1));
+
+        var ex = Assert.Throws<DatabaseException>(DatabaseInitializer.Initialize);
+
+        Assert.Contains("newer version", ex.Message);
     }
 
     [Fact]

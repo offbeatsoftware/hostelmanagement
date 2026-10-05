@@ -12,8 +12,20 @@ public sealed record TableDefinition(string Name, params string[] Statements);
 /// </summary>
 public static class DatabaseSchema
 {
+    /// <summary>
+    /// Increase by one whenever a table or column changes, so databases with an older
+    /// layout are detected at startup. Stored in the SchemaInfo table.
+    /// </summary>
+    public const int Version = 2;
+
     public static IReadOnlyList<TableDefinition> Tables { get; } =
     [
+        new("SchemaInfo", """
+            CREATE TABLE [SchemaInfo] (
+                [Version] INTEGER NOT NULL
+            )
+            """),
+
         new("Hostel", """
             CREATE TABLE [Hostel] (
                 [HostelId]       COUNTER CONSTRAINT [PK_Hostel] PRIMARY KEY,
@@ -21,10 +33,18 @@ public static class DatabaseSchema
                 [Address]        TEXT(255),
                 [Phone]          TEXT(20),
                 [Email]          TEXT(150),
-                [CollegeName]    TEXT(150),
-                [CollegeAddress] TEXT(255),
                 [CreatedDate]    DATETIME NOT NULL,
                 [UpdatedDate]    DATETIME
+            )
+            """),
+
+        new("College", """
+            CREATE TABLE [College] (
+                [CollegeId]   COUNTER CONSTRAINT [PK_College] PRIMARY KEY,
+                [CollegeName] TEXT(150) NOT NULL,
+                [Address]     TEXT(255),
+                [Phone]       TEXT(20),
+                CONSTRAINT [UQ_College_CollegeName] UNIQUE ([CollegeName])
             )
             """),
 
@@ -49,7 +69,7 @@ public static class DatabaseSchema
                 [DateOfBirth]   DATETIME,
                 [Gender]        TEXT(20),
                 [Address]       TEXT(255),
-                [CollegeName]   TEXT(150),
+                [CollegeId]     INTEGER,
                 [Course]        TEXT(100),
                 [ClassName]     TEXT(50),
                 [Mobile]        TEXT(20),
@@ -58,7 +78,8 @@ public static class DatabaseSchema
                 [AadhaarLast4]  TEXT(4),
                 [AdmissionDate] DATETIME,
                 [Status]        TEXT(20) NOT NULL,
-                [Remarks]       TEXT(255)
+                [Remarks]       TEXT(255),
+                CONSTRAINT [FK_Student_College] FOREIGN KEY ([CollegeId]) REFERENCES [College] ([CollegeId])
             )
             """,
             "CREATE INDEX [IX_Student_StudentName] ON [Student] ([StudentName])",

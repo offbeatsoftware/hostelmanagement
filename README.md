@@ -4,7 +4,7 @@ A single admin Windows desktop application for managing a private student hostel
 
 **Stack:** C# · .NET 8 · Windows Forms · Microsoft Access (.accdb) · System.Data.OleDb
 
-**Status:** Phase 2 (Access database). Module screens show a placeholder until their phase is built.
+**Status:** Phase 3 (sign in, hostel details and colleges). Module screens show a placeholder until their phase is built.
 
 ## Requirements
 
@@ -28,6 +28,17 @@ A single admin Windows desktop application for managing a private student hostel
 From the command line: `dotnet build HostelManagement.sln` and `dotnet run --project HostelManagement`.
 
 NuGet package: `System.Data.OleDb` 8.0.1 (restored automatically on build).
+
+## Signing in
+
+The application opens with a sign in screen. Temporary fixed credentials: user name **admin**, password **admin**
+(the user name is not case sensitive). A changeable password will replace this before go-live.
+
+## Automated tests
+
+`HostelManagement.Tests` (xUnit) builds a fresh database in a temporary folder for every test, so it never
+touches `C:\HostelData`. Run them in Visual Studio with **Test > Run All Tests** (platform x64). GitHub Actions
+runs them on Windows for every push (`.github/workflows/build-and-test.yml`).
 
 ## 32 bit vs 64 bit
 
