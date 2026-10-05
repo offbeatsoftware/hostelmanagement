@@ -45,6 +45,11 @@
   </Target>
 
   <ItemGroup>
+    <!-- Photo shown behind the sign in box; built into the program so it cannot go missing. -->
+    <EmbeddedResource Include="Resources\LoginBackground.jpg" LogicalName="HostelManagement.LoginBackground.jpg" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="HostelManagement.Tests" />
   </ItemGroup>
 

@@ -150,6 +150,7 @@ public sealed class MainFormTests : TestDatabase
         {
             using var form = new LoginForm(HostelService.GetHostels());
             Assert.Equal("Sign in", form.Text);
+            Assert.True(form.HasBackgroundPhoto);
         });
     }
 
