@@ -100,6 +100,12 @@ public sealed class StudentsView : UserControl
         card.Dock = DockStyle.Fill;
         Controls.Add(card);
 
+        // Connected last: setting the default filter above must not refresh a grid that does not exist yet.
+        foreach (ComboBox filter in new[] { _collegeFilter, _courseFilter, _classFilter, _statusFilter })
+        {
+            filter.SelectedIndexChanged += (_, _) => ShowStudents();
+        }
+
         Load += (_, _) => LoadStudents();
     }
 
@@ -112,7 +118,6 @@ public sealed class StudentsView : UserControl
             Width = width,
             Margin = new Padding(0, 4, 8, 0),
         };
-        combo.SelectedIndexChanged += (_, _) => ShowStudents();
         return combo;
     }
 

@@ -13,6 +13,10 @@ public static class ErrorHandler
     public static void Handle(Exception ex, string? userMessage = null)
     {
         AppLogger.Error("Unhandled error", ex);
+        if (Dialogs.ThrowInsteadOfShowing)
+        {
+            throw new InvalidOperationException(userMessage ?? DefaultMessage, ex);
+        }
         Dialogs.Error(userMessage ?? DefaultMessage);
     }
 }

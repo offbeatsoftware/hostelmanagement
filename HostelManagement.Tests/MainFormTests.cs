@@ -113,6 +113,37 @@ public sealed class MainFormTests : TestDatabase
     }
 
     [Fact]
+    public void StudentsAndParentsScreens_ShowTheHostelsData()
+    {
+        StudentService.Save(
+            new Student { StudentName = "Aman", Mobile = "9876543210", CollegeId = CollegeId, AdmissionDate = DateTime.Today },
+            new Parent { ParentName = "Rakesh", Mobile = "9812345678", Email = "rakesh@example.com" });
+        Hostel hostel = HostelService.GetHostel(HostelId)!;
+
+        RunOnStaThread(() =>
+        {
+            foreach (UserControl view in new UserControl[] { new Forms.Views.StudentsView(hostel), new Forms.Views.ParentsView(hostel) })
+            {
+                using var host = new Form { Width = 1200, Height = 700 };
+                host.Controls.Add(view);
+                host.Show();
+                Application.DoEvents();
+
+                DataGridView grid = FindGrid(view);
+                Assert.Equal(1, grid.Rows.Count);
+                host.Close();
+            }
+        });
+    }
+
+    private static DataGridView FindGrid(Control parent) =>
+        FindGridOrNull(parent) ?? throw new InvalidOperationException("No grid on the screen.");
+
+    private static DataGridView? FindGridOrNull(Control parent) =>
+        parent.Controls.OfType<DataGridView>().FirstOrDefault()
+        ?? parent.Controls.Cast<Control>().Select(FindGridOrNull).FirstOrDefault(g => g is not null);
+
+    [Fact]
     public void LoginForm_CanBeCreated()
     {
         RunOnStaThread(() =>
