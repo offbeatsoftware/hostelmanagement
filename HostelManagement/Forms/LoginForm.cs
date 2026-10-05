@@ -1,3 +1,4 @@
+using System.Drawing.Drawing2D;
 using HostelManagement.Models;
 using HostelManagement.Services;
 using HostelManagement.Utilities;
@@ -6,16 +7,30 @@ namespace HostelManagement.Forms;
 
 /// <summary>
 /// Admin sign in shown before the main window, with the hostel to work on. The hostel photo
-/// fills the window and the sign in box sits on the right.
+/// fills the window; the sign in panel sits on the left over the gate so the building stays visible.
 /// DialogResult.OK means signed in; <see cref="SelectedHostelId"/> is the chosen hostel (null when none exist).
 /// </summary>
 public sealed class LoginForm : Form
 {
+    // Colours taken from the photo: night sky, lit sign board and the terracotta facade.
+    private static readonly Color PanelColor = Color.FromArgb(205, 24, 27, 33);
+    private static readonly Color Gold = Color.FromArgb(232, 186, 98);
+    private static readonly Color Terracotta = Color.FromArgb(192, 101, 43);
+    private static readonly Color TerracottaDark = Color.FromArgb(160, 80, 32);
+    private static readonly Color LightText = Color.FromArgb(236, 230, 218);
+    private static readonly Color MutedText = Color.FromArgb(170, 165, 155);
+    private static readonly Color ErrorText = Color.FromArgb(255, 140, 120);
+
+    private static readonly Rectangle PanelBounds = new(48, 110, 360, 430);
+    private const int InnerLeft = 76;
+    private const int InnerWidth = 304;
+
     private readonly TextBox _userNameBox;
     private readonly TextBox _passwordBox;
     private readonly ComboBox _hostelBox;
     private readonly Label _messageLabel;
     private readonly Image? _background;
+    private readonly Font _titleFont = new("Georgia", 22f, FontStyle.Bold);
 
     public LoginForm(IReadOnlyList<Hostel> hostels)
     {
@@ -25,94 +40,93 @@ public sealed class LoginForm : Form
         StartPosition = FormStartPosition.CenterScreen;
         AutoScaleMode = AutoScaleMode.Font;
         Font = UiTheme.BodyFont;
-        BackColor = UiTheme.NavBackground;
-        ClientSize = new Size(1000, 620);
+        BackColor = Color.FromArgb(24, 27, 33);
+        ClientSize = new Size(1100, 650);
         DoubleBuffered = true;
 
         _background = LoadBackground();
 
-        // ---- Sign in box ----
-        var card = new Panel
-        {
-            BackColor = Color.White,
-            Size = new Size(400, 470),
-            Location = new Point(560, 75),
-            Padding = new Padding(32, 28, 32, 24),
-        };
+        var titleLabel = CreateLabel(AppInfo.BusinessName, new Point(InnerLeft - 2, 132),
+            _titleFont, Gold);
 
-        var titleLabel = new Label
-        {
-            AutoSize = false,
-            Size = new Size(336, 34),
-            Location = new Point(32, 28),
-            Font = UiTheme.HeadingFont,
-            ForeColor = UiTheme.TextPrimary,
-            Text = AppInfo.ProductName,
-            AutoEllipsis = true,
-        };
-        var subtitleLabel = new Label
-        {
-            AutoSize = true,
-            Location = new Point(34, 66),
-            Font = UiTheme.BodyFont,
-            ForeColor = UiTheme.TextMuted,
-            Text = "Sign in to continue",
-        };
-
-        TableLayoutPanel fields = FormFields.CreateTable(labelWidth: 96, inputWidth: 240);
-        _userNameBox = FormFields.AddTextBox(fields, "User name", 50);
-        _passwordBox = FormFields.AddTextBox(fields, "Password", 50);
+        _userNameBox = CreateTextBox(226, tabIndex: 0);
+        _passwordBox = CreateTextBox(288, tabIndex: 1);
         _passwordBox.UseSystemPasswordChar = true;
 
         _hostelBox = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
+            FlatStyle = FlatStyle.Flat,
             Font = UiTheme.BodyFont,
-            Dock = DockStyle.Fill,
-            Margin = new Padding(0, 4, 0, 4),
+            Location = new Point(InnerLeft, 350),
+            Width = InnerWidth,
             DisplayMember = nameof(Hostel.HostelName),
             ValueMember = nameof(Hostel.HostelId),
             DataSource = hostels.ToList(),
-            TabIndex = fields.Controls.Count,
+            TabIndex = 2,
+            Visible = hostels.Count > 0,
         };
-        if (hostels.Count > 0)
+
+        _messageLabel = CreateLabel(string.Empty, new Point(InnerLeft, 388), UiTheme.BodyFont, ErrorText);
+        _messageLabel.MaximumSize = new Size(InnerWidth, 0);
+
+        var signInButton = new Button
         {
-            FormFields.AddRow(fields, "Hostel", _hostelBox);
-        }
-        fields.Location = new Point(32, 115);
-
-        _messageLabel = FormFields.CreateMessageLabel();
-        _messageLabel.Location = new Point(32, 250);
-        _messageLabel.Margin = Padding.Empty;
-        _messageLabel.MaximumSize = new Size(336, 0);
-
-        var signInButton = new Button { Text = "Sign in", TabIndex = 2, Location = new Point(32, 300) };
-        UiTheme.StylePrimaryButton(signInButton);
-        signInButton.Size = new Size(336, 40);
+            Text = "Sign in",
+            Location = new Point(InnerLeft, 414),
+            Size = new Size(InnerWidth, 40),
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Terracotta,
+            ForeColor = Color.White,
+            Font = UiTheme.BodyBoldFont,
+            Cursor = Cursors.Hand,
+            TabIndex = 3,
+            UseVisualStyleBackColor = false,
+        };
+        signInButton.FlatAppearance.BorderSize = 0;
+        signInButton.FlatAppearance.MouseOverBackColor = TerracottaDark;
         signInButton.Click += (_, _) => SignIn();
 
-        var cancelButton = new Button { Text = "Exit", TabIndex = 3, Location = new Point(32, 352) };
-        UiTheme.StyleSecondaryButton(cancelButton);
-        cancelButton.Size = new Size(336, 40);
-        cancelButton.DialogResult = DialogResult.Cancel;
-
-        var versionLabel = new Label
+        var exitButton = new Button
         {
-            AutoSize = true,
-            Location = new Point(34, 425),
-            Font = UiTheme.NavGroupFont,
-            ForeColor = UiTheme.TextMuted,
-            Text = $"Version {AppInfo.Version}",
+            Text = "Exit",
+            Location = new Point(InnerLeft, 462),
+            Size = new Size(InnerWidth, 36),
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Color.FromArgb(24, 27, 33),
+            ForeColor = LightText,
+            Font = UiTheme.BodyFont,
+            Cursor = Cursors.Hand,
+            TabIndex = 4,
+            DialogResult = DialogResult.Cancel,
+            UseVisualStyleBackColor = false,
         };
+        exitButton.FlatAppearance.BorderColor = MutedText;
+        exitButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(45, 49, 58);
 
-        card.Controls.AddRange([titleLabel, subtitleLabel, fields, _messageLabel, signInButton, cancelButton, versionLabel]);
-        Controls.Add(card);
+        Controls.AddRange(
+        [
+            titleLabel,
+            CreateLabel("User name", new Point(InnerLeft, 204), UiTheme.BodyFont, LightText), _userNameBox,
+            CreateLabel("Password", new Point(InnerLeft, 266), UiTheme.BodyFont, LightText), _passwordBox,
+            _messageLabel, signInButton, exitButton,
+            CreateLabel($"Version {AppInfo.Version}", new Point(InnerLeft, 512), UiTheme.NavGroupFont, MutedText),
+        ]);
+        if (hostels.Count > 0)
+        {
+            Controls.Add(CreateLabel("Hostel", new Point(InnerLeft, 328), UiTheme.BodyFont, LightText));
+            Controls.Add(_hostelBox);
+        }
 
         AcceptButton = signInButton;
-        CancelButton = cancelButton;
+        CancelButton = exitButton;
 
         Shown += (_, _) => _userNameBox.Focus();
-        FormClosed += (_, _) => _background?.Dispose();
+        Disposed += (_, _) =>
+        {
+            _background?.Dispose();
+            _titleFont.Dispose();
+        };
     }
 
     /// <summary>True when the background photo was loaded (checked by the automated tests).</summary>
@@ -121,25 +135,71 @@ public sealed class LoginForm : Form
     /// <summary>The hostel chosen on the sign in screen, or null when no hostel exists yet.</summary>
     public int? SelectedHostelId => _hostelBox.SelectedValue is int id ? id : null;
 
-    /// <summary>Draws the photo so it covers the whole window without being stretched.</summary>
+    /// <summary>
+    /// Draws the photo so it covers the window without being stretched, then the see-through
+    /// sign in panel with a gold edge and a line under the title.
+    /// </summary>
     protected override void OnPaintBackground(PaintEventArgs e)
     {
-        if (_background is null)
+        base.OnPaintBackground(e);
+        Graphics g = e.Graphics;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+
+        if (_background is not null)
         {
-            base.OnPaintBackground(e);
-            return;
+            float scale = Math.Max((float)ClientSize.Width / _background.Width, (float)ClientSize.Height / _background.Height);
+            float width = _background.Width * scale;
+            float height = _background.Height * scale;
+            g.DrawImage(_background, (ClientSize.Width - width) / 2, (ClientSize.Height - height) / 2, width, height);
         }
 
-        float scale = Math.Max((float)ClientSize.Width / _background.Width, (float)ClientSize.Height / _background.Height);
-        float width = _background.Width * scale;
-        float height = _background.Height * scale;
-
-        // Keep the left part of the photo (the sign board) visible; the sign in box covers the right.
-        float x = 0;
-        float y = (ClientSize.Height - height) / 2;
-        e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-        e.Graphics.DrawImage(_background, x, y, width, height);
+        using GraphicsPath panel = RoundedRectangle(PanelBounds, 14);
+        using (var fill = new SolidBrush(PanelColor))
+        {
+            g.FillPath(fill, panel);
+        }
+        using (var edge = new Pen(Color.FromArgb(120, Gold), 1f))
+        {
+            g.DrawPath(edge, panel);
+        }
+        using (var line = new Pen(Gold, 2f))
+        {
+            g.DrawLine(line, InnerLeft, 184, InnerLeft + 60, 184);
+        }
     }
+
+    private static GraphicsPath RoundedRectangle(Rectangle bounds, int radius)
+    {
+        int diameter = radius * 2;
+        var path = new GraphicsPath();
+        path.AddArc(bounds.Left, bounds.Top, diameter, diameter, 180, 90);
+        path.AddArc(bounds.Right - diameter, bounds.Top, diameter, diameter, 270, 90);
+        path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
+        path.AddArc(bounds.Left, bounds.Bottom - diameter, diameter, diameter, 90, 90);
+        path.CloseFigure();
+        return path;
+    }
+
+    private static Label CreateLabel(string text, Point location, Font font, Color color) => new()
+    {
+        Text = text,
+        AutoSize = true,
+        Location = location,
+        Font = font,
+        ForeColor = color,
+        BackColor = Color.Transparent,
+    };
+
+    private static TextBox CreateTextBox(int top, int tabIndex) => new()
+    {
+        Location = new Point(InnerLeft, top),
+        Width = InnerWidth,
+        Font = UiTheme.BodyFont,
+        BorderStyle = BorderStyle.FixedSingle,
+        MaxLength = 50,
+        TabIndex = tabIndex,
+    };
 
     private static Image? LoadBackground()
     {
@@ -171,7 +231,7 @@ public sealed class LoginForm : Form
         }
 
         AppLogger.Info("Failed sign in attempt.");
-        FormFields.ShowError(_messageLabel, "Incorrect user name or password.");
+        _messageLabel.Text = "Incorrect user name or password.";
         _passwordBox.Clear();
         _passwordBox.Focus();
     }

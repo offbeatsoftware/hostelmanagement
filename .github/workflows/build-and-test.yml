@@ -30,3 +30,10 @@ jobs:
 
       - name: Test
         run: dotnet test HostelManagement.sln -c Release --no-build --logger "console;verbosity=normal"
+
+      - name: Screenshots for visual check
+        if: always()
+        continue-on-error: true
+        env:
+          PRINT_SCREENSHOTS: '1'
+        run: dotnet test HostelManagement.sln -c Release --no-build --filter "FullyQualifiedName~ScreenshotTests" --logger "console;verbosity=detailed"
