@@ -130,12 +130,38 @@ public sealed class LoginForm : Form
         AcceptButton = signInButton;
         CancelButton = exitButton;
 
+        Load += (_, _) => KeepPanelInBottomRightCorner();
         Shown += (_, _) => _userNameBox.Focus();
         Disposed += (_, _) =>
         {
             _background?.Dispose();
             _titleFont.Dispose();
         };
+    }
+
+    /// <summary>The sign in panel's position; moves when Windows makes the window smaller than designed.</summary>
+    private Rectangle _panelBounds = PanelBounds;
+
+    /// <summary>
+    /// On a small screen Windows shrinks the window; move the panel and its controls so the panel
+    /// stays fully visible in the bottom right corner.
+    /// </summary>
+    private void KeepPanelInBottomRightCorner()
+    {
+        int dx = Math.Min(0, ClientSize.Width - WindowWidth);
+        int dy = Math.Min(0, ClientSize.Height - WindowHeight);
+        if (dx == 0 && dy == 0)
+        {
+            return;
+        }
+
+        foreach (Control control in Controls)
+        {
+            control.Left += dx;
+            control.Top += dy;
+        }
+        _panelBounds.Offset(dx, dy);
+        Invalidate();
     }
 
     /// <summary>True when the background photo was loaded (checked by the automated tests).</summary>
@@ -163,7 +189,7 @@ public sealed class LoginForm : Form
             g.DrawImage(_background, (ClientSize.Width - width) / 2, (ClientSize.Height - height) / 2, width, height);
         }
 
-        using GraphicsPath panel = RoundedRectangle(PanelBounds, 14);
+        using GraphicsPath panel = RoundedRectangle(_panelBounds, 14);
         using (var fill = new SolidBrush(PanelColor))
         {
             g.FillPath(fill, panel);
@@ -174,7 +200,9 @@ public sealed class LoginForm : Form
         }
         using (var line = new Pen(Gold, 2f))
         {
-            g.DrawLine(line, InnerLeft, Y(72), InnerLeft + 60, Y(72));
+            int lineY = _panelBounds.Top + 72;
+            int lineX = _panelBounds.Left + 30;
+            g.DrawLine(line, lineX, lineY, lineX + 60, lineY);
         }
     }
 
