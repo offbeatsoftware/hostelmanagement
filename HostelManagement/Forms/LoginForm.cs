@@ -7,7 +7,7 @@ namespace HostelManagement.Forms;
 
 /// <summary>
 /// Admin sign in shown before the main window, with the hostel to work on. The hostel photo
-/// fills the window; the sign in panel sits on the left over the gate so the building stays visible.
+/// fills the window; the sign in panel sits at the bottom right.
 /// DialogResult.OK means signed in; <see cref="SelectedHostelId"/> is the chosen hostel (null when none exist).
 /// </summary>
 public sealed class LoginForm : Form
@@ -21,16 +21,25 @@ public sealed class LoginForm : Form
     private static readonly Color MutedText = Color.FromArgb(170, 165, 155);
     private static readonly Color ErrorText = Color.FromArgb(255, 140, 120);
 
-    private static readonly Rectangle PanelBounds = new(48, 110, 360, 430);
-    private const int InnerLeft = 76;
-    private const int InnerWidth = 304;
+    // Bottom right of the window, over the driveway and the right end of the building.
+    private const int PanelWidth = 420;
+    private const int PanelHeight = 430;
+    private const int WindowWidth = 1100;
+    private const int WindowHeight = 650;
+    private static readonly Rectangle PanelBounds =
+        new(WindowWidth - PanelWidth - 36, WindowHeight - PanelHeight - 30, PanelWidth, PanelHeight);
+    private static readonly int InnerLeft = PanelBounds.Left + 30;
+    private const int InnerWidth = PanelWidth - 60;
+
+    /// <summary>Vertical position inside the panel.</summary>
+    private static int Y(int offset) => PanelBounds.Top + offset;
 
     private readonly TextBox _userNameBox;
     private readonly TextBox _passwordBox;
     private readonly ComboBox _hostelBox;
     private readonly Label _messageLabel;
     private readonly Image? _background;
-    private readonly Font _titleFont = new("Georgia", 22f, FontStyle.Bold);
+    private readonly Font _titleFont = new("Georgia", 21f, FontStyle.Bold);
 
     public LoginForm(IReadOnlyList<Hostel> hostels)
     {
@@ -41,16 +50,16 @@ public sealed class LoginForm : Form
         AutoScaleMode = AutoScaleMode.Font;
         Font = UiTheme.BodyFont;
         BackColor = Color.FromArgb(24, 27, 33);
-        ClientSize = new Size(1100, 650);
+        ClientSize = new Size(WindowWidth, WindowHeight);
         DoubleBuffered = true;
 
         _background = LoadBackground();
 
-        var titleLabel = CreateLabel(AppInfo.BusinessName, new Point(InnerLeft - 2, 132),
+        var titleLabel = CreateLabel(AppInfo.BusinessName, new Point(InnerLeft - 2, Y(22)),
             _titleFont, Gold);
 
-        _userNameBox = CreateTextBox(226, tabIndex: 0);
-        _passwordBox = CreateTextBox(288, tabIndex: 1);
+        _userNameBox = CreateTextBox(Y(116), tabIndex: 0);
+        _passwordBox = CreateTextBox(Y(178), tabIndex: 1);
         _passwordBox.UseSystemPasswordChar = true;
 
         _hostelBox = new ComboBox
@@ -58,7 +67,7 @@ public sealed class LoginForm : Form
             DropDownStyle = ComboBoxStyle.DropDownList,
             FlatStyle = FlatStyle.Flat,
             Font = UiTheme.BodyFont,
-            Location = new Point(InnerLeft, 350),
+            Location = new Point(InnerLeft, Y(240)),
             Width = InnerWidth,
             DisplayMember = nameof(Hostel.HostelName),
             ValueMember = nameof(Hostel.HostelId),
@@ -67,13 +76,13 @@ public sealed class LoginForm : Form
             Visible = hostels.Count > 0,
         };
 
-        _messageLabel = CreateLabel(string.Empty, new Point(InnerLeft, 388), UiTheme.BodyFont, ErrorText);
+        _messageLabel = CreateLabel(string.Empty, new Point(InnerLeft, Y(278)), UiTheme.BodyFont, ErrorText);
         _messageLabel.MaximumSize = new Size(InnerWidth, 0);
 
         var signInButton = new Button
         {
             Text = "Sign in",
-            Location = new Point(InnerLeft, 414),
+            Location = new Point(InnerLeft, Y(304)),
             Size = new Size(InnerWidth, 40),
             FlatStyle = FlatStyle.Flat,
             BackColor = Terracotta,
@@ -90,7 +99,7 @@ public sealed class LoginForm : Form
         var exitButton = new Button
         {
             Text = "Exit",
-            Location = new Point(InnerLeft, 462),
+            Location = new Point(InnerLeft, Y(352)),
             Size = new Size(InnerWidth, 36),
             FlatStyle = FlatStyle.Flat,
             BackColor = Color.FromArgb(24, 27, 33),
@@ -107,14 +116,14 @@ public sealed class LoginForm : Form
         Controls.AddRange(
         [
             titleLabel,
-            CreateLabel("User name", new Point(InnerLeft, 204), UiTheme.BodyFont, LightText), _userNameBox,
-            CreateLabel("Password", new Point(InnerLeft, 266), UiTheme.BodyFont, LightText), _passwordBox,
+            CreateLabel("User name", new Point(InnerLeft, Y(94)), UiTheme.BodyFont, LightText), _userNameBox,
+            CreateLabel("Password", new Point(InnerLeft, Y(156)), UiTheme.BodyFont, LightText), _passwordBox,
             _messageLabel, signInButton, exitButton,
-            CreateLabel($"Version {AppInfo.Version}", new Point(InnerLeft, 512), UiTheme.NavGroupFont, MutedText),
+            CreateLabel($"Version {AppInfo.Version}", new Point(InnerLeft, Y(402)), UiTheme.NavGroupFont, MutedText),
         ]);
         if (hostels.Count > 0)
         {
-            Controls.Add(CreateLabel("Hostel", new Point(InnerLeft, 328), UiTheme.BodyFont, LightText));
+            Controls.Add(CreateLabel("Hostel", new Point(InnerLeft, Y(218)), UiTheme.BodyFont, LightText));
             Controls.Add(_hostelBox);
         }
 
@@ -165,7 +174,7 @@ public sealed class LoginForm : Form
         }
         using (var line = new Pen(Gold, 2f))
         {
-            g.DrawLine(line, InnerLeft, 184, InnerLeft + 60, 184);
+            g.DrawLine(line, InnerLeft, Y(72), InnerLeft + 60, Y(72));
         }
     }
 
