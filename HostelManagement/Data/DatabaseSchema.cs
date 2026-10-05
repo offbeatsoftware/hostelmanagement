@@ -16,7 +16,18 @@ public static class DatabaseSchema
     /// Increase by one whenever a table or column changes, so databases with an older
     /// layout are detected at startup. Stored in the SchemaInfo table.
     /// </summary>
-    public const int Version = 2;
+    public const int Version = 3;
+
+    /// <summary>
+    /// The sharing types added to a new database. Capacity always equals the sharing type
+    /// (client decision); rent is set per sharing type by the admin on the Rooms screen.
+    /// </summary>
+    public static IReadOnlyList<(string Name, int Capacity)> DefaultSharingTypes { get; } =
+    [
+        ("Single", 1),
+        ("Double", 2),
+        ("Triple", 3),
+    ];
 
     public static IReadOnlyList<TableDefinition> Tables { get; } =
     [
@@ -48,17 +59,26 @@ public static class DatabaseSchema
             )
             """),
 
+        new("SharingType", """
+            CREATE TABLE [SharingType] (
+                [SharingTypeId] COUNTER CONSTRAINT [PK_SharingType] PRIMARY KEY,
+                [SharingName]   TEXT(20) NOT NULL,
+                [Capacity]      INTEGER NOT NULL,
+                [Rent]          CURRENCY NOT NULL,
+                CONSTRAINT [UQ_SharingType_SharingName] UNIQUE ([SharingName])
+            )
+            """),
+
         new("Room", """
             CREATE TABLE [Room] (
-                [RoomId]      COUNTER CONSTRAINT [PK_Room] PRIMARY KEY,
-                [RoomNumber]  TEXT(20) NOT NULL,
-                [Floor]       TEXT(20),
-                [Capacity]    INTEGER NOT NULL,
-                [SharingType] TEXT(20) NOT NULL,
-                [Rent]        CURRENCY NOT NULL,
-                [IsActive]    BIT NOT NULL,
-                [Remarks]     TEXT(255),
-                CONSTRAINT [UQ_Room_RoomNumber] UNIQUE ([RoomNumber])
+                [RoomId]        COUNTER CONSTRAINT [PK_Room] PRIMARY KEY,
+                [RoomNumber]    TEXT(20) NOT NULL,
+                [Floor]         TEXT(20),
+                [SharingTypeId] INTEGER NOT NULL,
+                [IsActive]      BIT NOT NULL,
+                [Remarks]       TEXT(255),
+                CONSTRAINT [UQ_Room_RoomNumber] UNIQUE ([RoomNumber]),
+                CONSTRAINT [FK_Room_SharingType] FOREIGN KEY ([SharingTypeId]) REFERENCES [SharingType] ([SharingTypeId])
             )
             """),
 

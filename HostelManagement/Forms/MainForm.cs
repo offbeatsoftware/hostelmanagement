@@ -69,8 +69,8 @@ public partial class MainForm : Form
 
         new("HOSTEL", "Hostel Details", "Hostel contact details and the colleges students attend.",
             () => new HostelDetailsView()),
-        new("HOSTEL", "Rooms", "Rooms, sharing types, capacity and rent.",
-            () => new PlaceholderView("Rooms", "Phase 4")),
+        new("HOSTEL", "Rooms", "Rent by sharing type, rooms, occupancy and free beds.",
+            () => new RoomsView()),
         new("HOSTEL", "Room Allocation", "Check-in, room transfer and check-out.",
             () => new PlaceholderView("Room Allocation", "Phase 6")),
         new("HOSTEL", "Services", "Additional services such as Wi-Fi and transport.",

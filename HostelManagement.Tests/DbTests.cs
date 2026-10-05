@@ -19,24 +19,26 @@ public sealed class DbTests : TestDatabase
     [Fact]
     public void Param_RoundTripsTextNumberMoneyBoolAndNull()
     {
+        int doubleSharing = SharingTypeId(capacity: 2);
+        Db.Execute("UPDATE [SharingType] SET [Rent] = ? WHERE [SharingTypeId] = ?",
+            Db.Param("@Rent", 4500.75m), Db.Param("@SharingTypeId", doubleSharing));
+
         int id = Db.Insert(
-            "INSERT INTO [Room] ([RoomNumber], [Floor], [Capacity], [SharingType], [Rent], [IsActive], [Remarks]) " +
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO [Room] ([RoomNumber], [Floor], [SharingTypeId], [IsActive], [Remarks]) VALUES (?, ?, ?, ?, ?)",
             Db.Param("@RoomNumber", "101"),
             Db.Param("@Floor", "Ground"),
-            Db.Param("@Capacity", 2),
-            Db.Param("@SharingType", "Double"),
-            Db.Param("@Rent", 4500.75m),
+            Db.Param("@SharingTypeId", doubleSharing),
             Db.Param("@IsActive", true),
             Db.Param("@Remarks", null));
 
         var room = Db.Query(
-            "SELECT * FROM [Room] WHERE [RoomId] = ?",
+            "SELECT r.*, s.[Rent] FROM [Room] AS r INNER JOIN [SharingType] AS s " +
+            "ON r.[SharingTypeId] = s.[SharingTypeId] WHERE r.[RoomId] = ?",
             r => new
             {
                 Number = r.GetText("RoomNumber"),
                 Floor = r.GetText("Floor"),
-                Capacity = r.GetInt("Capacity"),
+                SharingTypeId = r.GetInt("SharingTypeId"),
                 Rent = r.GetMoney("Rent"),
                 Active = r.GetBool("IsActive"),
                 RemarksIsNull = r["Remarks"] is DBNull,
@@ -45,7 +47,7 @@ public sealed class DbTests : TestDatabase
 
         Assert.Equal("101", room.Number);
         Assert.Equal("Ground", room.Floor);
-        Assert.Equal(2, room.Capacity);
+        Assert.Equal(doubleSharing, room.SharingTypeId);
         Assert.Equal(4500.75m, room.Rent);
         Assert.True(room.Active);
         Assert.True(room.RemarksIsNull);
@@ -101,12 +103,11 @@ public sealed class DbTests : TestDatabase
     [Fact]
     public void UniqueRoomNumber_IsEnforcedAndDetected()
     {
-        const string sql = "INSERT INTO [Room] ([RoomNumber], [Capacity], [SharingType], [Rent], [IsActive]) " +
-                           "VALUES (?, ?, ?, ?, ?)";
+        const string sql = "INSERT INTO [Room] ([RoomNumber], [SharingTypeId], [IsActive]) VALUES (?, ?, ?)";
+        int single = SharingTypeId(capacity: 1);
         OleDbParameter[] Room() =>
         [
-            Db.Param("@RoomNumber", "201"), Db.Param("@Capacity", 1), Db.Param("@SharingType", "Single"),
-            Db.Param("@Rent", 5000m), Db.Param("@IsActive", true),
+            Db.Param("@RoomNumber", "201"), Db.Param("@SharingTypeId", single), Db.Param("@IsActive", true),
         ];
 
         Db.Execute(sql, Room());

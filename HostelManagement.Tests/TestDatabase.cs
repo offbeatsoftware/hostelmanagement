@@ -36,6 +36,22 @@ public abstract class TestDatabase : IDisposable
             Db.Param("@StudentName", name),
             Db.Param("@Status", "Active"));
 
+    protected static int SharingTypeId(int capacity) =>
+        Convert.ToInt32(Db.Scalar("SELECT [SharingTypeId] FROM [SharingType] WHERE [Capacity] = ?",
+            Db.Param("@Capacity", capacity)));
+
+    /// <summary>Records a student in a room directly (Room Allocation is built in a later phase).</summary>
+    protected static void AddAllocation(int roomId, string status = Models.AllocationStatus.Current)
+    {
+        int studentId = AddStudent($"Student {Guid.NewGuid():N}"[..20]);
+        Db.Execute(
+            "INSERT INTO [RoomAllocation] ([StudentId], [RoomId], [CheckInDate], [Status]) VALUES (?, ?, ?, ?)",
+            Db.Param("@StudentId", studentId),
+            Db.Param("@RoomId", roomId),
+            Db.Param("@CheckInDate", DateTime.Today),
+            Db.Param("@Status", status));
+    }
+
     /// <summary>Releases pooled connections so the .accdb file is no longer locked.</summary>
     internal static void ReleaseDatabaseFile()
     {

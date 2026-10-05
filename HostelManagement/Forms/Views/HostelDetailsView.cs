@@ -35,7 +35,7 @@ public sealed class HostelDetailsView : UserControl
         saveButton.Click += (_, _) => SaveHostel();
         _hostelMessage = FormFields.CreateMessageLabel();
 
-        var hostelButtons = CreateButtonRow(saveButton, _hostelMessage);
+        var hostelButtons = FormFields.CreateButtonRow(saveButton, _hostelMessage);
         var hostelBody = new FlowLayoutPanel
         {
             FlowDirection = FlowDirection.TopDown,
@@ -45,7 +45,7 @@ public sealed class HostelDetailsView : UserControl
         };
         hostelBody.Controls.Add(hostelFields);
         hostelBody.Controls.Add(hostelButtons);
-        Panel hostelCard = CreateCard("Hostel", hostelBody);
+        Panel hostelCard = FormFields.CreateCard("Hostel", hostelBody);
         hostelCard.Dock = DockStyle.Top;
         hostelCard.AutoSize = true;
 
@@ -66,14 +66,14 @@ public sealed class HostelDetailsView : UserControl
         UiTheme.StyleDangerButton(_deleteButton);
         _deleteButton.Click += (_, _) => DeleteSelectedCollege();
 
-        var collegeToolbar = CreateButtonRow(_searchBox, addButton, _editButton, _deleteButton);
+        var collegeToolbar = FormFields.CreateButtonRow(_searchBox, addButton, _editButton, _deleteButton);
         collegeToolbar.Dock = DockStyle.Top;
 
         _collegeGrid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
         UiTheme.StyleGrid(_collegeGrid);
-        AddGridColumn(nameof(College.CollegeName), "College", 35);
-        AddGridColumn(nameof(College.Address), "Address", 45);
-        AddGridColumn(nameof(College.Phone), "Phone", 20);
+        FormFields.AddGridColumn(_collegeGrid, nameof(College.CollegeName), "College", 35);
+        FormFields.AddGridColumn(_collegeGrid, nameof(College.Address), "Address", 45);
+        FormFields.AddGridColumn(_collegeGrid, nameof(College.Phone), "Phone", 20);
         _collegeGrid.CellDoubleClick += (_, e) =>
         {
             if (e.RowIndex >= 0)
@@ -86,7 +86,7 @@ public sealed class HostelDetailsView : UserControl
         var collegeBody = new Panel { Dock = DockStyle.Fill };
         collegeBody.Controls.Add(_collegeGrid);
         collegeBody.Controls.Add(collegeToolbar);
-        Panel collegeCard = CreateCard("Colleges", collegeBody);
+        Panel collegeCard = FormFields.CreateCard("Colleges", collegeBody);
         collegeCard.Dock = DockStyle.Fill;
 
         var spacer = new Panel { Dock = DockStyle.Top, Height = 16 };
@@ -98,56 +98,6 @@ public sealed class HostelDetailsView : UserControl
 
         Load += (_, _) => LoadData();
     }
-
-    private static Panel CreateCard(string title, Control body)
-    {
-        var card = new Panel
-        {
-            BackColor = Color.White,
-            BorderStyle = BorderStyle.FixedSingle,
-            Padding = new Padding(16, 8, 16, 12),
-        };
-        var heading = new Label
-        {
-            Dock = DockStyle.Top,
-            Height = 32,
-            Font = UiTheme.BodyBoldFont,
-            ForeColor = UiTheme.TextPrimary,
-            Text = title,
-        };
-        card.Controls.Add(body);
-        card.Controls.Add(heading);
-        return card;
-    }
-
-    private static FlowLayoutPanel CreateButtonRow(params Control[] controls)
-    {
-        var row = new FlowLayoutPanel
-        {
-            AutoSize = true,
-            WrapContents = false,
-            Height = 46,
-            Padding = new Padding(0, 6, 0, 6),
-            Margin = Padding.Empty,
-        };
-        foreach (Control control in controls)
-        {
-            if (control is Button)
-            {
-                control.Margin = new Padding(0, 0, 8, 0);
-            }
-            row.Controls.Add(control);
-        }
-        return row;
-    }
-
-    private void AddGridColumn(string property, string header, int fillWeight) =>
-        _collegeGrid.Columns.Add(new DataGridViewTextBoxColumn
-        {
-            DataPropertyName = property,
-            HeaderText = header,
-            FillWeight = fillWeight,
-        });
 
     private void LoadData()
     {

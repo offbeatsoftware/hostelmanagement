@@ -75,4 +75,72 @@ public static class FormFields
         label.ForeColor = UiTheme.Success;
         label.Text = message;
     }
+
+    /// <summary>White bordered section with a bold heading, used to group a screen into parts.</summary>
+    public static Panel CreateCard(string title, Control body)
+    {
+        var card = new Panel
+        {
+            BackColor = Color.White,
+            BorderStyle = BorderStyle.FixedSingle,
+            Padding = new Padding(16, 8, 16, 12),
+        };
+        var heading = new Label
+        {
+            Dock = DockStyle.Top,
+            Height = 32,
+            Font = UiTheme.BodyBoldFont,
+            ForeColor = UiTheme.TextPrimary,
+            Text = title,
+        };
+        card.Controls.Add(body);
+        card.Controls.Add(heading);
+        return card;
+    }
+
+    /// <summary>Horizontal row of buttons and other controls (search box, filters, messages).</summary>
+    public static FlowLayoutPanel CreateButtonRow(params Control[] controls)
+    {
+        var row = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            WrapContents = false,
+            Height = 46,
+            Padding = new Padding(0, 6, 0, 6),
+            Margin = Padding.Empty,
+        };
+        foreach (Control control in controls)
+        {
+            if (control is Button)
+            {
+                control.Margin = new Padding(0, 0, 8, 0);
+            }
+            row.Controls.Add(control);
+        }
+        return row;
+    }
+
+    /// <summary>Adds a column bound to a model property. Pass a format such as "C2" for money.</summary>
+    public static DataGridViewTextBoxColumn AddGridColumn(DataGridView grid, string property, string header,
+        int fillWeight, string? format = null, bool alignRight = false)
+    {
+        var column = new DataGridViewTextBoxColumn
+        {
+            DataPropertyName = property,
+            Name = property,
+            HeaderText = header,
+            FillWeight = fillWeight,
+        };
+        if (format is not null)
+        {
+            column.DefaultCellStyle.Format = format;
+            column.DefaultCellStyle.FormatProvider = Money.Culture;
+        }
+        if (alignRight)
+        {
+            column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+        }
+        grid.Columns.Add(column);
+        return column;
+    }
 }

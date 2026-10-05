@@ -43,7 +43,7 @@ public sealed class DatabaseInitializerTests : TestDatabase
         {
             Assert.Contains(table.Name, tables);
         }
-        Assert.Equal(12, DatabaseSchema.Tables.Count);
+        Assert.Equal(13, DatabaseSchema.Tables.Count);
     }
 
     [Fact]

@@ -20,7 +20,7 @@ The DDL is in `Data/DatabaseSchema.cs`.
 
 ## Schema version
 
-The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **2**).
+The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **3**).
 At startup the application refuses a database with an older or newer version and explains what to do,
 instead of failing later with confusing errors. Increase the version whenever a table or column changes.
 
@@ -28,6 +28,7 @@ instead of failing later with confusing errors. Increase the version whenever a 
 |---|---|
 | 1 | Initial schema (Phase 2), no SchemaInfo table |
 | 2 | Phase 3: College table; Student.CollegeName replaced by Student.CollegeId; college columns removed from Hostel |
+| 3 | Phase 4: SharingType table (capacity and rent per sharing type); Room keeps only SharingTypeId |
 
 ## Tables
 
@@ -61,17 +62,30 @@ Colleges that students attend (students come from several colleges).
 
 A college cannot be deleted while students are linked to it.
 
+### SharingType
+Single, Double and Triple sharing, added automatically to a new database with rent 0.
+Capacity always equals the sharing type and rent is per sharing type (client decisions, Phase 4).
+
+| Column | Type | Notes |
+|---|---|---|
+| SharingTypeId | AutoNumber | Primary key |
+| SharingName | Text(20) | Required, **unique**: Single / Double / Triple |
+| Capacity | Number | Required: 1 / 2 / 3 |
+| Rent | Currency | Required; rent per student, set by the admin on the Rooms screen |
+
 ### Room
 | Column | Type | Notes |
 |---|---|---|
 | RoomId | AutoNumber | Primary key |
-| RoomNumber | Text(20) | Required, **unique** |
+| RoomNumber | Text(20) | Required, **unique** (also checked ignoring upper/lower case) |
 | Floor | Text(20) | Text so values like "Ground" are allowed |
-| Capacity | Number | Required |
-| SharingType | Text(20) | Required: Single / Double / Triple |
-| Rent | Currency | Required |
+| SharingTypeId | Number | Required, → SharingType (gives the room's capacity and rent) |
 | IsActive | Yes/No | Active / inactive |
 | Remarks | Text(255) | |
+
+Room rules: a room cannot be changed to a sharing type smaller than its current occupancy, cannot be made
+inactive while students are in it, and cannot be deleted once any student has stayed in it (mark it inactive
+instead). Students can only be allocated to an active room with a free bed.
 
 ### Student
 | Column | Type | Notes |
@@ -183,6 +197,7 @@ Invoice lines (rent and each service).
 | Hostel: removed `CollegeName`, `CollegeAddress`; added College table | Students come from several colleges (client decision, Phase 3). |
 | Student: `CollegeName` became `CollegeId` | Each student is linked to a college from the list. |
 | Added `SchemaInfo` | Detects databases with an outdated layout. |
+| Room: `Capacity`, `SharingType`, `Rent` replaced by `SharingTypeId`; added SharingType table | Capacity equals the sharing type and rent is per sharing type (client decisions, Phase 4). |
 | Room: `Status` became `IsActive` | The only stated statuses are active/inactive; occupancy is calculated. |
 | Student: `Class` became `ClassName` | Avoids an Access reserved word problem. |
 | Student: `AadhaarReference` became `AadhaarLast4` | Store only what is needed (see open questions). |

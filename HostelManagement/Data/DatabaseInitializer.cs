@@ -161,6 +161,7 @@ public static class DatabaseInitializer
             }
 
             CheckSchemaVersion(connection);
+            AddDefaultSharingTypes(connection);
         }
         catch (DatabaseException)
         {
@@ -170,6 +171,24 @@ public static class DatabaseInitializer
         {
             throw new DatabaseException(SetupFailedMessage, ex);
         }
+    }
+
+    private static void AddDefaultSharingTypes(OleDbConnection connection)
+    {
+        if (Convert.ToInt32(Db.Scalar(connection, null, "SELECT COUNT(*) FROM [SharingType]")) > 0)
+        {
+            return;
+        }
+
+        foreach ((string name, int capacity) in DatabaseSchema.DefaultSharingTypes)
+        {
+            Db.Execute(connection, null,
+                "INSERT INTO [SharingType] ([SharingName], [Capacity], [Rent]) VALUES (?, ?, ?)",
+                Db.Param("@SharingName", name),
+                Db.Param("@Capacity", capacity),
+                Db.Param("@Rent", 0m));
+        }
+        AppLogger.Info("Added the default sharing types.");
     }
 
     private static void CheckSchemaVersion(OleDbConnection connection)
