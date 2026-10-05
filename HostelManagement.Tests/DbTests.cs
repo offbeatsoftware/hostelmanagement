@@ -112,7 +112,9 @@ public sealed class DbTests : TestDatabase
         Db.Execute(sql, Room());
         var ex = Assert.Throws<OleDbException>(() => Db.Execute(sql, Room()));
 
-        Assert.True(Db.IsDuplicateKeyError(ex));
+        string details = string.Join(" | ", ex.Errors.Cast<OleDbError>()
+            .Select(error => $"SQLState={error.SQLState} NativeError={error.NativeError} Message={error.Message}"));
+        Assert.True(Db.IsDuplicateKeyError(ex), details);
     }
 
     [Fact]

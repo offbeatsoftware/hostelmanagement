@@ -202,9 +202,16 @@ public static class Db
             return null;
         });
 
+    // Access error 3022: "...would create duplicate values in the index, primary key, or relationship."
+    // Depending on the driver it surfaces as the SQL state, the native error or only the message text.
+    private const int AccessDuplicateKeyNativeError = -105121349;
+
     /// <summary>True when Access rejected a value because a unique index already contains it.</summary>
     public static bool IsDuplicateKeyError(OleDbException ex) =>
-        ex.Errors.Cast<OleDbError>().Any(error => error.SQLState == "3022");
+        ex.Errors.Cast<OleDbError>().Any(error =>
+            error.SQLState == "3022" ||
+            error.NativeError == AccessDuplicateKeyNativeError ||
+            error.Message.Contains("duplicate values", StringComparison.OrdinalIgnoreCase));
 
     private static OleDbCommand CreateCommand(OleDbConnection connection, OleDbTransaction? transaction,
         string sql, OleDbParameter[] parameters)
