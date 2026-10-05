@@ -37,7 +37,7 @@ The application opens with a sign in screen. Temporary fixed credentials: user n
 ## Automated tests
 
 `HostelManagement.Tests` (xUnit) builds a fresh database in a temporary folder for every test, so it never
-touches `C:\HostelData`. Run them in Visual Studio with **Test > Run All Tests** (platform x64). GitHub Actions
+touches the application's own database. Run them in Visual Studio with **Test > Run All Tests** (platform x64). GitHub Actions
 runs them on Windows for every push (`.github/workflows/build-and-test.yml`).
 
 ## 32 bit vs 64 bit
@@ -62,16 +62,20 @@ HostelManagement/
   Utilities/              Paths, logging, dialogs, error handling, UI theme
 ```
 
-All data is kept in **`C:\HostelData`**, separate from the program, so the application can be installed
-under Program Files. These folders are created automatically on first start:
+All data is kept in folders **next to `HostelManagement.exe`**, so it is part of the installed application folder.
+During development that is `HostelManagement\bin\x64\Debug\net8.0-windows\`. The folders are created
+automatically on first start:
 
 | Folder               | Purpose                                         |
 |----------------------|-------------------------------------------------|
-| `Database`           | `HostelManagement.accdb` (created with all tables on first start) |
+| `Database`           | `HostelManagement.accdb`. The build copies the empty database from `HostelManagement/Database` here only when none exists, so a rebuild never overwrites data. |
 | `Photos/Students`    | Student photos (only the file path is stored in the database) |
 | `Documents/Students` | Student documents (only the file path is stored in the database) |
 | `Backups`            | Database backups                                |
 | `Logs`               | Technical error logs (`app-yyyyMMdd.log`)       |
+
+**Installation note:** Windows does not let normal users write inside `C:\Program Files`, so the application
+must be installed in a folder the admin can write to (for example `C:\HostelManagement`). The setup will do this.
 
 These folders contain real student data and must never be committed to Git.
 

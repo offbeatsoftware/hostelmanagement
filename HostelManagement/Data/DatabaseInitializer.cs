@@ -43,18 +43,11 @@ public static class DatabaseInitializer
     {
         string provider = ConfigureProvider();
 
+        // The build places the empty database from the repository here; create one if it is missing.
         if (!File.Exists(AppPaths.DatabaseFile))
         {
-            if (File.Exists(AppPaths.DatabaseTemplateFile))
-            {
-                CopyTemplate();
-                AppLogger.Info($"Copied empty database template to {AppPaths.DatabaseFile}.");
-            }
-            else
-            {
-                CreateDatabaseFile(provider);
-                AppLogger.Info($"Created database {AppPaths.DatabaseFile}.");
-            }
+            CreateDatabaseFile(provider);
+            AppLogger.Info($"Created database {AppPaths.DatabaseFile}.");
         }
 
         CreateMissingTables();
@@ -101,21 +94,6 @@ public static class DatabaseInitializer
         {
             AppLogger.Error("Could not list the installed OLE DB providers.", ex);
             return null;
-        }
-    }
-
-    private static void CopyTemplate()
-    {
-        try
-        {
-            File.Copy(AppPaths.DatabaseTemplateFile, AppPaths.DatabaseFile);
-            // Files from the install folder can be read only; the working database must not be.
-            File.SetAttributes(AppPaths.DatabaseFile, FileAttributes.Normal);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            TryDeletePartialFile();
-            throw new DatabaseException(CreateFailedMessage, ex);
         }
     }
 

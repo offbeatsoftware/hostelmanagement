@@ -6,7 +6,7 @@ namespace HostelManagement.Tests;
 
 /// <summary>
 /// Base class for tests that need a database. Each test gets a brand new database
-/// in its own temporary folder, so the real C:\HostelData is never touched.
+/// in its own temporary folder, so the application's own database is never touched.
 /// </summary>
 public abstract class TestDatabase : IDisposable
 {

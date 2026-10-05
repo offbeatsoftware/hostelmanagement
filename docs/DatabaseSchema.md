@@ -1,6 +1,7 @@
 # Database Schema
 
-File: `C:\HostelData\Database\HostelManagement.accdb` (Microsoft Access 2007+ format).
+File: `Database\HostelManagement.accdb` next to `HostelManagement.exe` (Microsoft Access 2007+ format).
+The empty database is kept in the repository at `HostelManagement/Database/HostelManagement.accdb`.
 
 The database and all tables are created automatically on first start (`Data/DatabaseInitializer.cs`).
 On later starts only missing tables are created; existing tables and data are never changed.
@@ -13,8 +14,8 @@ The DDL is in `Data/DatabaseSchema.cs`.
   - Invoice paid amount, pending amount and status (Unpaid / Partly paid / Paid) come from `Payment` rows.
 - **History is kept.** Check-out and room transfer close an allocation (set `CheckOutDate` and `Status`)
   instead of deleting it.
-- **Files outside the database.** Photos and documents are stored in `C:\HostelData\Photos` and
-  `C:\HostelData\Documents`; only the file path is stored.
+- **Files outside the database.** Photos and documents are stored in the `Photos` and `Documents`
+  folders next to the application; only the file path is stored.
 - **Money** uses the Access `Currency` type (exact, no rounding errors).
 
 ## Schema version
@@ -205,5 +206,5 @@ Invoice lines (rent and each service).
 2. Push: the **Create database template** workflow rebuilds `HostelManagement/Database/HostelManagement.accdb`
    on Windows and commits it.
 3. While there is no real data, existing databases are replaced: close the application, delete
-   `C:\HostelData\Database\HostelManagement.accdb` and start the application again (it says so itself).
+   `Database\HostelManagement.accdb` next to the application and build/start it again (it says so itself).
    After go-live, schema changes will be applied with upgrade steps that keep the data.

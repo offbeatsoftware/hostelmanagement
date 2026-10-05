@@ -32,9 +32,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Empty database (all tables, no data) copied to C:\HostelData on first start. -->
-    <None Update="Database\HostelManagement.accdb" CopyToOutputDirectory="PreserveNewest" />
+    <!--
+      Empty database (all tables, no data). It is copied to the output folder only when no
+      database exists there yet, so building never overwrites the database the application uses.
+    -->
+    <None Update="Database\HostelManagement.accdb" CopyToOutputDirectory="Never" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <Target Name="CopyEmptyDatabaseIfMissing" AfterTargets="Build"
+          Condition="Exists('Database\HostelManagement.accdb') And !Exists('$(OutDir)Database\HostelManagement.accdb')">
+    <Copy SourceFiles="Database\HostelManagement.accdb" DestinationFolder="$(OutDir)Database" />
+  </Target>
 
   <ItemGroup>
     <InternalsVisibleTo Include="HostelManagement.Tests" />
