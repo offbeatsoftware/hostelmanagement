@@ -7,6 +7,24 @@ The database and all tables are created automatically on first start (`Data/Data
 On later starts only missing tables are created; existing tables and data are never changed.
 The DDL is in `Data/DatabaseSchema.cs`.
 
+## Several hostels
+
+The application manages several hostels. The admin selects one hostel at a time (on the sign in screen and
+at the top right of the main window); colleges, rooms, students and billing screens show only that hostel.
+
+```
+Hostel 1──* College 1──* Student
+Hostel 1──* SharingType 1──* Room
+Hostel 1──* Room
+```
+
+- A college belongs to one hostel; a hostel has students from several colleges. If the same college sends
+  students to two hostels, it is added under each hostel.
+- A student belongs to a college and through it to the college's hostel (no separate hostel column, so the
+  two can never disagree).
+- Rooms and their rent (per sharing type) belong to a hostel. Room numbers and college names only need to be
+  unique within a hostel.
+
 ## Design principles
 
 - **No stored calculations.** Values that can be calculated are calculated, so they can never be out of date:
@@ -20,7 +38,7 @@ The DDL is in `Data/DatabaseSchema.cs`.
 
 ## Schema version
 
-The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **3**).
+The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **4**).
 At startup the application refuses a database with an older or newer version and explains what to do,
 instead of failing later with confusing errors. Increase the version whenever a table or column changes.
 
@@ -29,6 +47,7 @@ instead of failing later with confusing errors. Increase the version whenever a 
 | 1 | Initial schema (Phase 2), no SchemaInfo table |
 | 2 | Phase 3: College table; Student.CollegeName replaced by Student.CollegeId; college columns removed from Hostel |
 | 3 | Phase 4: SharingType table (capacity and rent per sharing type); Room keeps only SharingTypeId |
+| 4 | Several hostels: HostelId on College, SharingType and Room; Student.CollegeId required |
 
 ## Tables
 
@@ -38,38 +57,42 @@ instead of failing later with confusing errors. Increase the version whenever a 
 | Version | Number | Required; one row |
 
 ### Hostel
-One row with the hostel's own details.
+Any number of hostels.
 
 | Column | Type | Notes |
 |---|---|---|
 | HostelId | AutoNumber | Primary key |
-| HostelName | Text(150) | Required (the only required field) |
+| HostelName | Text(150) | Required, **unique** (also checked ignoring upper/lower case) |
 | Address | Text(255) | |
 | Phone | Text(20) | |
 | Email | Text(150) | |
 | CreatedDate | Date/Time | Required |
 | UpdatedDate | Date/Time | |
 
+A hostel can only be deleted when it has no colleges and no rooms.
+
 ### College
-Colleges that students attend (students come from several colleges).
+Colleges whose students stay in a hostel.
 
 | Column | Type | Notes |
 |---|---|---|
 | CollegeId | AutoNumber | Primary key |
-| CollegeName | Text(150) | Required, **unique** (also checked ignoring upper/lower case) |
+| HostelId | Number | Required, → Hostel |
+| CollegeName | Text(150) | Required, **unique within the hostel** (also ignoring upper/lower case) |
 | Address | Text(255) | |
 | Phone | Text(20) | |
 
 A college cannot be deleted while students are linked to it.
 
 ### SharingType
-Single, Double and Triple sharing, added automatically to a new database with rent 0.
-Capacity always equals the sharing type and rent is per sharing type (client decisions, Phase 4).
+Single, Double and Triple sharing, added automatically for every new hostel with rent 0.
+Capacity always equals the sharing type and rent is per sharing type and hostel (client decisions).
 
 | Column | Type | Notes |
 |---|---|---|
 | SharingTypeId | AutoNumber | Primary key |
-| SharingName | Text(20) | Required, **unique**: Single / Double / Triple |
+| HostelId | Number | Required, → Hostel |
+| SharingName | Text(20) | Required, **unique within the hostel**: Single / Double / Triple |
 | Capacity | Number | Required: 1 / 2 / 3 |
 | Rent | Currency | Required; rent per student, set by the admin on the Rooms screen |
 
@@ -77,9 +100,10 @@ Capacity always equals the sharing type and rent is per sharing type (client dec
 | Column | Type | Notes |
 |---|---|---|
 | RoomId | AutoNumber | Primary key |
-| RoomNumber | Text(20) | Required, **unique** (also checked ignoring upper/lower case) |
+| HostelId | Number | Required, → Hostel |
+| RoomNumber | Text(20) | Required, **unique within the hostel** (also ignoring upper/lower case) |
 | Floor | Text(20) | Text so values like "Ground" are allowed |
-| SharingTypeId | Number | Required, → SharingType (gives the room's capacity and rent) |
+| SharingTypeId | Number | Required, → SharingType of the same hostel (gives the room's capacity and rent) |
 | IsActive | Yes/No | Active / inactive |
 | Remarks | Text(255) | |
 
@@ -95,7 +119,7 @@ instead). Students can only be allocated to an active room with a free bed.
 | DateOfBirth | Date/Time | |
 | Gender | Text(20) | |
 | Address | Text(255) | |
-| CollegeId | Number | → College (picked from the college list) |
+| CollegeId | Number | Required, → College (the student's hostel is the college's hostel) |
 | Course | Text(100) | |
 | ClassName | Text(50) | The specification's "Class" (renamed: `Class` is a risky name in Access SQL) |
 | Mobile | Text(20) | Indexed for search |
@@ -194,6 +218,7 @@ Invoice lines (rent and each service).
 | Invoice: removed `RentAmount`, `ServiceAmount` | Already held as invoice items. |
 | Invoice: removed `PaidAmount`, `PendingAmount`, `Status` | Calculated from payments (Pending = Total − Payments), so they can never disagree. |
 | RoomAllocation: removed `SharingType` | Already held on the room. |
+| Several hostels: `HostelId` on College, SharingType and Room | Client decision: multiple hostels, each with its own colleges, rooms and rent. |
 | Hostel: removed `CollegeName`, `CollegeAddress`; added College table | Students come from several colleges (client decision, Phase 3). |
 | Student: `CollegeName` became `CollegeId` | Each student is linked to a college from the list. |
 | Added `SchemaInfo` | Detects databases with an outdated layout. |

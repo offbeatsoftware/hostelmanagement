@@ -10,13 +10,14 @@ public static class RoomService
 {
     public const decimal MaxRent = 1_000_000m;
 
-    public static List<SharingType> GetSharingTypes() => SharingTypeRepository.GetAll();
+    /// <summary>The hostel's Single/Double/Triple sharing types with their rent.</summary>
+    public static List<SharingType> GetSharingTypes(int hostelId) => SharingTypeRepository.GetForHostel(hostelId);
 
-    /// <summary>All rooms, sorted by room number (2 before 10).</summary>
-    public static List<Room> GetRooms() =>
-        RoomRepository.GetAll().OrderBy(room => room.RoomNumber, NaturalComparer.Instance).ToList();
+    /// <summary>The hostel's rooms, sorted by room number (2 before 10).</summary>
+    public static List<Room> GetRooms(int hostelId) =>
+        RoomRepository.GetForHostel(hostelId).OrderBy(room => room.RoomNumber, NaturalComparer.Instance).ToList();
 
-    /// <summary>Sets the rent for a sharing type. It applies to every room of that type.</summary>
+    /// <summary>Sets the rent for a sharing type of one hostel. It applies to every room of that type in the hostel.</summary>
     public static void UpdateRent(int sharingTypeId, decimal rent)
     {
         if (rent <= 0)
@@ -37,12 +38,16 @@ public static class RoomService
         }
     }
 
-    /// <summary>Validates and adds a room, or saves changes to an existing one (RoomId > 0).</summary>
+    /// <summary>
+    /// Validates and adds a room to input.HostelId, or saves changes to an existing one
+    /// (RoomId > 0; it stays in its hostel).
+    /// </summary>
     public static Room Save(Room input)
     {
         var room = new Room
         {
             RoomId = input.RoomId,
+            HostelId = input.HostelId,
             RoomNumber = Validators.Clean(input.RoomNumber),
             Floor = Validators.Clean(input.Floor),
             SharingTypeId = input.SharingTypeId,
@@ -117,19 +122,31 @@ public static class RoomService
         Validators.CheckLength(room.Floor, 20, "Floor");
         Validators.CheckLength(room.Remarks, 255, "Remarks");
 
-        SharingType sharingType = SharingTypeRepository.Get(room.SharingTypeId)
-            ?? throw new ValidationException("Please select the sharing type.");
+        Room? existing = null;
+        if (room.RoomId > 0)
+        {
+            existing = RoomRepository.Get(room.RoomId)
+                ?? throw new ValidationException("This room no longer exists. It may have been deleted.");
+            room.HostelId = existing.HostelId;
+        }
+        else if (HostelService.GetHostel(room.HostelId) is null)
+        {
+            throw new ValidationException("Please select a hostel first.");
+        }
 
-        if (RoomRepository.NumberExists(room.RoomNumber, room.RoomId))
+        SharingType? sharingType = SharingTypeRepository.Get(room.SharingTypeId);
+        if (sharingType is null || sharingType.HostelId != room.HostelId)
+        {
+            throw new ValidationException("Please select the sharing type.");
+        }
+
+        if (RoomRepository.NumberExists(room.HostelId, room.RoomNumber, room.RoomId))
         {
             throw DuplicateNumber(room.RoomNumber);
         }
 
-        if (room.RoomId > 0)
+        if (existing is not null)
         {
-            Room existing = RoomRepository.Get(room.RoomId)
-                ?? throw new ValidationException("This room no longer exists. It may have been deleted.");
-
             if (existing.Occupied > sharingType.Capacity)
             {
                 throw new ValidationException(
@@ -147,5 +164,5 @@ public static class RoomService
     }
 
     private static ValidationException DuplicateNumber(string roomNumber) =>
-        new($"Room number \"{roomNumber}\" already exists.");
+        new($"Room number \"{roomNumber}\" already exists in this hostel.");
 }

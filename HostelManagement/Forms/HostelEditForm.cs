@@ -4,22 +4,21 @@ using HostelManagement.Utilities;
 
 namespace HostelManagement.Forms;
 
-/// <summary>Add or edit one college. DialogResult.OK means it was saved.</summary>
-public sealed class CollegeEditForm : Form
+/// <summary>Add or edit one hostel. DialogResult.OK means it was saved.</summary>
+public sealed class HostelEditForm : Form
 {
     private readonly int _hostelId;
-    private readonly int _collegeId;
     private readonly TextBox _nameBox;
     private readonly TextBox _addressBox;
     private readonly TextBox _phoneBox;
+    private readonly TextBox _emailBox;
     private readonly Label _messageLabel;
 
-    public CollegeEditForm(int hostelId, College? college = null)
+    public HostelEditForm(Hostel? hostel = null)
     {
-        _hostelId = hostelId;
-        _collegeId = college?.CollegeId ?? 0;
+        _hostelId = hostel?.HostelId ?? 0;
 
-        Text = college is null ? "Add College" : "Edit College";
+        Text = hostel is null ? "Add Hostel" : "Edit Hostel";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -28,26 +27,29 @@ public sealed class CollegeEditForm : Form
         AutoScaleMode = AutoScaleMode.Font;
         Font = UiTheme.BodyFont;
         BackColor = Color.White;
-        ClientSize = new Size(600, 260);
+        ClientSize = new Size(600, 300);
 
         var fields = FormFields.CreateTable(labelWidth: 120, inputWidth: 430);
-        _nameBox = FormFields.AddTextBox(fields, "College name", 150, required: true);
+        _nameBox = FormFields.AddTextBox(fields, "Hostel name", 150, required: true);
         _addressBox = FormFields.AddTextBox(fields, "Address", 255, multiline: true);
         _phoneBox = FormFields.AddTextBox(fields, "Phone", 20);
+        _emailBox = FormFields.AddTextBox(fields, "Email", 150);
         fields.Location = new Point(20, 20);
 
-        _nameBox.Text = college?.CollegeName ?? string.Empty;
-        _addressBox.Text = college?.Address ?? string.Empty;
-        _phoneBox.Text = college?.Phone ?? string.Empty;
+        _nameBox.Text = hostel?.HostelName ?? string.Empty;
+        _addressBox.Text = hostel?.Address ?? string.Empty;
+        _phoneBox.Text = hostel?.Phone ?? string.Empty;
+        _emailBox.Text = hostel?.Email ?? string.Empty;
 
         _messageLabel = FormFields.CreateMessageLabel();
-        _messageLabel.Location = new Point(20, 170);
+        _messageLabel.Location = new Point(20, 210);
+        _messageLabel.MaximumSize = new Size(560, 0);
 
-        var saveButton = new Button { Text = "Save", TabIndex = 1, Location = new Point(350, 210) };
+        var saveButton = new Button { Text = "Save", TabIndex = 1, Location = new Point(350, 250) };
         UiTheme.StylePrimaryButton(saveButton);
         saveButton.Click += (_, _) => Save();
 
-        var cancelButton = new Button { Text = "Cancel", TabIndex = 2, Location = new Point(470, 210) };
+        var cancelButton = new Button { Text = "Cancel", TabIndex = 2, Location = new Point(470, 250) };
         UiTheme.StyleSecondaryButton(cancelButton);
         cancelButton.DialogResult = DialogResult.Cancel;
 
@@ -60,20 +62,20 @@ public sealed class CollegeEditForm : Form
         Controls.Add(cancelButton);
     }
 
-    /// <summary>The saved college, available after DialogResult.OK.</summary>
-    public College? SavedCollege { get; private set; }
+    /// <summary>The saved hostel, available after DialogResult.OK.</summary>
+    public Hostel? SavedHostel { get; private set; }
 
     private void Save()
     {
         try
         {
-            SavedCollege = CollegeService.Save(new College
+            SavedHostel = HostelService.Save(new Hostel
             {
-                CollegeId = _collegeId,
                 HostelId = _hostelId,
-                CollegeName = _nameBox.Text,
+                HostelName = _nameBox.Text,
                 Address = _addressBox.Text,
                 Phone = _phoneBox.Text,
+                Email = _emailBox.Text,
             });
             DialogResult = DialogResult.OK;
             Close();
@@ -84,7 +86,7 @@ public sealed class CollegeEditForm : Form
         }
         catch (Exception ex)
         {
-            ErrorHandler.Handle(ex, "The college could not be saved.");
+            ErrorHandler.Handle(ex, "The hostel could not be saved.");
         }
     }
 }

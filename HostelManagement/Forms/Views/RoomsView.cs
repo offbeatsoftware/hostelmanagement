@@ -4,9 +4,11 @@ using HostelManagement.Utilities;
 
 namespace HostelManagement.Forms.Views;
 
-/// <summary>Rent per sharing type (top) and the room list with occupancy (bottom).</summary>
+/// <summary>Rent per sharing type (top) and the room list with occupancy (bottom) of the selected hostel.</summary>
 public sealed class RoomsView : UserControl
 {
+    private readonly int _hostelId;
+
     private const string FilterAll = "All rooms";
     private const string FilterActive = "Active rooms";
     private const string FilterInactive = "Inactive rooms";
@@ -26,8 +28,9 @@ public sealed class RoomsView : UserControl
     private List<SharingType> _sharingTypes = [];
     private List<Room> _rooms = [];
 
-    public RoomsView()
+    public RoomsView(Hostel hostel)
     {
+        _hostelId = hostel.HostelId;
         Dock = DockStyle.Fill;
         BackColor = UiTheme.ContentBackground;
 
@@ -115,7 +118,7 @@ public sealed class RoomsView : UserControl
         var roomBody = new Panel { Dock = DockStyle.Fill };
         roomBody.Controls.Add(_roomGrid);
         roomBody.Controls.Add(roomToolbar);
-        Panel roomCard = FormFields.CreateCard("Rooms", roomBody);
+        Panel roomCard = FormFields.CreateCard($"Rooms of {hostel.HostelName}", roomBody);
         roomCard.Dock = DockStyle.Fill;
 
         // Docked controls are laid out in reverse order of adding.
@@ -130,7 +133,7 @@ public sealed class RoomsView : UserControl
     {
         try
         {
-            _sharingTypes = RoomService.GetSharingTypes();
+            _sharingTypes = RoomService.GetSharingTypes(_hostelId);
             BuildRentFields();
             LoadRooms();
         }
@@ -185,7 +188,7 @@ public sealed class RoomsView : UserControl
             {
                 RoomService.UpdateRent(sharingTypeId, rent);
             }
-            _sharingTypes = RoomService.GetSharingTypes();
+            _sharingTypes = RoomService.GetSharingTypes(_hostelId);
             BuildRentFields();
             LoadRooms();
             FormFields.ShowSuccess(_rentMessage, $"Rent saved at {DateTime.Now:HH:mm}.");
@@ -204,7 +207,7 @@ public sealed class RoomsView : UserControl
     {
         try
         {
-            _rooms = RoomService.GetRooms();
+            _rooms = RoomService.GetRooms(_hostelId);
             ShowRooms(selectRoomId);
         }
         catch (Exception ex)
@@ -282,7 +285,7 @@ public sealed class RoomsView : UserControl
 
     private void AddRoom()
     {
-        using var dialog = new RoomEditForm(_sharingTypes);
+        using var dialog = new RoomEditForm(_hostelId, _sharingTypes);
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
             _searchBox.Clear();
@@ -298,7 +301,7 @@ public sealed class RoomsView : UserControl
             return;
         }
 
-        using var dialog = new RoomEditForm(_sharingTypes, room);
+        using var dialog = new RoomEditForm(_hostelId, _sharingTypes, room);
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
             LoadRooms(room.RoomId);

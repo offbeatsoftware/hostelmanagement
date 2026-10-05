@@ -1,7 +1,7 @@
 namespace HostelManagement.Models;
 
-/// <summary>The hostel's own details. The database holds a single row.</summary>
-public sealed class HostelDetails
+/// <summary>A hostel. Colleges, rooms and rent belong to a hostel.</summary>
+public sealed class Hostel
 {
     public int HostelId { get; set; }
     public string HostelName { get; set; } = string.Empty;
@@ -10,4 +10,8 @@ public sealed class HostelDetails
     public string Email { get; set; } = string.Empty;
     public DateTime CreatedDate { get; set; }
     public DateTime? UpdatedDate { get; set; }
+
+    // Read only counts filled in by the hostel list.
+    public int CollegeCount { get; set; }
+    public int RoomCount { get; set; }
 }

@@ -59,8 +59,10 @@ public sealed class DbTests : TestDatabase
         // DateTime.Now has milliseconds, which cause "Data type mismatch" unless OleDbType.Date is used.
         DateTime now = DateTime.Now;
         int id = Db.Insert(
-            "INSERT INTO [Student] ([StudentName], [DateOfBirth], [AdmissionDate], [Status]) VALUES (?, ?, ?, ?)",
+            "INSERT INTO [Student] ([StudentName], [CollegeId], [DateOfBirth], [AdmissionDate], [Status]) " +
+            "VALUES (?, ?, ?, ?, ?)",
             Db.Param("@StudentName", "Date Test"),
+            Db.Param("@CollegeId", CollegeId),
             Db.Param("@DateOfBirth", new DateTime(2006, 2, 28)),
             Db.Param("@AdmissionDate", now),
             Db.Param("@Status", "Active"));
@@ -134,18 +136,27 @@ public sealed class DbTests : TestDatabase
     public void RequiredColumn_RejectsNull()
     {
         Assert.Throws<OleDbException>(() => Db.Execute(
+            "INSERT INTO [Student] ([StudentName], [CollegeId], [Status]) VALUES (?, ?, ?)",
+            Db.Param("@StudentName", null), Db.Param("@CollegeId", CollegeId), Db.Param("@Status", "Active")));
+    }
+
+    [Fact]
+    public void Student_WithoutCollege_IsRejected()
+    {
+        Assert.Throws<OleDbException>(() => Db.Execute(
             "INSERT INTO [Student] ([StudentName], [Status]) VALUES (?, ?)",
-            Db.Param("@StudentName", null), Db.Param("@Status", "Active")));
+            Db.Param("@StudentName", "No College"), Db.Param("@Status", "Active")));
     }
 
     [Fact]
     public void InTransaction_CommitsAllStatements()
     {
+        int collegeId = CollegeId;
         int studentId = Db.InTransaction((connection, transaction) =>
         {
             int id = Db.Insert(connection, transaction,
-                "INSERT INTO [Student] ([StudentName], [Status]) VALUES (?, ?)",
-                Db.Param("@StudentName", "With Parent"), Db.Param("@Status", "Active"));
+                "INSERT INTO [Student] ([StudentName], [CollegeId], [Status]) VALUES (?, ?, ?)",
+                Db.Param("@StudentName", "With Parent"), Db.Param("@CollegeId", collegeId), Db.Param("@Status", "Active"));
             Db.Execute(connection, transaction,
                 "INSERT INTO [Parent] ([StudentId], [ParentName], [IsPrimaryContact]) VALUES (?, ?, ?)",
                 Db.Param("@StudentId", id), Db.Param("@ParentName", "Parent"), Db.Param("@IsPrimaryContact", true));
@@ -160,11 +171,12 @@ public sealed class DbTests : TestDatabase
     [Fact]
     public void InTransaction_RollsBackEverythingOnError()
     {
+        int collegeId = CollegeId;
         Assert.Throws<InvalidOperationException>(() => Db.InTransaction((connection, transaction) =>
         {
             Db.Execute(connection, transaction,
-                "INSERT INTO [Student] ([StudentName], [Status]) VALUES (?, ?)",
-                Db.Param("@StudentName", "Rolled Back"), Db.Param("@Status", "Active"));
+                "INSERT INTO [Student] ([StudentName], [CollegeId], [Status]) VALUES (?, ?, ?)",
+                Db.Param("@StudentName", "Rolled Back"), Db.Param("@CollegeId", collegeId), Db.Param("@Status", "Active"));
             throw new InvalidOperationException("Simulated failure");
         }));
 

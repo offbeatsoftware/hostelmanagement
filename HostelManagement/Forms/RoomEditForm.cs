@@ -7,6 +7,7 @@ namespace HostelManagement.Forms;
 /// <summary>Add or edit one room. DialogResult.OK means it was saved.</summary>
 public sealed class RoomEditForm : Form
 {
+    private readonly int _hostelId;
     private readonly int _roomId;
     private readonly TextBox _numberBox;
     private readonly TextBox _floorBox;
@@ -16,8 +17,9 @@ public sealed class RoomEditForm : Form
     private readonly TextBox _remarksBox;
     private readonly Label _messageLabel;
 
-    public RoomEditForm(IReadOnlyList<SharingType> sharingTypes, Room? room = null)
+    public RoomEditForm(int hostelId, IReadOnlyList<SharingType> sharingTypes, Room? room = null)
     {
+        _hostelId = hostelId;
         _roomId = room?.RoomId ?? 0;
 
         Text = room is null ? "Add Room" : $"Edit Room {room.RoomNumber}";
@@ -124,6 +126,7 @@ public sealed class RoomEditForm : Form
             SavedRoom = RoomService.Save(new Room
             {
                 RoomId = _roomId,
+                HostelId = _hostelId,
                 RoomNumber = _numberBox.Text,
                 Floor = _floorBox.Text,
                 SharingTypeId = _sharingBox.SelectedValue is int id ? id : 0,

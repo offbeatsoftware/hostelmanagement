@@ -7,13 +7,15 @@ public static class RoomRepository
 {
     // Capacity and rent come from the sharing type; occupancy is counted from current allocations.
     private const string SelectRooms =
-        "SELECT r.[RoomId], r.[RoomNumber], r.[Floor], r.[SharingTypeId], r.[IsActive], r.[Remarks], " +
+        "SELECT r.[RoomId], r.[HostelId], r.[RoomNumber], r.[Floor], r.[SharingTypeId], r.[IsActive], r.[Remarks], " +
         "s.[SharingName], s.[Capacity], s.[Rent], " +
         "(SELECT COUNT(*) FROM [RoomAllocation] AS a WHERE a.[RoomId] = r.[RoomId] AND a.[Status] = ?) AS [Occupied] " +
         "FROM [Room] AS r INNER JOIN [SharingType] AS s ON r.[SharingTypeId] = s.[SharingTypeId]";
 
-    public static List<Room> GetAll() =>
-        Db.Query(SelectRooms, Map, Db.Param("@Status", AllocationStatus.Current));
+    public static List<Room> GetForHostel(int hostelId) =>
+        Db.Query(SelectRooms + " WHERE r.[HostelId] = ?", Map,
+            Db.Param("@Status", AllocationStatus.Current),
+            Db.Param("@HostelId", hostelId));
 
     public static Room? Get(int roomId) =>
         Db.Query(SelectRooms + " WHERE r.[RoomId] = ?", Map,
@@ -22,7 +24,9 @@ public static class RoomRepository
 
     public static int Insert(Room room) =>
         Db.Insert(
-            "INSERT INTO [Room] ([RoomNumber], [Floor], [SharingTypeId], [IsActive], [Remarks]) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO [Room] ([HostelId], [RoomNumber], [Floor], [SharingTypeId], [IsActive], [Remarks]) " +
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            Db.Param("@HostelId", room.HostelId),
             Db.Param("@RoomNumber", room.RoomNumber),
             Db.OptionalText("@Floor", room.Floor),
             Db.Param("@SharingTypeId", room.SharingTypeId),
@@ -43,10 +47,11 @@ public static class RoomRepository
     public static int Delete(int roomId) =>
         Db.Execute("DELETE FROM [Room] WHERE [RoomId] = ?", Db.Param("@RoomId", roomId));
 
-    /// <summary>True when another room already uses this number (ignoring case).</summary>
-    public static bool NumberExists(string roomNumber, int exceptRoomId) =>
+    /// <summary>True when another room of the same hostel already uses this number (ignoring case).</summary>
+    public static bool NumberExists(int hostelId, string roomNumber, int exceptRoomId) =>
         Convert.ToInt32(Db.Scalar(
-            "SELECT COUNT(*) FROM [Room] WHERE UCASE([RoomNumber]) = UCASE(?) AND [RoomId] <> ?",
+            "SELECT COUNT(*) FROM [Room] WHERE [HostelId] = ? AND UCASE([RoomNumber]) = UCASE(?) AND [RoomId] <> ?",
+            Db.Param("@HostelId", hostelId),
             Db.Param("@RoomNumber", roomNumber),
             Db.Param("@RoomId", exceptRoomId))) > 0;
 
@@ -59,6 +64,7 @@ public static class RoomRepository
     private static Room Map(IDataRecord record) => new()
     {
         RoomId = record.GetInt("RoomId"),
+        HostelId = record.GetInt("HostelId"),
         RoomNumber = record.GetText("RoomNumber"),
         Floor = record.GetText("Floor"),
         SharingTypeId = record.GetInt("SharingTypeId"),

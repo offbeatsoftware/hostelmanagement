@@ -1,5 +1,6 @@
 using HostelManagement.Data;
 using HostelManagement.Forms;
+using HostelManagement.Models;
 using HostelManagement.Services;
 using HostelManagement.Utilities;
 
@@ -52,11 +53,21 @@ internal static class Program
 
         AppLogger.Info("Application started.");
 
-        using (var login = new LoginForm(GetHostelNameForLogin()))
+        using (var login = new LoginForm(GetHostelsForLogin()))
         {
             if (login.ShowDialog() != DialogResult.OK)
             {
                 AppLogger.Info("Sign in cancelled.");
+                return;
+            }
+
+            try
+            {
+                HostelContext.Select(login.SelectedHostelId);
+            }
+            catch (Exception ex)
+            {
+                ErrorHandler.Handle(ex, "The selected hostel could not be loaded.");
                 return;
             }
         }
@@ -65,16 +76,16 @@ internal static class Program
         AppLogger.Info("Application closed.");
     }
 
-    private static string GetHostelNameForLogin()
+    private static List<Hostel> GetHostelsForLogin()
     {
         try
         {
-            return HostelService.GetHostelName();
+            return HostelService.GetHostels();
         }
         catch (Exception ex)
         {
-            AppLogger.Error("Could not read the hostel name for the sign in screen.", ex);
-            return string.Empty;
+            AppLogger.Error("Could not read the hostels for the sign in screen.", ex);
+            return [];
         }
     }
 }

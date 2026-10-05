@@ -1,4 +1,5 @@
 using HostelManagement.Forms.Views;
+using HostelManagement.Models;
 using HostelManagement.Services;
 using HostelManagement.Utilities;
 
@@ -12,7 +13,9 @@ public partial class MainForm : Form
 {
     private readonly List<NavigationItem> _navigationItems;
     private readonly Dictionary<NavigationItem, Button> _navButtons = new();
+    private readonly ComboBox _hostelSelector;
     private NavigationItem? _currentItem;
+    private int? _shownHostelId;
 
     public MainForm()
     {
@@ -21,82 +24,171 @@ public partial class MainForm : Form
 
         _navigationItems = BuildNavigation();
         CreateNavButtons();
+        _hostelSelector = CreateHostelSelector();
 
         dateStatusLabel.Text = DateTime.Today.ToString("dddd, dd MMM yyyy");
 
+        LoadHostelSelector();
         ShowHostelName();
-        HostelService.DetailsSaved += OnHostelDetailsSaved;
-        FormClosed += (_, _) => HostelService.DetailsSaved -= OnHostelDetailsSaved;
+        _shownHostelId = HostelContext.CurrentHostelId;
+
+        HostelService.HostelsChanged += OnHostelsChanged;
+        HostelContext.CurrentHostelChanged += OnCurrentHostelChanged;
+        Disposed += (_, _) =>
+        {
+            HostelService.HostelsChanged -= OnHostelsChanged;
+            HostelContext.CurrentHostelChanged -= OnCurrentHostelChanged;
+        };
     }
 
-    /// <summary>Shows the hostel's name in the title bar and at the top of the menu.</summary>
-    private void ShowHostelName()
+    protected override void OnShown(EventArgs e)
     {
-        string hostelName = string.Empty;
+        base.OnShown(e);
+
+        // Without any hostel the admin starts on the Hostels screen to add one.
+        Navigate(HostelContext.CurrentHostel is null
+            ? _navigationItems.First(item => item.Title == "Hostels")
+            : _navigationItems[0]);
+    }
+
+    /// <summary>
+    /// The application menu. Each module replaces its PlaceholderView with a real
+    /// screen when it is implemented in its phase. Screens marked as requiring a hostel
+    /// work on the hostel selected at the top right.
+    /// </summary>
+    internal static List<NavigationItem> BuildNavigation() =>
+    [
+        new("OVERVIEW", "Dashboard", "Summary of students, rooms, payments and dues.",
+            _ => PlaceholderView.Create("Dashboard", "Phase 12"), RequiresHostel: true),
+
+        new("HOSTEL", "Hostels", "Add and edit hostels. Select the hostel to work on at the top right.",
+            _ => new HostelsView()),
+        new("HOSTEL", "Colleges", "Colleges whose students stay in the selected hostel.",
+            hostel => new CollegesView(hostel!), RequiresHostel: true),
+        new("HOSTEL", "Rooms", "Rent by sharing type, rooms, occupancy and free beds.",
+            hostel => new RoomsView(hostel!), RequiresHostel: true),
+        new("HOSTEL", "Room Allocation", "Check-in, room transfer and check-out.",
+            _ => PlaceholderView.Create("Room Allocation", "Phase 6"), RequiresHostel: true),
+        new("HOSTEL", "Services", "Additional services such as Wi-Fi and transport.",
+            _ => PlaceholderView.Create("Services", "Phase 7")),
+
+        new("STUDENTS", "Students", "Student records, photos and search.",
+            _ => PlaceholderView.Create("Students", "Phase 5"), RequiresHostel: true),
+        new("STUDENTS", "Parents / Guardians", "Parent and guardian contact details.",
+            _ => PlaceholderView.Create("Parents / Guardians", "Phase 5"), RequiresHostel: true),
+
+        new("BILLING", "Invoices", "Create, print and export invoices.",
+            _ => PlaceholderView.Create("Invoices", "Phase 8"), RequiresHostel: true),
+        new("BILLING", "Payments", "Record payments against invoices.",
+            _ => PlaceholderView.Create("Payments", "Phase 9"), RequiresHostel: true),
+        new("BILLING", "Pending Dues", "Outstanding invoice balances and reminders.",
+            _ => PlaceholderView.Create("Pending Dues", "Phase 10"), RequiresHostel: true),
+        new("BILLING", "Reports", "Student, room, payment and dues reports.",
+            _ => PlaceholderView.Create("Reports", "Phase 13"), RequiresHostel: true),
+
+        new("SETTINGS", "Email Settings", "SMTP configuration for invoices and reminders.",
+            _ => PlaceholderView.Create("Email Settings", "Phase 11")),
+        new("SETTINGS", "Backup / Restore", "Back up and restore the database.",
+            _ => PlaceholderView.Create("Backup / Restore", "Phase 14")),
+        new("SETTINGS", "Application Settings", "Database location and database check.",
+            _ => new ApplicationSettingsView()),
+    ];
+
+    // ---- Hostel selection ----
+
+    private ComboBox CreateHostelSelector()
+    {
+        var selector = new ComboBox
+        {
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Font = UiTheme.BodyFont,
+            Width = 260,
+            Margin = new Padding(0, 14, 0, 0),
+            DisplayMember = nameof(Hostel.HostelName),
+            ValueMember = nameof(Hostel.HostelId),
+            Name = "hostelSelector",
+        };
+        selector.SelectionChangeCommitted += (_, _) =>
+        {
+            if (selector.SelectedValue is int hostelId && hostelId != HostelContext.CurrentHostelId)
+            {
+                HostelContext.Select(hostelId);
+            }
+        };
+
+        var caption = new Label
+        {
+            Text = "Hostel",
+            AutoSize = true,
+            Font = UiTheme.BodyBoldFont,
+            ForeColor = UiTheme.TextPrimary,
+            Margin = new Padding(0, 18, 8, 0),
+        };
+
+        var panel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Right,
+            AutoSize = true,
+            WrapContents = false,
+            BackColor = UiTheme.HeaderBackground,
+        };
+        panel.Controls.Add(caption);
+        panel.Controls.Add(selector);
+
+        // Added last so it is docked first and the title labels use the remaining width.
+        headerPanel.Controls.Add(panel);
+        return selector;
+    }
+
+    private void LoadHostelSelector()
+    {
         try
         {
-            hostelName = HostelService.GetHostelName();
+            _hostelSelector.DataSource = HostelService.GetHostels();
+            _hostelSelector.SelectedValue = HostelContext.CurrentHostelId ?? -1;
+            _hostelSelector.Enabled = _hostelSelector.Items.Count > 0;
         }
         catch (Exception ex)
         {
-            // Not critical: fall back to the product name.
-            AppLogger.Error("Could not read the hostel name.", ex);
+            AppLogger.Error("Could not load the hostel list.", ex);
+        }
+    }
+
+    private void OnHostelsChanged(object? sender, EventArgs e)
+    {
+        HostelContext.Refresh();
+        LoadHostelSelector();
+    }
+
+    private void OnCurrentHostelChanged(object? sender, EventArgs e)
+    {
+        ShowHostelName();
+        if (_hostelSelector.SelectedValue is not int id || id != HostelContext.CurrentHostelId)
+        {
+            LoadHostelSelector();
         }
 
+        // Screens that show one hostel's data are rebuilt for the newly selected hostel.
+        if (_shownHostelId != HostelContext.CurrentHostelId)
+        {
+            _shownHostelId = HostelContext.CurrentHostelId;
+            if (_currentItem is { RequiresHostel: true } item)
+            {
+                Navigate(item, force: true);
+            }
+        }
+    }
+
+    /// <summary>Shows the selected hostel's name in the title bar and at the top of the menu.</summary>
+    private void ShowHostelName()
+    {
+        string hostelName = HostelContext.CurrentHostel?.HostelName ?? string.Empty;
         bool hasName = hostelName.Length > 0;
         brandLabel.Text = hasName ? hostelName : "Hostel Management";
         Text = hasName
             ? $"{hostelName} | {AppInfo.ProductName} (v{AppInfo.Version})"
             : $"{AppInfo.ProductName} (v{AppInfo.Version})";
     }
-
-    private void OnHostelDetailsSaved(object? sender, EventArgs e) => ShowHostelName();
-
-    protected override void OnShown(EventArgs e)
-    {
-        base.OnShown(e);
-        Navigate(_navigationItems[0]);
-    }
-
-    /// <summary>
-    /// The application menu. Each module replaces its PlaceholderView with a real
-    /// screen when it is implemented in its phase.
-    /// </summary>
-    internal static List<NavigationItem> BuildNavigation() =>
-    [
-        new("OVERVIEW", "Dashboard", "Summary of students, rooms, payments and dues.",
-            () => new PlaceholderView("Dashboard", "Phase 12")),
-
-        new("HOSTEL", "Hostel Details", "Hostel contact details and the colleges students attend.",
-            () => new HostelDetailsView()),
-        new("HOSTEL", "Rooms", "Rent by sharing type, rooms, occupancy and free beds.",
-            () => new RoomsView()),
-        new("HOSTEL", "Room Allocation", "Check-in, room transfer and check-out.",
-            () => new PlaceholderView("Room Allocation", "Phase 6")),
-        new("HOSTEL", "Services", "Additional services such as Wi-Fi and transport.",
-            () => new PlaceholderView("Services", "Phase 7")),
-
-        new("STUDENTS", "Students", "Student records, photos and search.",
-            () => new PlaceholderView("Students", "Phase 5")),
-        new("STUDENTS", "Parents / Guardians", "Parent and guardian contact details.",
-            () => new PlaceholderView("Parents / Guardians", "Phase 5")),
-
-        new("BILLING", "Invoices", "Create, print and export invoices.",
-            () => new PlaceholderView("Invoices", "Phase 8")),
-        new("BILLING", "Payments", "Record payments against invoices.",
-            () => new PlaceholderView("Payments", "Phase 9")),
-        new("BILLING", "Pending Dues", "Outstanding invoice balances and reminders.",
-            () => new PlaceholderView("Pending Dues", "Phase 10")),
-        new("BILLING", "Reports", "Student, room, payment and dues reports.",
-            () => new PlaceholderView("Reports", "Phase 13")),
-
-        new("SETTINGS", "Email Settings", "SMTP configuration for invoices and reminders.",
-            () => new PlaceholderView("Email Settings", "Phase 11")),
-        new("SETTINGS", "Backup / Restore", "Back up and restore the database.",
-            () => new PlaceholderView("Backup / Restore", "Phase 14")),
-        new("SETTINGS", "Application Settings", "Database location and database check.",
-            () => new ApplicationSettingsView()),
-    ];
 
     private void ApplyTheme()
     {
@@ -180,17 +272,20 @@ public partial class MainForm : Form
         return button;
     }
 
-    private void Navigate(NavigationItem item)
+    private void Navigate(NavigationItem item, bool force = false)
     {
-        if (item == _currentItem)
+        if (item == _currentItem && !force)
         {
             return;
         }
 
+        Hostel? hostel = HostelContext.CurrentHostel;
         UserControl view;
         try
         {
-            view = item.CreateView();
+            view = item.RequiresHostel && hostel is null
+                ? new MessageView(item.Title, "There is no hostel yet. Open Hostels in the menu and add a hostel first.")
+                : item.CreateView(hostel);
         }
         catch (Exception ex)
         {

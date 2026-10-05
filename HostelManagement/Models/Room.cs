@@ -4,6 +4,7 @@ namespace HostelManagement.Models;
 public sealed class Room
 {
     public int RoomId { get; set; }
+    public int HostelId { get; set; }
     public string RoomNumber { get; set; } = string.Empty;
     public string Floor { get; set; } = string.Empty;
     public int SharingTypeId { get; set; }

@@ -1,5 +1,7 @@
 using System.Data.OleDb;
 using HostelManagement.Data;
+using HostelManagement.Models;
+using HostelManagement.Services;
 using HostelManagement.Utilities;
 
 namespace HostelManagement.Tests;
@@ -31,17 +33,35 @@ public abstract class TestDatabase : IDisposable
     protected static int Count(string table) =>
         Convert.ToInt32(Db.Scalar($"SELECT COUNT(*) FROM [{table}]"));
 
-    protected static int AddStudent(string name = "Test Student") =>
-        Db.Insert("INSERT INTO [Student] ([StudentName], [Status]) VALUES (?, ?)",
+    private int? _hostelId;
+    private int? _collegeId;
+
+    /// <summary>A hostel created for the test on first use.</summary>
+    protected int HostelId => _hostelId ??= AddHostel("Test Hostel");
+
+    /// <summary>A college of <see cref="HostelId"/> created on first use.</summary>
+    protected int CollegeId => _collegeId ??= AddCollege(HostelId, "Test College");
+
+    protected static int AddHostel(string name) =>
+        HostelService.Save(new Hostel { HostelName = name }).HostelId;
+
+    protected static int AddCollege(int hostelId, string name) =>
+        CollegeService.Save(new College { HostelId = hostelId, CollegeName = name }).CollegeId;
+
+    protected int AddStudent(string name = "Test Student", int? collegeId = null) =>
+        Db.Insert("INSERT INTO [Student] ([StudentName], [CollegeId], [Status]) VALUES (?, ?, ?)",
             Db.Param("@StudentName", name),
+            Db.Param("@CollegeId", collegeId ?? CollegeId),
             Db.Param("@Status", "Active"));
 
-    protected static int SharingTypeId(int capacity) =>
-        Convert.ToInt32(Db.Scalar("SELECT [SharingTypeId] FROM [SharingType] WHERE [Capacity] = ?",
+    /// <summary>The id of the Single (1), Double (2) or Triple (3) sharing type of a hostel (default: <see cref="HostelId"/>).</summary>
+    protected int SharingTypeId(int capacity, int? hostelId = null) =>
+        Convert.ToInt32(Db.Scalar("SELECT [SharingTypeId] FROM [SharingType] WHERE [HostelId] = ? AND [Capacity] = ?",
+            Db.Param("@HostelId", hostelId ?? HostelId),
             Db.Param("@Capacity", capacity)));
 
     /// <summary>Records a student in a room directly (Room Allocation is built in a later phase).</summary>
-    protected static void AddAllocation(int roomId, string status = Models.AllocationStatus.Current)
+    protected void AddAllocation(int roomId, string status = AllocationStatus.Current)
     {
         int studentId = AddStudent($"Student {Guid.NewGuid():N}"[..20]);
         Db.Execute(

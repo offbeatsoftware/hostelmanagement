@@ -5,25 +5,32 @@ namespace HostelManagement.Data;
 
 public static class CollegeRepository
 {
-    /// <summary>All colleges ordered by name, optionally filtered by part of the name.</summary>
-    public static List<College> Search(string nameContains = "")
+    /// <summary>The hostel's colleges ordered by name, optionally filtered by part of the name.</summary>
+    public static List<College> Search(int hostelId, string nameContains = "")
     {
         if (nameContains.Length == 0)
         {
-            return Db.Query("SELECT * FROM [College] ORDER BY [CollegeName]", Map);
+            return Db.Query("SELECT * FROM [College] WHERE [HostelId] = ? ORDER BY [CollegeName]", Map,
+                Db.Param("@HostelId", hostelId));
         }
 
         // Escape Access LIKE wildcards so the admin's text is matched literally.
         string pattern = "%" + nameContains.Replace("[", "[[]").Replace("%", "[%]").Replace("_", "[_]") + "%";
         return Db.Query(
-            "SELECT * FROM [College] WHERE [CollegeName] ALIKE ? ORDER BY [CollegeName]",
+            "SELECT * FROM [College] WHERE [HostelId] = ? AND [CollegeName] ALIKE ? ORDER BY [CollegeName]",
             Map,
+            Db.Param("@HostelId", hostelId),
             Db.Param("@Pattern", pattern));
     }
 
+    public static College? Get(int collegeId) =>
+        Db.Query("SELECT * FROM [College] WHERE [CollegeId] = ?", Map, Db.Param("@CollegeId", collegeId))
+            .FirstOrDefault();
+
     public static int Insert(College college) =>
         Db.Insert(
-            "INSERT INTO [College] ([CollegeName], [Address], [Phone]) VALUES (?, ?, ?)",
+            "INSERT INTO [College] ([HostelId], [CollegeName], [Address], [Phone]) VALUES (?, ?, ?, ?)",
+            Db.Param("@HostelId", college.HostelId),
             Db.Param("@CollegeName", college.CollegeName),
             Db.OptionalText("@Address", college.Address),
             Db.OptionalText("@Phone", college.Phone));
@@ -39,10 +46,11 @@ public static class CollegeRepository
     public static int Delete(int collegeId) =>
         Db.Execute("DELETE FROM [College] WHERE [CollegeId] = ?", Db.Param("@CollegeId", collegeId));
 
-    /// <summary>True when another college already has this name (ignoring case).</summary>
-    public static bool NameExists(string collegeName, int exceptCollegeId) =>
+    /// <summary>True when another college of the same hostel already has this name (ignoring case).</summary>
+    public static bool NameExists(int hostelId, string collegeName, int exceptCollegeId) =>
         Convert.ToInt32(Db.Scalar(
-            "SELECT COUNT(*) FROM [College] WHERE UCASE([CollegeName]) = UCASE(?) AND [CollegeId] <> ?",
+            "SELECT COUNT(*) FROM [College] WHERE [HostelId] = ? AND UCASE([CollegeName]) = UCASE(?) AND [CollegeId] <> ?",
+            Db.Param("@HostelId", hostelId),
             Db.Param("@CollegeName", collegeName),
             Db.Param("@CollegeId", exceptCollegeId))) > 0;
 
@@ -54,6 +62,7 @@ public static class CollegeRepository
     private static College Map(IDataRecord record) => new()
     {
         CollegeId = record.GetInt("CollegeId"),
+        HostelId = record.GetInt("HostelId"),
         CollegeName = record.GetText("CollegeName"),
         Address = record.GetText("Address"),
         Phone = record.GetText("Phone"),

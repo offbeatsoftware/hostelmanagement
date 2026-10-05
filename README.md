@@ -4,7 +4,7 @@ A single admin Windows desktop application for managing a private student hostel
 
 **Stack:** C# · .NET 8 · Windows Forms · Microsoft Access (.accdb) · System.Data.OleDb
 
-**Status:** Phase 4 (room management and rent by sharing type). Module screens show a placeholder until their phase is built.
+**Status:** Phase 4 with several hostels (hostels, colleges, rooms and rent per hostel). Module screens show a placeholder until their phase is built.
 
 ## Requirements
 
@@ -29,9 +29,11 @@ From the command line: `dotnet build HostelManagement.sln` and `dotnet run --pro
 
 NuGet package: `System.Data.OleDb` 8.0.1 (restored automatically on build).
 
-## Signing in
+## Signing in and choosing a hostel
 
-The application opens with a sign in screen. Temporary fixed credentials: user name **admin**, password **admin**
+The application opens with a sign in screen, where the admin also chooses the hostel to work on. The hostel
+can be changed at any time in the box at the top right of the main window; colleges, rooms, students and
+billing screens show only the selected hostel. Hostels are added on the **Hostels** screen. Temporary fixed credentials: user name **admin**, password **admin**
 (the user name is not case sensitive). A changeable password will replace this before go-live.
 
 ## Automated tests

@@ -4,6 +4,7 @@ namespace HostelManagement.Models;
 public sealed class SharingType
 {
     public int SharingTypeId { get; set; }
+    public int HostelId { get; set; }
     public string SharingName { get; set; } = string.Empty;
     public int Capacity { get; set; }
     public decimal Rent { get; set; }

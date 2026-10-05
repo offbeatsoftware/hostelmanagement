@@ -1,3 +1,4 @@
+using System.Data.OleDb;
 using HostelManagement.Data;
 using HostelManagement.Models;
 using HostelManagement.Utilities;
@@ -6,20 +7,22 @@ namespace HostelManagement.Services;
 
 public static class HostelService
 {
-    /// <summary>Raised after the hostel details are saved, so the window title and menu can update.</summary>
-    public static event EventHandler? DetailsSaved;
+    /// <summary>Raised after a hostel is added, changed or deleted, so lists and the hostel selector can refresh.</summary>
+    public static event EventHandler? HostelsChanged;
 
-    /// <summary>The saved hostel details, or null when they have not been entered yet.</summary>
-    public static HostelDetails? GetDetails() => HostelRepository.Get();
+    public static List<Hostel> GetHostels() => HostelRepository.GetAll();
 
-    /// <summary>The hostel name, or empty when not entered yet.</summary>
-    public static string GetHostelName() => GetDetails()?.HostelName ?? string.Empty;
+    public static Hostel? GetHostel(int hostelId) => HostelRepository.Get(hostelId);
 
-    /// <summary>Validates and saves the hostel details (adds the row the first time).</summary>
-    public static HostelDetails Save(HostelDetails input)
+    /// <summary>
+    /// Validates and adds a hostel (HostelId 0) together with its Single/Double/Triple sharing
+    /// types, or saves changes to an existing hostel.
+    /// </summary>
+    public static Hostel Save(Hostel input)
     {
-        var hostel = new HostelDetails
+        var hostel = new Hostel
         {
+            HostelId = input.HostelId,
             HostelName = Validators.Clean(input.HostelName),
             Address = Validators.Clean(input.Address),
             Phone = Validators.Clean(input.Phone),
@@ -27,25 +30,59 @@ public static class HostelService
         };
         Validate(hostel);
 
-        HostelDetails? existing = HostelRepository.Get();
-        if (existing is null)
+        try
         {
-            hostel.CreatedDate = DateTime.Now;
-            hostel.HostelId = HostelRepository.Insert(hostel);
+            if (hostel.HostelId == 0)
+            {
+                hostel.CreatedDate = DateTime.Now;
+                hostel.HostelId = Db.InTransaction((connection, transaction) =>
+                {
+                    int id = HostelRepository.Insert(connection, transaction, hostel);
+                    SharingTypeRepository.InsertDefaults(connection, transaction, id);
+                    return id;
+                });
+            }
+            else
+            {
+                hostel.UpdatedDate = DateTime.Now;
+                if (HostelRepository.Update(hostel) == 0)
+                {
+                    throw new ValidationException("This hostel no longer exists. It may have been deleted.");
+                }
+            }
         }
-        else
+        catch (OleDbException ex) when (Db.IsDuplicateKeyError(ex))
         {
-            hostel.HostelId = existing.HostelId;
-            hostel.CreatedDate = existing.CreatedDate;
-            hostel.UpdatedDate = DateTime.Now;
-            HostelRepository.Update(hostel);
+            throw DuplicateName(hostel.HostelName);
         }
 
-        DetailsSaved?.Invoke(null, EventArgs.Empty);
-        return hostel;
+        HostelsChanged?.Invoke(null, EventArgs.Empty);
+        return HostelRepository.Get(hostel.HostelId) ?? hostel;
     }
 
-    private static void Validate(HostelDetails hostel)
+    /// <summary>Deletes a hostel that has no colleges and no rooms.</summary>
+    public static void Delete(int hostelId)
+    {
+        Hostel hostel = HostelRepository.Get(hostelId)
+            ?? throw new ValidationException("This hostel no longer exists.");
+
+        if (hostel.CollegeCount > 0 || hostel.RoomCount > 0)
+        {
+            throw new ValidationException(
+                $"\"{hostel.HostelName}\" cannot be deleted because it has {hostel.CollegeCount} college(s) " +
+                $"and {hostel.RoomCount} room(s). Delete those first.");
+        }
+
+        Db.InTransaction((connection, transaction) =>
+        {
+            SharingTypeRepository.DeleteForHostel(connection, transaction, hostelId);
+            HostelRepository.Delete(connection, transaction, hostelId);
+        });
+
+        HostelsChanged?.Invoke(null, EventArgs.Empty);
+    }
+
+    private static void Validate(Hostel hostel)
     {
         if (hostel.HostelName.Length == 0)
         {
@@ -64,5 +101,12 @@ public static class HostelService
         {
             throw new ValidationException("Please enter a valid email address, for example office@myhostel.com.");
         }
+        if (HostelRepository.NameExists(hostel.HostelName, hostel.HostelId))
+        {
+            throw DuplicateName(hostel.HostelName);
+        }
     }
+
+    private static ValidationException DuplicateName(string name) =>
+        new($"A hostel named \"{name}\" already exists.");
 }

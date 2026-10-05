@@ -6,21 +6,22 @@ namespace HostelManagement.Tests;
 
 public sealed class RoomServiceTests : TestDatabase
 {
-    private static Room AddRoom(string number, int capacity, bool active = true, string floor = "") =>
+    private Room AddRoom(string number, int capacity, bool active = true, string floor = "", int? hostelId = null) =>
         RoomService.Save(new Room
         {
+            HostelId = hostelId ?? HostelId,
             RoomNumber = number,
             Floor = floor,
-            SharingTypeId = SharingTypeId(capacity),
+            SharingTypeId = SharingTypeId(capacity, hostelId),
             IsActive = active,
         });
 
-    private static Room Find(string number) => RoomService.GetRooms().Single(r => r.RoomNumber == number);
+    private Room Find(string number) => RoomService.GetRooms(HostelId).Single(r => r.RoomNumber == number);
 
     [Fact]
-    public void NewDatabase_HasSingleDoubleTripleWithMatchingCapacity()
+    public void NewHostel_HasSingleDoubleTripleWithMatchingCapacity()
     {
-        List<SharingType> types = RoomService.GetSharingTypes();
+        List<SharingType> types = RoomService.GetSharingTypes(HostelId);
 
         Assert.Equal(["Single", "Double", "Triple"], types.Select(t => t.SharingName));
         Assert.Equal([1, 2, 3], types.Select(t => t.Capacity));
@@ -30,9 +31,63 @@ public sealed class RoomServiceTests : TestDatabase
     [Fact]
     public void Initialize_RunAgain_DoesNotDuplicateSharingTypes()
     {
+        _ = HostelId;
         Data.DatabaseInitializer.Initialize();
 
         Assert.Equal(3, Count("SharingType"));
+    }
+
+    [Fact]
+    public void Rent_IsSeparateForEachHostel()
+    {
+        int otherHostel = AddHostel("Other Hostel");
+        AddRoom("101", capacity: 2);
+        AddRoom("101", capacity: 2, hostelId: otherHostel);
+
+        RoomService.UpdateRent(SharingTypeId(2), 4500m);
+        RoomService.UpdateRent(SharingTypeId(2, otherHostel), 6000m);
+
+        Assert.Equal(4500m, Find("101").Rent);
+        Assert.Equal(6000m, RoomService.GetRooms(otherHostel).Single().Rent);
+    }
+
+    [Fact]
+    public void GetRooms_ShowsOnlyTheHostelsRooms()
+    {
+        int otherHostel = AddHostel("Other Hostel");
+        AddRoom("101", capacity: 1);
+        AddRoom("201", capacity: 1, hostelId: otherHostel);
+
+        Assert.Equal(["101"], RoomService.GetRooms(HostelId).Select(r => r.RoomNumber));
+        Assert.Equal(["201"], RoomService.GetRooms(otherHostel).Select(r => r.RoomNumber));
+    }
+
+    [Fact]
+    public void Save_SharingTypeOfAnotherHostel_IsRejected()
+    {
+        int otherHostel = AddHostel("Other Hostel");
+
+        var ex = Assert.Throws<ValidationException>(() => RoomService.Save(new Room
+        {
+            HostelId = HostelId,
+            RoomNumber = "101",
+            SharingTypeId = SharingTypeId(1, otherHostel),
+        }));
+
+        Assert.Contains("sharing type", ex.Message);
+    }
+
+    [Fact]
+    public void Save_WithoutValidHostel_IsRejected()
+    {
+        var ex = Assert.Throws<ValidationException>(() => RoomService.Save(new Room
+        {
+            HostelId = 9999,
+            RoomNumber = "101",
+            SharingTypeId = SharingTypeId(1),
+        }));
+
+        Assert.Contains("hostel", ex.Message);
     }
 
     [Fact]
@@ -82,8 +137,8 @@ public sealed class RoomServiceTests : TestDatabase
 
         var ex = Assert.Throws<ValidationException>(() => AddRoom("a-1", capacity: 2));
 
-        Assert.Contains("already exists", ex.Message);
-        Assert.Single(RoomService.GetRooms());
+        Assert.Contains("already exists in this hostel", ex.Message);
+        Assert.Single(RoomService.GetRooms(HostelId));
     }
 
     [Fact]
@@ -93,7 +148,7 @@ public sealed class RoomServiceTests : TestDatabase
             Assert.Throws<ValidationException>(() => AddRoom("  ", capacity: 1)).Message);
         Assert.Contains("sharing type",
             Assert.Throws<ValidationException>(() =>
-                RoomService.Save(new Room { RoomNumber = "101", SharingTypeId = 0 })).Message);
+                RoomService.Save(new Room { HostelId = HostelId, RoomNumber = "101", SharingTypeId = 0 })).Message);
     }
 
     [Fact]
@@ -119,7 +174,7 @@ public sealed class RoomServiceTests : TestDatabase
             AddRoom(number, capacity: 1);
         }
 
-        Assert.Equal(["1", "2", "10", "A-9", "A-10"], RoomService.GetRooms().Select(r => r.RoomNumber));
+        Assert.Equal(["1", "2", "10", "A-9", "A-10"], RoomService.GetRooms(HostelId).Select(r => r.RoomNumber));
     }
 
     [Fact]
@@ -180,7 +235,7 @@ public sealed class RoomServiceTests : TestDatabase
 
         RoomService.Delete(room.RoomId);
 
-        Assert.Empty(RoomService.GetRooms());
+        Assert.Empty(RoomService.GetRooms(HostelId));
     }
 
     [Fact]
@@ -192,7 +247,7 @@ public sealed class RoomServiceTests : TestDatabase
         var ex = Assert.Throws<ValidationException>(() => RoomService.Delete(room.RoomId));
 
         Assert.Contains("mark it inactive", ex.Message);
-        Assert.Single(RoomService.GetRooms());
+        Assert.Single(RoomService.GetRooms(HostelId));
     }
 
     [Fact]

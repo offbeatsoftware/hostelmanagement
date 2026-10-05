@@ -8,11 +8,11 @@ namespace HostelManagement.Tests;
 public sealed class MainFormTests : TestDatabase
 {
     [Fact]
-    public void Navigation_ContainsAllFourteenScreens()
+    public void Navigation_ContainsAllScreens()
     {
         string[] expected =
         [
-            "Dashboard", "Hostel Details", "Rooms", "Room Allocation", "Services", "Students",
+            "Dashboard", "Hostels", "Colleges", "Rooms", "Room Allocation", "Services", "Students",
             "Parents / Guardians", "Invoices", "Payments", "Pending Dues", "Reports",
             "Email Settings", "Backup / Restore", "Application Settings",
         ];
@@ -25,17 +25,37 @@ public sealed class MainFormTests : TestDatabase
     {
         RunOnStaThread(() =>
         {
+            Hostel hostel = HostelService.GetHostel(HostelId)!;
             foreach (NavigationItem item in MainForm.BuildNavigation())
             {
-                using UserControl view = item.CreateView();
+                using UserControl view = item.CreateView(hostel);
                 Assert.NotNull(view);
             }
         });
     }
 
     [Fact]
+    public void MainForm_WithoutHostels_StartsOnHostelsScreen()
+    {
+        HostelContext.Select(null);
+
+        RunOnStaThread(() =>
+        {
+            using var form = new MainForm { WindowState = FormWindowState.Normal };
+            form.Show();
+            Application.DoEvents();
+
+            Control title = form.Controls.Find("pageTitleLabel", searchAllChildren: true).Single();
+            Assert.Equal("Hostels", title.Text);
+            form.Close();
+        });
+    }
+
+    [Fact]
     public void MainForm_OpensEveryScreenFromTheMenu()
     {
+        HostelContext.Select(HostelId);
+
         RunOnStaThread(() =>
         {
             using var form = new MainForm { WindowState = FormWindowState.Normal };
@@ -51,7 +71,7 @@ public sealed class MainFormTests : TestDatabase
             Assert.Single(content.Controls);
 
             List<Button> buttons = menu.Controls.OfType<Button>().ToList();
-            Assert.Equal(14, buttons.Count);
+            Assert.Equal(15, buttons.Count);
 
             foreach (Button button in buttons)
             {
@@ -67,22 +87,28 @@ public sealed class MainFormTests : TestDatabase
     }
 
     [Fact]
-    public void MainForm_ShowsHostelNameAndUpdatesItAfterSave()
+    public void MainForm_ShowsSelectedHostelAndFollowsChanges()
     {
-        HostelService.Save(new HostelDetails { HostelName = "Green Valley Hostel" });
+        int boys = AddHostel("Boys Hostel");
+        int girls = AddHostel("Girls Hostel");
+        HostelContext.Select(boys);
 
         RunOnStaThread(() =>
         {
             using var form = new MainForm();
             Control brand = form.Controls.Find("brandLabel", searchAllChildren: true).Single();
+            var selector = (ComboBox)form.Controls.Find("hostelSelector", searchAllChildren: true).Single();
 
-            Assert.StartsWith("Green Valley Hostel", form.Text);
-            Assert.Equal("Green Valley Hostel", brand.Text);
+            Assert.StartsWith("Boys Hostel", form.Text);
+            Assert.Equal("Boys Hostel", brand.Text);
+            Assert.Equal(2, selector.Items.Count);
 
-            HostelService.Save(new HostelDetails { HostelName = "Blue Hills Hostel" });
+            HostelContext.Select(girls);
+            Assert.StartsWith("Girls Hostel", form.Text);
+            Assert.Equal(girls, selector.SelectedValue);
 
-            Assert.StartsWith("Blue Hills Hostel", form.Text);
-            Assert.Equal("Blue Hills Hostel", brand.Text);
+            HostelService.Save(new Hostel { HostelId = girls, HostelName = "Girls Hostel North" });
+            Assert.Equal("Girls Hostel North", brand.Text);
         });
     }
 
@@ -91,7 +117,7 @@ public sealed class MainFormTests : TestDatabase
     {
         RunOnStaThread(() =>
         {
-            using var form = new LoginForm("Green Valley Hostel");
+            using var form = new LoginForm(HostelService.GetHostels());
             Assert.Equal("Sign in", form.Text);
         });
     }

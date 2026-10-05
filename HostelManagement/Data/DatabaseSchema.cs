@@ -7,6 +7,9 @@ public sealed record TableDefinition(string Name, params string[] Statements);
 /// The Access database schema. Tables are listed so that a table is always created
 /// after the tables it references. See docs/DatabaseSchema.md for the design notes.
 ///
+/// Several hostels: colleges, sharing types (rent) and rooms belong to a hostel; a student
+/// belongs to a college and through it to the college's hostel.
+///
 /// Calculated values are not stored: room occupancy comes from RoomAllocation,
 /// and invoice paid/pending amounts and status come from Payment.
 /// </summary>
@@ -16,11 +19,11 @@ public static class DatabaseSchema
     /// Increase by one whenever a table or column changes, so databases with an older
     /// layout are detected at startup. Stored in the SchemaInfo table.
     /// </summary>
-    public const int Version = 3;
+    public const int Version = 4;
 
     /// <summary>
-    /// The sharing types added to a new database. Capacity always equals the sharing type
-    /// (client decision); rent is set per sharing type by the admin on the Rooms screen.
+    /// The sharing types added to every new hostel. Capacity always equals the sharing type
+    /// (client decision); rent is set per sharing type and hostel on the Rooms screen.
     /// </summary>
     public static IReadOnlyList<(string Name, int Capacity)> DefaultSharingTypes { get; } =
     [
@@ -45,39 +48,46 @@ public static class DatabaseSchema
                 [Phone]          TEXT(20),
                 [Email]          TEXT(150),
                 [CreatedDate]    DATETIME NOT NULL,
-                [UpdatedDate]    DATETIME
+                [UpdatedDate]    DATETIME,
+                CONSTRAINT [UQ_Hostel_HostelName] UNIQUE ([HostelName])
             )
             """),
 
         new("College", """
             CREATE TABLE [College] (
                 [CollegeId]   COUNTER CONSTRAINT [PK_College] PRIMARY KEY,
+                [HostelId]    INTEGER NOT NULL,
                 [CollegeName] TEXT(150) NOT NULL,
                 [Address]     TEXT(255),
                 [Phone]       TEXT(20),
-                CONSTRAINT [UQ_College_CollegeName] UNIQUE ([CollegeName])
+                CONSTRAINT [UQ_College_HostelName] UNIQUE ([HostelId], [CollegeName]),
+                CONSTRAINT [FK_College_Hostel] FOREIGN KEY ([HostelId]) REFERENCES [Hostel] ([HostelId])
             )
             """),
 
         new("SharingType", """
             CREATE TABLE [SharingType] (
                 [SharingTypeId] COUNTER CONSTRAINT [PK_SharingType] PRIMARY KEY,
+                [HostelId]      INTEGER NOT NULL,
                 [SharingName]   TEXT(20) NOT NULL,
                 [Capacity]      INTEGER NOT NULL,
                 [Rent]          CURRENCY NOT NULL,
-                CONSTRAINT [UQ_SharingType_SharingName] UNIQUE ([SharingName])
+                CONSTRAINT [UQ_SharingType_HostelName] UNIQUE ([HostelId], [SharingName]),
+                CONSTRAINT [FK_SharingType_Hostel] FOREIGN KEY ([HostelId]) REFERENCES [Hostel] ([HostelId])
             )
             """),
 
         new("Room", """
             CREATE TABLE [Room] (
                 [RoomId]        COUNTER CONSTRAINT [PK_Room] PRIMARY KEY,
+                [HostelId]      INTEGER NOT NULL,
                 [RoomNumber]    TEXT(20) NOT NULL,
                 [Floor]         TEXT(20),
                 [SharingTypeId] INTEGER NOT NULL,
                 [IsActive]      BIT NOT NULL,
                 [Remarks]       TEXT(255),
-                CONSTRAINT [UQ_Room_RoomNumber] UNIQUE ([RoomNumber]),
+                CONSTRAINT [UQ_Room_HostelNumber] UNIQUE ([HostelId], [RoomNumber]),
+                CONSTRAINT [FK_Room_Hostel] FOREIGN KEY ([HostelId]) REFERENCES [Hostel] ([HostelId]),
                 CONSTRAINT [FK_Room_SharingType] FOREIGN KEY ([SharingTypeId]) REFERENCES [SharingType] ([SharingTypeId])
             )
             """),
@@ -89,7 +99,7 @@ public static class DatabaseSchema
                 [DateOfBirth]   DATETIME,
                 [Gender]        TEXT(20),
                 [Address]       TEXT(255),
-                [CollegeId]     INTEGER,
+                [CollegeId]     INTEGER NOT NULL,
                 [Course]        TEXT(100),
                 [ClassName]     TEXT(50),
                 [Mobile]        TEXT(20),
