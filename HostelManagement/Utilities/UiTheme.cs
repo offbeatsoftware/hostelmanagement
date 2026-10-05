@@ -23,7 +23,7 @@ public static class UiTheme
     public static readonly Color NavSelected = Color.FromArgb(0, 102, 170);
 
     public static readonly Color HeaderBackground = Color.White;
-    public static readonly Color ContentBackground = Color.FromArgb(244, 246, 248);
+    public static readonly Color ContentBackground = Color.FromArgb(245, 236, 220); // beige, like the hostel walls
     public static readonly Color TextPrimary = Color.FromArgb(33, 37, 41);
     public static readonly Color TextMuted = Color.FromArgb(108, 117, 125);
     public static readonly Color Border = Color.FromArgb(222, 226, 230);
@@ -77,7 +77,7 @@ public static class UiTheme
 
         grid.DefaultCellStyle.SelectionBackColor = Color.FromArgb(209, 231, 245);
         grid.DefaultCellStyle.SelectionForeColor = TextPrimary;
-        grid.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(250, 251, 252);
+        grid.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(252, 248, 240);
     }
 
     private static void StyleButton(Button button, Color back, Color fore)
