@@ -29,6 +29,8 @@
 
   <ItemGroup>
     <PackageReference Include="System.Data.OleDb" Version="8.0.1" />
+    <!-- PDF invoices (MIT licence). -->
+    <PackageReference Include="PDFsharp" Version="6.2.4" />
   </ItemGroup>
 
   <ItemGroup>
@@ -53,8 +55,5 @@
     <InternalsVisibleTo Include="HostelManagement.Tests" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Reports\" />
-  </ItemGroup>
 
 </Project>

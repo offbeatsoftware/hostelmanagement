@@ -4,7 +4,7 @@ A single admin Windows desktop application for managing a private student hostel
 
 **Stack:** C# · .NET 8 · Windows Forms · Microsoft Access (.accdb) · System.Data.OleDb
 
-**Status:** Phase 7 (services, yearly rent and billing frequency per hostel), with several hostels. Module screens show a placeholder until their phase is built.
+**Status:** Phase 8 (invoices with PDF), with several hostels. Module screens show a placeholder until their phase is built.
 
 ## Requirements
 
@@ -27,7 +27,7 @@ A single admin Windows desktop application for managing a private student hostel
 
 From the command line: `dotnet build HostelManagement.sln` and `dotnet run --project HostelManagement`.
 
-NuGet package: `System.Data.OleDb` 8.0.1 (restored automatically on build).
+NuGet packages: `System.Data.OleDb` 8.0.1 and `PDFsharp` 6.2.4 (MIT licence, invoice PDFs), restored automatically on build.
 
 ## Signing in and choosing a hostel
 
@@ -60,7 +60,7 @@ HostelManagement/
   Models/                 Data classes (from Phase 3)
   Data/                   Access database: connection helper (Db), schema, startup initializer
   Services/               Business logic: database check; allocation, billing, email in later phases
-  Reports/                Invoice and report output (later phases)
+  Reports/                Invoice PDF (PDFsharp); reports in a later phase
   Utilities/              Paths, logging, dialogs, error handling, UI theme
 ```
 
@@ -74,6 +74,7 @@ automatically on first start:
 | `Photos/Students`    | Student photos (only the file path is stored in the database) |
 | `Documents/Students` | Student documents (only the file path is stored in the database) |
 | `Backups`            | Database backups                                |
+| `Invoices`           | Invoice PDFs (`Invoice_SBH-2026-27-0001.pdf`)   |
 | `Logs`               | Technical error logs (`app-yyyyMMdd.log`)       |
 
 **Installation note:** Windows does not let normal users write inside `C:\Program Files`, so the application

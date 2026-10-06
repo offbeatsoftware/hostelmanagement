@@ -221,6 +221,17 @@ Extra services (such as transport) a student uses, for billing.
 | BillingTo | Date/Time | Required |
 | TotalAmount | Currency | Required; equals the sum of the invoice items, saved together with them |
 
+Rules (Phase 8):
+- One invoice per student per billing period of the hostel (twice or four times a year; the academic year starts in July).
+- Only a student who was in a room during the period can be invoiced.
+- Rent line = the room's yearly rent / 2 or / 4. A student who joins in the middle of a period pays the full installment.
+- Paid services (Transport) are charged per month used in the period; a part month counts as a full month.
+  Services included in the rent are listed at no charge. No GST, deposits or discounts.
+- Invoice number `SBH/2026-27/0001`: one running sequence per academic year, shared by all hostels so that every
+  number is unique.
+- An invoice can be deleted only while it has no payments and no emails.
+- Invoice PDFs are saved in the `Invoices` folder next to the application.
+
 ### InvoiceItem
 Invoice lines (rent and each service).
 
