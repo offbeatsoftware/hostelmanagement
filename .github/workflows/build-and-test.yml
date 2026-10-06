@@ -36,10 +36,12 @@ jobs:
         if: failure()
         shell: pwsh
         run: |
-          Get-ChildItem "${{ runner.temp }}/diag" -Filter "*host*" | ForEach-Object {
+          Get-ChildItem "${{ runner.temp }}/diag" | ForEach-Object {
             Write-Host "===== $($_.Name)"
-            Select-String -Path $_.FullName -Pattern "Exception|Unhandled|exited|crash|   at " -Context 0,2 |
-              Select-Object -Last 120 | ForEach-Object { $_.ToString() }
+            Select-String -Path $_.FullName -Pattern "exit code|ExitCode|exited|Unhandled|0xC0|StackOverflow|OutOfMemory" |
+              Select-Object -Last 20 | ForEach-Object { $_.Line }
+            Write-Host "----- last lines"
+            Get-Content $_.FullName -Tail 25
           }
 
       - name: Screenshots for visual check
