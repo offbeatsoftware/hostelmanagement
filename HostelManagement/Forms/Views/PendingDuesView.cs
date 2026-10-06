@@ -73,7 +73,8 @@ public sealed class PendingDuesView : UserControl
                 e.CellStyle.ForeColor = UiTheme.Danger;
             }
         };
-        _studentsGrid.SelectionChanged += (_, _) => ShowInvoices();
+        // CurrentCellChanged (not SelectionChanged) fires after CurrentRow points to the newly chosen student.
+        _studentsGrid.CurrentCellChanged += (_, _) => ShowInvoices();
 
         _invoicesTitle = new Label { Dock = DockStyle.Top, Height = 30, Font = UiTheme.BodyBoldFont, Padding = new Padding(0, 8, 0, 0) };
 
