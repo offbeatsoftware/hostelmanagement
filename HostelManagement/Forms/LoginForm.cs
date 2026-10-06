@@ -240,7 +240,18 @@ public sealed class LoginForm : Form
 
     private void SignIn()
     {
-        if (AuthService.IsValidLogin(_userNameBox.Text, _passwordBox.Text))
+        bool valid;
+        try
+        {
+            valid = AuthService.IsValidLogin(_userNameBox.Text, _passwordBox.Text);
+        }
+        catch (Exception ex)
+        {
+            ErrorHandler.Handle(ex, "The sign in could not be checked against the database.");
+            return;
+        }
+
+        if (valid)
         {
             AppLogger.Info("Admin signed in.");
             DialogResult = DialogResult.OK;

@@ -51,6 +51,7 @@ public static class DatabaseInitializer
         }
 
         CreateMissingTables();
+        AdminUserRepository.EnsureDefaultAdmin();
     }
 
     /// <summary>Finds the installed Access Database Engine and points <see cref="Db"/> at the database file.</summary>

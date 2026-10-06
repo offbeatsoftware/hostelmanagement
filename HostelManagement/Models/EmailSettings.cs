@@ -108,6 +108,10 @@ public sealed class OutgoingEmail
 
     public string RecipientEmail { get; init; } = string.Empty;
     public string RecipientName { get; init; } = string.Empty;
+
+    /// <summary>The admin's email address, which receives a copy of every email to a parent (empty when not set).</summary>
+    public string CopyToEmail { get; init; } = string.Empty;
+
     public string Subject { get; init; } = string.Empty;
     public string Body { get; init; } = string.Empty;
     public List<string> AttachmentPaths { get; init; } = [];

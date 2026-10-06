@@ -38,7 +38,7 @@ Hostel 1──* Room
 
 ## Schema version
 
-The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **9**).
+The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **10**).
 At startup the application refuses a database with an older or newer version and explains what to do,
 instead of failing later with confusing errors. Increase the version whenever a table or column changes.
 
@@ -53,6 +53,7 @@ instead of failing later with confusing errors. Increase the version whenever a 
 | 7 | Phase 7: Hostel.BillingFrequency; Service per hostel (included in rent or extra per month); StudentService |
 | 8 | Phase 9: Payment.ReceiptNumber (unique) and Payment.CreatedDate; Payment.InvoiceId required |
 | 9 | Phase 11: AppSetting table (Gmail account and email texts) |
+| 10 | AdminUser table (admin login with hashed password, email and phone) |
 
 ## Tables
 
@@ -282,6 +283,20 @@ Rules (Phase 9):
 | SentDate | Date/Time | Required |
 | Status | Text(20) | Required: Sent / Failed |
 | ErrorMessage | Text(255) | |
+
+### AdminUser
+The admin login. A new database gets the default login admin / admin, which the admin changes on the
+Admin Account screen.
+
+| Column | Type | Notes |
+|---|---|---|
+| AdminUserId | AutoNumber | Primary key |
+| UserName | Text(50) | Required, **unique**; not case sensitive at sign in |
+| PasswordHash | Text(255) | Required. Salted PBKDF2 SHA-256 hash (`pbkdf2-sha256$iterations$salt$hash`); the password itself is never stored |
+| Email | Text(150) | Receives a copy (CC) of every email sent to parents |
+| Phone | Text(20) | |
+| CreatedDate | Date/Time | Required |
+| UpdatedDate | Date/Time | |
 
 ### AppSetting
 Application settings as key and value pairs (Phase 11).

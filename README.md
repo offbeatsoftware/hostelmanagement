@@ -35,8 +35,9 @@ NuGet packages: `System.Data.OleDb` 8.0.1, `PDFsharp` 6.2.4 (MIT licence, PDFs) 
 
 The application opens with a sign in screen, where the admin also chooses the hostel to work on. The hostel
 can be changed at any time in the box at the top right of the main window; colleges, rooms, students and
-billing screens show only the selected hostel. Hostels are added on the **Hostels** screen. Temporary fixed credentials: user name **admin**, password **admin**
-(the user name is not case sensitive). A changeable password will replace this before go-live.
+billing screens show only the selected hostel. Hostels are added on the **Hostels** screen. A new database starts with user name **admin** and password **admin**
+(the user name is not case sensitive). Change the password straight away on **Settings > Admin Account**, where the
+admin's email and phone are also kept; that email receives a copy of every email sent to parents.
 
 ## Automated tests
 

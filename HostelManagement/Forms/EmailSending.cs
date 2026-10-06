@@ -57,9 +57,10 @@ internal static class EmailSending
     {
         if (failures.Count == 0)
         {
-            Dialogs.Info(emails.Count == 1
+            string copy = emails[0].CopyToEmail.Length > 0 ? $" A copy went to {emails[0].CopyToEmail}." : "";
+            Dialogs.Info((emails.Count == 1
                 ? $"The email was sent to {emails[0].RecipientName} ({emails[0].RecipientEmail})."
-                : $"{sent} emails were sent.");
+                : $"{sent} emails were sent.") + copy);
             return;
         }
 

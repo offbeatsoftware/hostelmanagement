@@ -19,7 +19,7 @@ public static class DatabaseSchema
     /// Increase by one whenever a table or column changes, so databases with an older
     /// layout are detected at startup. Stored in the SchemaInfo table.
     /// </summary>
-    public const int Version = 9;
+    public const int Version = 10;
 
     /// <summary>
     /// The sharing types added to every new hostel. Capacity always equals the sharing type
@@ -242,6 +242,19 @@ public static class DatabaseSchema
                 [ErrorMessage]   TEXT(255),
                 CONSTRAINT [FK_EmailHistory_Student] FOREIGN KEY ([StudentId]) REFERENCES [Student] ([StudentId]),
                 CONSTRAINT [FK_EmailHistory_Invoice] FOREIGN KEY ([InvoiceId]) REFERENCES [Invoice] ([InvoiceId])
+            )
+            """),
+
+        new("AdminUser", """
+            CREATE TABLE [AdminUser] (
+                [AdminUserId]  COUNTER CONSTRAINT [PK_AdminUser] PRIMARY KEY,
+                [UserName]     TEXT(50) NOT NULL,
+                [PasswordHash] TEXT(255) NOT NULL,
+                [Email]        TEXT(150),
+                [Phone]        TEXT(20),
+                [CreatedDate]  DATETIME NOT NULL,
+                [UpdatedDate]  DATETIME,
+                CONSTRAINT [UQ_AdminUser_UserName] UNIQUE ([UserName])
             )
             """),
 

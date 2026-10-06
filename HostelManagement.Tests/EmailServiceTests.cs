@@ -146,6 +146,33 @@ public sealed class EmailServiceTests : TestDatabase
     }
 
     [Fact]
+    public void EveryEmail_IsCopiedToTheAdmin()
+    {
+        SetUpGmail();
+        AuthService.SaveContact("owner@gmail.com", "98290 12345");
+        Invoice invoice = Invoice(StudentInRoom("Aman"), Previous, daysAgo: 1);
+        EmailSettings settings = EmailSettingsService.Get();
+        settings.Invoice = new EmailTemplate("Invoice {InvoiceNumber}", "Questions? Call {AdminPhone} or write to {AdminEmail}.");
+        EmailSettingsService.Save(settings);
+
+        OutgoingEmail email = EmailService.PrepareInvoice(invoice.InvoiceId);
+
+        Assert.Equal("owner@gmail.com", email.CopyToEmail);
+        Assert.Equal("Questions? Call 98290 12345 or write to owner@gmail.com.", email.Body);
+        Payment payment = PaymentService.Record(new Payment { InvoiceId = invoice.InvoiceId, PaymentDate = Today, Amount = 100m });
+        Assert.Equal("owner@gmail.com", EmailService.PrepareReceipt(payment.PaymentId).CopyToEmail);
+    }
+
+    [Fact]
+    public void NoAdminEmail_NoCopy()
+    {
+        SetUpGmail();
+        Invoice invoice = Invoice(StudentInRoom("Aman"), Previous, daysAgo: 1);
+
+        Assert.Equal("", EmailService.PrepareInvoice(invoice.InvoiceId).CopyToEmail);
+    }
+
+    [Fact]
     public void FailedEmail_IsLoggedWithAMessageTheAdminCanActOn()
     {
         SetUpGmail();

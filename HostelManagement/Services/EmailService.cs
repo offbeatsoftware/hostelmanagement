@@ -30,6 +30,10 @@ public sealed class SmtpEmailSender : IEmailSender
             BodyEncoding = Encoding.UTF8,
         };
         message.To.Add(new MailAddress(email.RecipientEmail, email.RecipientName));
+        if (email.CopyToEmail.Length > 0)
+        {
+            message.CC.Add(new MailAddress(email.CopyToEmail));
+        }
         foreach (string path in email.AttachmentPaths)
         {
             message.Attachments.Add(new Attachment(path, "application/pdf"));
@@ -214,13 +218,26 @@ public static class EmailService
             ? parent
             : throw new ValidationException($"{student.StudentName} has no primary parent with an email address.");
 
-    private static Dictionary<string, string> CommonValues(Student student, Parent parent, Hostel hostel) => new()
+    private static Dictionary<string, string> CommonValues(Student student, Parent parent, Hostel hostel)
     {
-        ["StudentName"] = student.StudentName,
-        ["ParentName"] = parent.ParentName,
-        ["HostelName"] = hostel.HostelName,
-        ["HostelPhone"] = hostel.Phone,
-    };
+        AdminUser? admin = AdminUserRepository.GetFirst();
+        return new Dictionary<string, string>
+        {
+            ["StudentName"] = student.StudentName,
+            ["ParentName"] = parent.ParentName,
+            ["HostelName"] = hostel.HostelName,
+            ["HostelPhone"] = hostel.Phone,
+            ["AdminEmail"] = admin?.Email ?? string.Empty,
+            ["AdminPhone"] = admin?.Phone ?? string.Empty,
+        };
+    }
+
+    /// <summary>The admin gets a copy of every email to a parent, unless the parent's address is the admin's own.</summary>
+    private static string CopyTo(string recipient)
+    {
+        string admin = AuthService.GetAdminEmail();
+        return admin.Equals(recipient, StringComparison.OrdinalIgnoreCase) ? string.Empty : admin;
+    }
 
     private static OutgoingEmail Build(string type, EmailTemplate template, Dictionary<string, string> values, Student student,
         Parent parent, List<int> invoiceIds, List<string> attachments) => new()
@@ -231,6 +248,7 @@ public static class EmailService
         InvoiceIds = invoiceIds,
         RecipientEmail = parent.Email,
         RecipientName = parent.ParentName,
+        CopyToEmail = CopyTo(parent.Email),
         Subject = EmailSettingsService.Fill(template.Subject, values).ReplaceLineEndings(" ").Trim(),
         Body = EmailSettingsService.Fill(template.Body, values).Trim(),
         AttachmentPaths = attachments,

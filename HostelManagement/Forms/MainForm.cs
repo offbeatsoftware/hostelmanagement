@@ -117,6 +117,8 @@ public partial class MainForm : Form
         new("BILLING", "Reports", "Student, room, payment and dues reports.",
             hostel => new ReportsView(hostel!), RequiresHostel: true),
 
+        new("SETTINGS", "Admin Account", "Change the password, and the admin's email and phone.",
+            _ => new AdminAccountView()),
         new("SETTINGS", "Email Settings", "Gmail account, email texts and the history of emails sent.",
             _ => new EmailSettingsView()),
         new("SETTINGS", "Backup / Restore", "Back up the database, photos and documents, and restore a backup.",

@@ -15,12 +15,14 @@ namespace HostelManagement.Services;
 /// </summary>
 public static partial class EmailSettingsService
 {
+    private static readonly string[] CommonFields = ["StudentName", "ParentName", "HostelName", "HostelPhone", "AdminEmail", "AdminPhone"];
+
     /// <summary>The {Fields} that can be used in each kind of email.</summary>
     public static IReadOnlyDictionary<string, IReadOnlyList<string>> Fields { get; } = new Dictionary<string, IReadOnlyList<string>>
     {
-        [EmailType.Invoice] = ["StudentName", "ParentName", "HostelName", "HostelPhone", "InvoiceNumber", "Period", "Amount", "DueDate", "Pending"],
-        [EmailType.Receipt] = ["StudentName", "ParentName", "HostelName", "HostelPhone", "InvoiceNumber", "ReceiptNumber", "PaidAmount", "PaymentDate", "PaymentMethod", "Pending"],
-        [EmailType.DueReminder] = ["StudentName", "ParentName", "HostelName", "HostelPhone", "InvoiceList", "Pending", "Overdue"],
+        [EmailType.Invoice] = [.. CommonFields, "InvoiceNumber", "Period", "Amount", "DueDate", "Pending"],
+        [EmailType.Receipt] = [.. CommonFields, "InvoiceNumber", "ReceiptNumber", "PaidAmount", "PaymentDate", "PaymentMethod", "Pending"],
+        [EmailType.DueReminder] = [.. CommonFields, "InvoiceList", "Pending", "Overdue"],
     };
 
     private const string PasswordPrefix = "dpapi:";

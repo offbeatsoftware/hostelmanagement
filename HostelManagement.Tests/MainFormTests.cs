@@ -14,7 +14,7 @@ public sealed class MainFormTests : TestDatabase
         [
             "Dashboard", "Hostels", "Colleges", "Rooms", "Room Allocation", "Services", "Students",
             "Parents / Guardians", "Invoices", "Payments", "Pending Dues", "Reports",
-            "Email Settings", "Backup / Restore", "Application Settings",
+            "Admin Account", "Email Settings", "Backup / Restore", "Application Settings",
         ];
 
         Assert.Equal(expected, MainForm.BuildNavigation().Select(item => item.Title));
@@ -71,7 +71,7 @@ public sealed class MainFormTests : TestDatabase
             Assert.Single(content.Controls);
 
             List<Button> buttons = menu.Controls.OfType<Button>().ToList();
-            Assert.Equal(15, buttons.Count);
+            Assert.Equal(16, buttons.Count);
 
             foreach (Button button in buttons)
             {
