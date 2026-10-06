@@ -231,6 +231,8 @@ Rules (Phase 8):
 - Invoice number `SBH/2026-27/0001`: one running sequence per academic year, shared by all hostels so that every
   number is unique.
 - An invoice can be deleted only while it has no payments and no emails.
+- Payment is due 15 days after the invoice date (calculated, not stored). An unpaid or partly paid invoice after
+  that date is **overdue**; no late fee is charged. Pending dues include students who have left (Phase 10).
 - Invoice PDFs are saved in the `Invoices` folder next to the application.
 
 ### InvoiceItem

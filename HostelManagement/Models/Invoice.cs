@@ -6,6 +6,9 @@ public static class InvoiceStatus
     public const string Unpaid = "Unpaid";
     public const string PartlyPaid = "Partly paid";
     public const string Paid = "Paid";
+
+    /// <summary>Not a stored status: unpaid or partly paid after the due date (used as a filter).</summary>
+    public const string Overdue = "Overdue";
 }
 
 /// <summary>
@@ -29,6 +32,16 @@ public sealed class Invoice
     public decimal PendingAmount => TotalAmount - PaidAmount;
 
     public string PeriodText => $"{BillingFrom:MMM yyyy} to {BillingTo:MMM yyyy}";
+
+    /// <summary>Payment is due within this many days of the invoice date (client decision, Phase 10).</summary>
+    public const int PaymentDueDays = 15;
+
+    public DateTime DueDate => InvoiceDate.Date.AddDays(PaymentDueDays);
+
+    /// <summary>Days after the due date that the invoice is still not fully paid (0 when not overdue).</summary>
+    public int DaysOverdue(DateTime asOf) => PendingAmount > 0 && asOf.Date > DueDate ? (asOf.Date - DueDate).Days : 0;
+
+    public bool IsOverdue => DaysOverdue(DateTime.Today) > 0;
 
     public string Status => PaidAmount <= 0 ? InvoiceStatus.Unpaid
         : PendingAmount <= 0 ? InvoiceStatus.Paid

@@ -4,7 +4,7 @@ A single admin Windows desktop application for managing a private student hostel
 
 **Stack:** C# · .NET 8 · Windows Forms · Microsoft Access (.accdb) · System.Data.OleDb
 
-**Status:** Phase 9 (payments and receipts), with several hostels. Module screens show a placeholder until their phase is built.
+**Status:** Phase 10 (pending dues), with several hostels. Module screens show a placeholder until their phase is built.
 
 ## Requirements
 
@@ -76,6 +76,7 @@ automatically on first start:
 | `Backups`            | Database backups                                |
 | `Invoices`           | Invoice PDFs (`Invoice_SBH-2026-27-0001.pdf`)   |
 | `Receipts`           | Receipt PDFs (`Receipt_SBH-R-2026-27-0001.pdf`) |
+| `Reports`            | Exported reports such as the pending dues PDF   |
 | `Logs`               | Technical error logs (`app-yyyyMMdd.log`)       |
 
 **Installation note:** Windows does not let normal users write inside `C:\Program Files`, so the application

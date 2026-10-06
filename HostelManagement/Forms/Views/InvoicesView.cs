@@ -39,7 +39,7 @@ public sealed class InvoicesView : UserControl
         _searchBox.TextChanged += (_, _) => ShowInvoices();
 
         _statusFilter = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 130, Margin = new Padding(0, 4, 16, 0) };
-        _statusFilter.Items.AddRange([AllStatuses, InvoiceStatus.Unpaid, InvoiceStatus.PartlyPaid, InvoiceStatus.Paid]);
+        _statusFilter.Items.AddRange([AllStatuses, InvoiceStatus.Unpaid, InvoiceStatus.PartlyPaid, InvoiceStatus.Overdue, InvoiceStatus.Paid]);
         _statusFilter.SelectedIndex = 0;
         _statusFilter.SelectedIndexChanged += (_, _) => ShowInvoices();
 
@@ -78,6 +78,7 @@ public sealed class InvoicesView : UserControl
         FormFields.AddGridColumn(_grid, nameof(Invoice.InvoiceDate), "Date", 9, format: "dd MMM yyyy");
         FormFields.AddGridColumn(_grid, nameof(Invoice.StudentName), "Student", 18);
         FormFields.AddGridColumn(_grid, nameof(Invoice.PeriodText), "Billing period", 15);
+        FormFields.AddGridColumn(_grid, nameof(Invoice.DueDate), "Due date", 9, format: "dd MMM yyyy");
         FormFields.AddGridColumn(_grid, nameof(Invoice.TotalAmount), "Total", 11, format: "C2", alignRight: true);
         FormFields.AddGridColumn(_grid, nameof(Invoice.PaidAmount), "Paid", 11, format: "C2", alignRight: true);
         FormFields.AddGridColumn(_grid, nameof(Invoice.PendingAmount), "Pending", 11, format: "C2", alignRight: true);
@@ -128,7 +129,9 @@ public sealed class InvoicesView : UserControl
         }
         if (_statusFilter.SelectedItem is string status && status != AllStatuses)
         {
-            invoices = invoices.Where(i => i.Status == status);
+            invoices = status == InvoiceStatus.Overdue
+                ? invoices.Where(i => i.IsOverdue)
+                : invoices.Where(i => i.Status == status);
         }
 
         List<Invoice> shown = invoices.ToList();

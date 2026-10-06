@@ -82,7 +82,7 @@ public partial class MainForm : Form
         new("BILLING", "Payments", "Record payments against invoices.",
             hostel => new PaymentsView(hostel!), RequiresHostel: true),
         new("BILLING", "Pending Dues", "Outstanding invoice balances and reminders.",
-            _ => PlaceholderView.Create("Pending Dues", "Phase 10"), RequiresHostel: true),
+            hostel => new PendingDuesView(hostel!), RequiresHostel: true),
         new("BILLING", "Reports", "Student, room, payment and dues reports.",
             _ => PlaceholderView.Create("Reports", "Phase 13"), RequiresHostel: true),
 

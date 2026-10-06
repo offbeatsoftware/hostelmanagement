@@ -89,6 +89,7 @@ public static class InvoicePdfWriter
                      ("Invoice number", invoice.InvoiceNumber),
                      ("Invoice date", invoice.InvoiceDate.ToString("dd MMM yyyy", CultureInfo.InvariantCulture)),
                      ("Billing period", $"{invoice.BillingFrom:dd MMM yyyy} to {invoice.BillingTo:dd MMM yyyy}"),
+                     ("Due date", invoice.DueDate.ToString("dd MMM yyyy", CultureInfo.InvariantCulture)),
                      ("Status", invoice.Status),
                  })
         {
