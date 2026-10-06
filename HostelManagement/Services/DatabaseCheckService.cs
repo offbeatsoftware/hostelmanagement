@@ -68,46 +68,46 @@ public static class DatabaseCheckService
             : new("Check tables", false, "Missing: " + string.Join(", ", missing));
     }
 
-    // Uses the Service table because it has no dependencies on other tables.
+    // Uses the Hostel table because it does not depend on other tables.
     private static void RunCrudSteps(OleDbConnection connection, OleDbTransaction transaction,
         List<DatabaseCheckStep> steps)
     {
         string testName = $"DATABASE CHECK {Guid.NewGuid():N}"[..30];
 
         int id = Db.Insert(connection, transaction,
-            "INSERT INTO [Service] ([ServiceName], [Rate], [IsActive]) VALUES (?, ?, ?)",
-            Db.Param("@ServiceName", testName),
-            Db.Param("@Rate", 100.50m),
-            Db.Param("@IsActive", false));
+            "INSERT INTO [Hostel] ([HostelName], [Phone], [BillingFrequency], [CreatedDate]) VALUES (?, ?, ?, ?)",
+            Db.Param("@HostelName", testName),
+            Db.Param("@Phone", "1111111111"),
+            Db.Param("@BillingFrequency", "HalfYearly"),
+            Db.Param("@CreatedDate", DateTime.Now));
         steps.Add(new("Insert test record", id > 0, $"Inserted test record with id {id}."));
 
-        decimal? rate = ReadRate(connection, transaction, id, testName);
-        steps.Add(rate == 100.50m
+        string? phone = ReadPhone(connection, transaction, id, testName);
+        steps.Add(phone == "1111111111"
             ? new("Read test record", true, "Test record read back with the correct values.")
             : new("Read test record", false, "The test record was not read back correctly."));
 
         int updated = Db.Execute(connection, transaction,
-            "UPDATE [Service] SET [Rate] = ? WHERE [ServiceId] = ?",
-            Db.Param("@Rate", 250.75m),
-            Db.Param("@ServiceId", id));
-        bool updateOk = updated == 1 && ReadRate(connection, transaction, id, testName) == 250.75m;
+            "UPDATE [Hostel] SET [Phone] = ? WHERE [HostelId] = ?",
+            Db.Param("@Phone", "2222222222"),
+            Db.Param("@HostelId", id));
+        bool updateOk = updated == 1 && ReadPhone(connection, transaction, id, testName) == "2222222222";
         steps.Add(new("Update test record", updateOk,
             updateOk ? "Test record updated and verified." : "The update could not be verified."));
 
         int deleted = Db.Execute(connection, transaction,
-            "DELETE FROM [Service] WHERE [ServiceId] = ?",
-            Db.Param("@ServiceId", id));
-        bool deleteOk = deleted == 1 && ReadRate(connection, transaction, id, testName) is null;
+            "DELETE FROM [Hostel] WHERE [HostelId] = ?",
+            Db.Param("@HostelId", id));
+        bool deleteOk = deleted == 1 && ReadPhone(connection, transaction, id, testName) is null;
         steps.Add(new("Delete test record", deleteOk,
             deleteOk ? "Test record deleted and verified." : "The delete could not be verified."));
     }
 
-    private static decimal? ReadRate(OleDbConnection connection, OleDbTransaction transaction, int id, string name) =>
+    private static string? ReadPhone(OleDbConnection connection, OleDbTransaction transaction, int id, string name) =>
         Db.Query(connection, transaction,
-                "SELECT [Rate] FROM [Service] WHERE [ServiceId] = ? AND [ServiceName] = ?",
-                record => record.GetMoney("Rate"),
-                Db.Param("@ServiceId", id),
-                Db.Param("@ServiceName", name))
-            .Cast<decimal?>()
+                "SELECT [Phone] FROM [Hostel] WHERE [HostelId] = ? AND [HostelName] = ?",
+                record => record.GetText("Phone"),
+                Db.Param("@HostelId", id),
+                Db.Param("@HostelName", name))
             .FirstOrDefault();
 }

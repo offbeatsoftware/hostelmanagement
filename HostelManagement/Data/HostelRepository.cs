@@ -21,21 +21,25 @@ public static class HostelRepository
 
     public static int Insert(OleDbConnection connection, OleDbTransaction transaction, Hostel hostel) =>
         Db.Insert(connection, transaction,
-            "INSERT INTO [Hostel] ([HostelName], [Address], [Phone], [Email], [CreatedDate]) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO [Hostel] ([HostelName], [Address], [Phone], [Email], [BillingFrequency], [CreatedDate]) " +
+            "VALUES (?, ?, ?, ?, ?, ?)",
             Db.Param("@HostelName", hostel.HostelName),
             Db.OptionalText("@Address", hostel.Address),
             Db.OptionalText("@Phone", hostel.Phone),
             Db.OptionalText("@Email", hostel.Email),
+            Db.Param("@BillingFrequency", hostel.BillingFrequency),
             Db.Param("@CreatedDate", hostel.CreatedDate));
 
     public static int Update(Hostel hostel) =>
         Db.Execute(
-            "UPDATE [Hostel] SET [HostelName] = ?, [Address] = ?, [Phone] = ?, [Email] = ?, [UpdatedDate] = ? " +
+            "UPDATE [Hostel] SET [HostelName] = ?, [Address] = ?, [Phone] = ?, [Email] = ?, [BillingFrequency] = ?, " +
+            "[UpdatedDate] = ? " +
             "WHERE [HostelId] = ?",
             Db.Param("@HostelName", hostel.HostelName),
             Db.OptionalText("@Address", hostel.Address),
             Db.OptionalText("@Phone", hostel.Phone),
             Db.OptionalText("@Email", hostel.Email),
+            Db.Param("@BillingFrequency", hostel.BillingFrequency),
             Db.Param("@UpdatedDate", hostel.UpdatedDate),
             Db.Param("@HostelId", hostel.HostelId));
 
@@ -57,6 +61,7 @@ public static class HostelRepository
         Address = record.GetText("Address"),
         Phone = record.GetText("Phone"),
         Email = record.GetText("Email"),
+        BillingFrequency = record.GetText("BillingFrequency"),
         CreatedDate = record.GetDate("CreatedDate"),
         UpdatedDate = record.GetNullableDate("UpdatedDate"),
         CollegeCount = record.GetInt("CollegeCount"),

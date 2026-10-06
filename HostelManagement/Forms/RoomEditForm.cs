@@ -128,7 +128,7 @@ public sealed class RoomEditForm : Form
     private void ShowCapacityAndRent()
     {
         _capacityRentLabel.Text = _sharingBox.SelectedItem is SharingType type
-            ? $"Capacity {type.Capacity}, rent {Money.Format(type.Rent)} per student"
+            ? $"Capacity {type.Capacity}, rent {Money.Format(type.Rent)} per student per year"
             : string.Empty;
     }
 

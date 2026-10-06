@@ -69,8 +69,8 @@ public partial class MainForm : Form
             hostel => new RoomsView(hostel!), RequiresHostel: true),
         new("HOSTEL", "Room Allocation", "Check-in, room transfer and check-out.",
             hostel => new AllocationsView(hostel!), RequiresHostel: true),
-        new("HOSTEL", "Services", "Additional services such as Wi-Fi and transport.",
-            _ => PlaceholderView.Create("Services", "Phase 7")),
+        new("HOSTEL", "Services", "Services included in the rent and extra services such as transport.",
+            hostel => new ServicesView(hostel!), RequiresHostel: true),
 
         new("STUDENTS", "Students", "Student records, parents, photos and Aadhaar cards.",
             hostel => new StudentsView(hostel!), RequiresHostel: true),

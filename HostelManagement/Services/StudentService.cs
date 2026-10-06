@@ -53,7 +53,13 @@ public static class StudentService
     /// Validates and saves a student together with the primary parent, then stores the photo and
     /// Aadhaar card. Everything is checked before anything is saved.
     /// </summary>
-    public static Student Save(Student input, Parent primaryParent, StudentFileChanges? files = null)
+    /// <param name="extraServiceIds">
+    /// The extra services (such as transport) the student uses, or null to leave them unchanged.
+    /// A newly selected service starts on the admission date for a new student and today otherwise;
+    /// a removed one ends today.
+    /// </param>
+    public static Student Save(Student input, Parent primaryParent, StudentFileChanges? files = null,
+        IReadOnlyCollection<int>? extraServiceIds = null)
     {
         files ??= new StudentFileChanges();
         Student student = Clean(input);
@@ -75,6 +81,10 @@ public static class StudentService
         if (files.NewAadhaarCardFile is not null)
         {
             StudentFileService.ValidateAadhaarCard(files.NewAadhaarCardFile);
+        }
+        if (extraServiceIds is not null)
+        {
+            ValidateExtraServices(student, extraServiceIds);
         }
 
         Db.InTransaction((connection, transaction) =>
@@ -99,6 +109,12 @@ public static class StudentService
                 ParentRepository.Update(connection, transaction, parent);
             }
             ParentRepository.SetPrimary(connection, transaction, student.StudentId, parent.ParentId);
+
+            if (extraServiceIds is not null)
+            {
+                DateTime startDate = existing is null ? student.AdmissionDate : DateTime.Today;
+                SaveExtraServices(connection, transaction, student.StudentId, extraServiceIds, startDate);
+            }
         });
 
         SaveFiles(student.StudentId, existing, files);
@@ -124,11 +140,56 @@ public static class StudentService
         Db.InTransaction((connection, transaction) =>
         {
             ParentRepository.DeleteForStudent(connection, transaction, studentId);
+            StudentServiceRepository.DeleteForStudent(connection, transaction, studentId);
             StudentRepository.Delete(connection, transaction, studentId);
         });
 
         StudentFileService.TryDelete(student.PhotoPath);
         StudentFileService.TryDelete(student.AadhaarCardPath);
+    }
+
+    /// <summary>The extra services the student uses now.</summary>
+    public static List<StudentServiceUse> GetCurrentServices(int studentId) =>
+        StudentServiceRepository.GetCurrentForStudent(studentId);
+
+    /// <summary>Selected services must be active extra services of the student's hostel.</summary>
+    private static void ValidateExtraServices(Student student, IReadOnlyCollection<int> serviceIds)
+    {
+        int hostelId = CollegeRepository.Get(student.CollegeId)?.HostelId ?? 0;
+        HashSet<int> allowed = ServiceItemService.GetActiveExtraServices(hostelId).Select(s => s.ServiceId).ToHashSet();
+        HashSet<int> current = student.StudentId > 0
+            ? StudentServiceRepository.GetCurrentForStudent(student.StudentId).Select(u => u.ServiceId).ToHashSet()
+            : [];
+
+        // A service already in use may stay selected even if it was made inactive later.
+        if (serviceIds.Any(id => !allowed.Contains(id) && !current.Contains(id)))
+        {
+            throw new ValidationException("Only active extra services of the student's hostel can be selected.");
+        }
+    }
+
+    private static void SaveExtraServices(System.Data.OleDb.OleDbConnection connection,
+        System.Data.OleDb.OleDbTransaction transaction, int studentId, IReadOnlyCollection<int> serviceIds, DateTime startDate)
+    {
+        List<StudentServiceUse> current = StudentServiceRepository.GetCurrentForStudent(studentId);
+
+        foreach (StudentServiceUse use in current.Where(u => !serviceIds.Contains(u.ServiceId)))
+        {
+            if (use.StartDate.Date >= DateTime.Today)
+            {
+                // Started today or later and removed again: it was never really used.
+                StudentServiceRepository.Delete(connection, transaction, use.StudentServiceId);
+            }
+            else
+            {
+                StudentServiceRepository.Stop(connection, transaction, use.StudentServiceId, DateTime.Today);
+            }
+        }
+
+        foreach (int serviceId in serviceIds.Distinct().Where(id => current.All(u => u.ServiceId != id)))
+        {
+            StudentServiceRepository.Start(connection, transaction, studentId, serviceId, startDate.Date);
+        }
     }
 
     private static void SaveFiles(int studentId, Student? existing, StudentFileChanges files)

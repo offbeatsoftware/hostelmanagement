@@ -19,7 +19,7 @@ public static class DatabaseSchema
     /// Increase by one whenever a table or column changes, so databases with an older
     /// layout are detected at startup. Stored in the SchemaInfo table.
     /// </summary>
-    public const int Version = 6;
+    public const int Version = 7;
 
     /// <summary>
     /// The sharing types added to every new hostel. Capacity always equals the sharing type
@@ -30,6 +30,17 @@ public static class DatabaseSchema
         ("Single", 1),
         ("Double", 2),
         ("Triple", 3),
+    ];
+
+    /// <summary>
+    /// The services added to every new hostel (client decision): Wi-Fi and laundry are included
+    /// in the room rent; transport is charged extra per month to the students who use it.
+    /// </summary>
+    public static IReadOnlyList<(string Name, bool IncludedInRent)> DefaultServices { get; } =
+    [
+        ("Wi-Fi", true),
+        ("Laundry", true),
+        ("Transport", false),
     ];
 
     public static IReadOnlyList<TableDefinition> Tables { get; } =
@@ -46,7 +57,8 @@ public static class DatabaseSchema
                 [HostelName]     TEXT(150) NOT NULL,
                 [Address]        TEXT(255),
                 [Phone]          TEXT(20),
-                [Email]          TEXT(150),
+                [Email]            TEXT(150),
+                [BillingFrequency] TEXT(20) NOT NULL,
                 [CreatedDate]    DATETIME NOT NULL,
                 [UpdatedDate]    DATETIME,
                 CONSTRAINT [UQ_Hostel_HostelName] UNIQUE ([HostelName])
@@ -148,11 +160,26 @@ public static class DatabaseSchema
 
         new("Service", """
             CREATE TABLE [Service] (
-                [ServiceId]   COUNTER CONSTRAINT [PK_Service] PRIMARY KEY,
-                [ServiceName] TEXT(100) NOT NULL,
-                [Rate]        CURRENCY NOT NULL,
-                [IsActive]    BIT NOT NULL,
-                CONSTRAINT [UQ_Service_ServiceName] UNIQUE ([ServiceName])
+                [ServiceId]        COUNTER CONSTRAINT [PK_Service] PRIMARY KEY,
+                [HostelId]         INTEGER NOT NULL,
+                [ServiceName]      TEXT(100) NOT NULL,
+                [IsIncludedInRent] BIT NOT NULL,
+                [MonthlyRate]      CURRENCY NOT NULL,
+                [IsActive]         BIT NOT NULL,
+                CONSTRAINT [UQ_Service_HostelName] UNIQUE ([HostelId], [ServiceName]),
+                CONSTRAINT [FK_Service_Hostel] FOREIGN KEY ([HostelId]) REFERENCES [Hostel] ([HostelId])
+            )
+            """),
+
+        new("StudentService", """
+            CREATE TABLE [StudentService] (
+                [StudentServiceId] COUNTER CONSTRAINT [PK_StudentService] PRIMARY KEY,
+                [StudentId]        INTEGER NOT NULL,
+                [ServiceId]        INTEGER NOT NULL,
+                [StartDate]        DATETIME NOT NULL,
+                [EndDate]          DATETIME,
+                CONSTRAINT [FK_StudentService_Student] FOREIGN KEY ([StudentId]) REFERENCES [Student] ([StudentId]),
+                CONSTRAINT [FK_StudentService_Service] FOREIGN KEY ([ServiceId]) REFERENCES [Service] ([ServiceId])
             )
             """),
 

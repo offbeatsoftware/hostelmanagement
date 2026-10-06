@@ -17,6 +17,8 @@ public sealed class RoomsView : UserControl
     private readonly TableLayoutPanel _rentFields;
     private readonly Dictionary<int, TextBox> _rentBoxes = new();
     private readonly Label _rentMessage;
+    private readonly Label _installmentLabel;
+    private readonly string _billingFrequency;
 
     private readonly TextBox _searchBox;
     private readonly ComboBox _filterBox;
@@ -31,6 +33,7 @@ public sealed class RoomsView : UserControl
     public RoomsView(Hostel hostel)
     {
         _hostelId = hostel.HostelId;
+        _billingFrequency = hostel.BillingFrequency;
         Dock = DockStyle.Fill;
         BackColor = UiTheme.ContentBackground;
 
@@ -48,9 +51,17 @@ public sealed class RoomsView : UserControl
             AutoSize = true,
             Dock = DockStyle.Top,
         };
+        _installmentLabel = new Label
+        {
+            AutoSize = true,
+            ForeColor = UiTheme.TextMuted,
+            Font = UiTheme.BodyFont,
+            Margin = new Padding(0, 4, 0, 0),
+        };
         rentBody.Controls.Add(_rentFields);
+        rentBody.Controls.Add(_installmentLabel);
         rentBody.Controls.Add(FormFields.CreateButtonRow(saveRentButton, _rentMessage));
-        Panel rentCard = FormFields.CreateCard("Rent per student by sharing type", rentBody);
+        Panel rentCard = FormFields.CreateCard("Yearly rent per student by sharing type", rentBody);
         rentCard.Dock = DockStyle.Top;
         rentCard.AutoSize = true;
 
@@ -103,7 +114,7 @@ public sealed class RoomsView : UserControl
         FormFields.AddGridColumn(_roomGrid, nameof(Room.Capacity), "Capacity", 8, alignRight: true);
         FormFields.AddGridColumn(_roomGrid, nameof(Room.Occupied), "Occupied", 8, alignRight: true);
         FormFields.AddGridColumn(_roomGrid, nameof(Room.Available), "Available", 8, alignRight: true);
-        FormFields.AddGridColumn(_roomGrid, nameof(Room.Rent), "Rent / student", 12, format: "C2", alignRight: true);
+        FormFields.AddGridColumn(_roomGrid, nameof(Room.Rent), "Rent / year", 12, format: "C2", alignRight: true);
         FormFields.AddGridColumn(_roomGrid, nameof(Room.Status), "Status", 9);
         FormFields.AddGridColumn(_roomGrid, nameof(Room.Remarks), "Remarks", 25);
         _roomGrid.CellFormatting += FormatRoomCell;
@@ -161,10 +172,19 @@ public sealed class RoomsView : UserControl
         }
         _rentFields.ResumeLayout();
 
+        // Show what each invoice will charge: the yearly rent split into the hostel's installments.
+        string periods = string.Join(", ", BillingPeriods.ForAcademicYear(DateTime.Today, _billingFrequency)
+            .Select(p => $"{p.From:MMM} to {p.To:MMM}"));
+        string amounts = string.Join(", ", _sharingTypes.Select(t =>
+            $"{t.SharingName} {Money.Format(BillingPeriods.InstallmentAmount(t.Rent, _billingFrequency))}"));
+        _installmentLabel.Text =
+            $"Billed {BillingFrequency.DisplayName(_billingFrequency).ToLowerInvariant()} ({periods}).\n" +
+            $"Per installment: {amounts}.";
+
         if (_sharingTypes.Any(type => type.Rent == 0))
         {
             _rentMessage.ForeColor = UiTheme.TextMuted;
-            _rentMessage.Text = "Enter the rent for each sharing type and click Save Rent.";
+            _rentMessage.Text = "Enter the yearly rent for each sharing type and click Save Rent.";
         }
     }
 

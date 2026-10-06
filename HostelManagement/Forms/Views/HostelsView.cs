@@ -41,6 +41,7 @@ public sealed class HostelsView : UserControl
         FormFields.AddGridColumn(_hostelGrid, nameof(Hostel.Address), "Address", 30);
         FormFields.AddGridColumn(_hostelGrid, nameof(Hostel.Phone), "Phone", 12);
         FormFields.AddGridColumn(_hostelGrid, nameof(Hostel.Email), "Email", 18);
+        FormFields.AddGridColumn(_hostelGrid, nameof(Hostel.BillingText), "Billing", 11);
         FormFields.AddGridColumn(_hostelGrid, nameof(Hostel.CollegeCount), "Colleges", 7, alignRight: true);
         FormFields.AddGridColumn(_hostelGrid, nameof(Hostel.RoomCount), "Rooms", 7, alignRight: true);
         _hostelGrid.CellDoubleClick += (_, e) =>

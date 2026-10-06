@@ -23,6 +23,6 @@ public sealed class DatabaseCheckServiceTests : TestDatabase
         DatabaseCheckService.Run();
         DatabaseCheckService.Run();
 
-        Assert.Equal(0, Count("Service"));
+        Assert.Equal(0, Count("Hostel"));
     }
 }

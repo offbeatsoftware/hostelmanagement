@@ -219,7 +219,8 @@ public sealed class StudentsView : UserControl
             return;
         }
 
-        using var dialog = new StudentEditForm(_colleges);
+        using var dialog = new StudentEditForm(_colleges, null, null,
+            ServiceItemService.GetActiveExtraServices(_hostelId), ServiceItemService.GetIncludedServices(_hostelId));
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
             _searchBox.Clear();
@@ -244,7 +245,15 @@ public sealed class StudentsView : UserControl
                 return;
             }
 
-            using var dialog = new StudentEditForm(_colleges, student, StudentService.GetPrimaryParent(student.StudentId));
+            // Offer the active extra services plus any the student still uses that were made inactive later.
+            List<StudentServiceUse> uses = StudentService.GetCurrentServices(student.StudentId);
+            List<ServiceItem> allServices = ServiceItemService.GetServices(_hostelId);
+            List<ServiceItem> extraServices = allServices
+                .Where(s => !s.IsIncludedInRent && (s.IsActive || uses.Any(u => u.ServiceId == s.ServiceId)))
+                .ToList();
+
+            using var dialog = new StudentEditForm(_colleges, student, StudentService.GetPrimaryParent(student.StudentId),
+                extraServices, ServiceItemService.GetIncludedServices(_hostelId), uses.Select(u => u.ServiceId).ToList());
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 LoadStudents(student.StudentId);

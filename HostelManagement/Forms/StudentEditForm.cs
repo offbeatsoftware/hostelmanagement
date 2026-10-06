@@ -50,10 +50,18 @@ public sealed class StudentEditForm : Form
     private string? _newAadhaarCardFile;
     private bool _removeAadhaarCard;
 
+    // Services tab
+    private readonly CheckedListBox _servicesList;
+
     private readonly TabControl _tabs;
     private readonly Label _messageLabel;
 
-    public StudentEditForm(IReadOnlyList<College> colleges, Student? student = null, Parent? primaryParent = null)
+    /// <param name="extraServices">Extra services the student can use (active ones plus any already in use).</param>
+    /// <param name="includedServices">Services included in the rent, shown for information.</param>
+    /// <param name="currentServiceIds">The extra services the student uses now.</param>
+    public StudentEditForm(IReadOnlyList<College> colleges, Student? student = null, Parent? primaryParent = null,
+        IReadOnlyList<ServiceItem>? extraServices = null, IReadOnlyList<ServiceItem>? includedServices = null,
+        IReadOnlyCollection<int>? currentServiceIds = null)
     {
         _studentId = student?.StudentId ?? 0;
         _parentId = primaryParent?.ParentId ?? 0;
@@ -166,6 +174,53 @@ public sealed class StudentEditForm : Form
             aadhaarHeading, _aadhaarCardStatus, chooseCardButton, _viewAadhaarCardButton, removeCardButton,
         ]);
         AddTab("Photo & Aadhaar", filesPanel);
+
+        // ---- Services ----
+        var servicesPanel = new Panel { Dock = DockStyle.Fill };
+        var includedLabel = new Label
+        {
+            AutoSize = true,
+            Location = new Point(10, 10),
+            MaximumSize = new Size(560, 0),
+            ForeColor = UiTheme.TextMuted,
+            Text = includedServices is { Count: > 0 }
+                ? "Included in the room rent: " + string.Join(", ", includedServices.Select(s => s.ServiceName)) + "."
+                : "No services are included in the room rent.",
+        };
+        var extraHeading = new Label
+        {
+            AutoSize = true,
+            Location = new Point(10, 45),
+            Font = UiTheme.BodyBoldFont,
+            Text = "Extra services used by this student (charged per month)",
+        };
+        _servicesList = new CheckedListBox
+        {
+            Location = new Point(10, 72),
+            Size = new Size(360, 150),
+            CheckOnClick = true,
+            Font = UiTheme.BodyFont,
+            DisplayMember = nameof(ServiceItem.ServiceName),
+        };
+        foreach (ServiceItem service in extraServices ?? [])
+        {
+            string text = $"{service.ServiceName}  ({Money.Format(service.MonthlyRate)} per month)";
+            _servicesList.Items.Add(new ServiceChoice(service.ServiceId, text),
+                currentServiceIds?.Contains(service.ServiceId) == true);
+        }
+        _servicesList.DisplayMember = nameof(ServiceChoice.Text);
+        var servicesNote = new Label
+        {
+            AutoSize = true,
+            Location = new Point(10, 232),
+            MaximumSize = new Size(560, 0),
+            ForeColor = UiTheme.TextMuted,
+            Text = extraServices is { Count: > 0 }
+                ? "A ticked service is charged from today (from the admission date for a new student); unticking stops it today."
+                : "This hostel has no active extra services. Add them on the Services screen.",
+        };
+        servicesPanel.Controls.AddRange([includedLabel, extraHeading, _servicesList, servicesNote]);
+        AddTab("Services", servicesPanel);
 
         // ---- Buttons ----
         _messageLabel = FormFields.CreateMessageLabel();
@@ -439,7 +494,8 @@ public sealed class StudentEditForm : Form
                     Email = _parentEmailBox.Text,
                     Address = _parentAddressBox.Text,
                 },
-                new StudentFileChanges(_newPhotoFile, _removePhoto, _newAadhaarCardFile, _removeAadhaarCard));
+                new StudentFileChanges(_newPhotoFile, _removePhoto, _newAadhaarCardFile, _removeAadhaarCard),
+                _servicesList.CheckedItems.Cast<ServiceChoice>().Select(c => c.ServiceId).ToList());
 
             DialogResult = DialogResult.OK;
             Close();
@@ -452,5 +508,11 @@ public sealed class StudentEditForm : Form
         {
             ErrorHandler.Handle(ex, "The student could not be saved.");
         }
+    }
+
+    /// <summary>An item in the extra services list.</summary>
+    private sealed record ServiceChoice(int ServiceId, string Text)
+    {
+        public override string ToString() => Text;
     }
 }

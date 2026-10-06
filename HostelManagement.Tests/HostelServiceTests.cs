@@ -50,6 +50,20 @@ public sealed class HostelServiceTests : TestDatabase
     }
 
     [Fact]
+    public void Save_BillingFrequencyDefaultsToTwiceAYearAndCanBeChanged()
+    {
+        int id = AddHostel("Billing Hostel");
+        Assert.Equal(BillingFrequency.HalfYearly, HostelService.GetHostel(id)!.BillingFrequency);
+        Assert.Equal("Twice a year", HostelService.GetHostel(id)!.BillingText);
+
+        HostelService.Save(new Hostel { HostelId = id, HostelName = "Billing Hostel", BillingFrequency = BillingFrequency.Quarterly });
+
+        Assert.Equal("4 times a year", HostelService.GetHostel(id)!.BillingText);
+        Assert.Contains("twice a year or 4 times a year", Assert.Throws<ValidationException>(() =>
+            HostelService.Save(new Hostel { HostelId = id, HostelName = "Billing Hostel", BillingFrequency = "Monthly" })).Message);
+    }
+
+    [Fact]
     public void Save_EditUpdatesTheHostel()
     {
         int id = AddHostel("Old Name");
@@ -114,6 +128,7 @@ public sealed class HostelServiceTests : TestDatabase
 
         Assert.Empty(HostelService.GetHostels());
         Assert.Equal(0, Count("SharingType"));
+        Assert.Equal(0, Count("Service"));
     }
 
     [Fact]

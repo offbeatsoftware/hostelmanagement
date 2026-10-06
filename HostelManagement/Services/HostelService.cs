@@ -27,6 +27,7 @@ public static class HostelService
             Address = Validators.Clean(input.Address),
             Phone = Validators.Clean(input.Phone),
             Email = Validators.Clean(input.Email),
+            BillingFrequency = input.BillingFrequency,
         };
         Validate(hostel);
 
@@ -39,6 +40,7 @@ public static class HostelService
                 {
                     int id = HostelRepository.Insert(connection, transaction, hostel);
                     SharingTypeRepository.InsertDefaults(connection, transaction, id);
+                    ServiceItemRepository.InsertDefaults(connection, transaction, id);
                     return id;
                 });
             }
@@ -76,6 +78,7 @@ public static class HostelService
         Db.InTransaction((connection, transaction) =>
         {
             SharingTypeRepository.DeleteForHostel(connection, transaction, hostelId);
+            ServiceItemRepository.DeleteForHostel(connection, transaction, hostelId);
             HostelRepository.Delete(connection, transaction, hostelId);
         });
 
@@ -93,6 +96,10 @@ public static class HostelService
         Validators.CheckLength(hostel.Phone, 20, "Phone");
         Validators.CheckLength(hostel.Email, 150, "Email");
 
+        if (!BillingFrequency.All.Contains(hostel.BillingFrequency))
+        {
+            throw new ValidationException("Please select how often the hostel bills: twice a year or 4 times a year.");
+        }
         if (!Validators.IsValidPhoneOrEmpty(hostel.Phone))
         {
             throw new ValidationException("Please enter a valid phone number (digits, spaces, + and - only).");

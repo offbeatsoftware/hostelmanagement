@@ -38,7 +38,7 @@ Hostel 1──* Room
 
 ## Schema version
 
-The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **6**).
+The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **7**).
 At startup the application refuses a database with an older or newer version and explains what to do,
 instead of failing later with confusing errors. Increase the version whenever a table or column changes.
 
@@ -48,6 +48,7 @@ instead of failing later with confusing errors. Increase the version whenever a 
 | 2 | Phase 3: College table; Student.CollegeName replaced by Student.CollegeId; college columns removed from Hostel |
 | 3 | Phase 4: SharingType table (capacity and rent per sharing type); Room keeps only SharingTypeId |
 | 4 | Several hostels: HostelId on College, SharingType and Room; Student.CollegeId required |
+| 7 | Phase 7: Hostel.BillingFrequency; Service per hostel (included in rent or extra per month); StudentService |
 | 6 | Phase 6: Room.Gender (rooms are for boys or girls) |
 | 5 | Phase 5: full Aadhaar number and Aadhaar card file on Student; student mobile and admission date required; parent mobile and email required |
 
@@ -68,10 +69,16 @@ Any number of hostels.
 | Address | Text(255) | |
 | Phone | Text(20) | |
 | Email | Text(150) | |
+| BillingFrequency | Text(20) | Required: HalfYearly (twice a year) / Quarterly (4 times a year) |
 | CreatedDate | Date/Time | Required |
 | UpdatedDate | Date/Time | |
 
 A hostel can only be deleted when it has no colleges and no rooms.
+
+**Billing (client decisions, Phase 7):** rent is entered per **year** and billed in equal installments, twice
+or four times a year (chosen per hostel). Billing periods follow the academic year starting in **July**:
+Jul to Dec and Jan to Jun, or Jul to Sep, Oct to Dec, Jan to Mar and Apr to Jun. Extra services are charged
+per **month**.
 
 ### College
 Colleges whose students stay in a hostel.
@@ -96,7 +103,7 @@ Capacity always equals the sharing type and rent is per sharing type and hostel 
 | HostelId | Number | Required, → Hostel |
 | SharingName | Text(20) | Required, **unique within the hostel**: Single / Double / Triple |
 | Capacity | Number | Required: 1 / 2 / 3 |
-| Rent | Currency | Required; rent per student, set by the admin on the Rooms screen |
+| Rent | Currency | Required; **yearly** rent per student, set by the admin on the Rooms screen |
 
 ### Room
 | Column | Type | Notes |
@@ -178,12 +185,30 @@ Allocation rules (client decisions, Phase 6):
 - A student in a room cannot be set to Left or change gender on the Students screen.
 
 ### Service
+Services of a hostel. Every new hostel gets Wi-Fi and Laundry (included in the rent) and Transport
+(extra, monthly rate to be set).
+
 | Column | Type | Notes |
 |---|---|---|
 | ServiceId | AutoNumber | Primary key |
-| ServiceName | Text(100) | Required, **unique** |
-| Rate | Currency | Required |
+| HostelId | Number | Required, → Hostel |
+| ServiceName | Text(100) | Required, **unique within the hostel** |
+| IsIncludedInRent | Yes/No | Included in the rent (no charge) or charged extra |
+| MonthlyRate | Currency | Required; monthly charge per student for extra services, 0 when included |
 | IsActive | Yes/No | |
+
+A service in use cannot be made inactive or included in rent; a service any student has used cannot be deleted.
+
+### StudentService
+Extra services (such as transport) a student uses, for billing.
+
+| Column | Type | Notes |
+|---|---|---|
+| StudentServiceId | AutoNumber | Primary key |
+| StudentId | Number | Required, → Student |
+| ServiceId | Number | Required, → Service (an active extra service of the student's hostel) |
+| StartDate | Date/Time | Required; the admission date for a new student, otherwise the day it was ticked |
+| EndDate | Date/Time | Empty while in use; the day it was unticked |
 
 ### Invoice
 | Column | Type | Notes |
