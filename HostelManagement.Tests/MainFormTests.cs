@@ -195,13 +195,17 @@ public sealed class MainFormTests : TestDatabase
         Exception? failure = null;
         var thread = new Thread(() =>
         {
+            // An exception inside a window message (Load, a grid event, closing a screen) would otherwise end
+            // the whole test process; report it as a failure of this test instead.
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException, threadScope: true);
+            Application.ThreadException += (_, e) => failure ??= e.Exception;
             try
             {
                 action();
             }
             catch (Exception ex)
             {
-                failure = ex;
+                failure ??= ex;
             }
         });
         thread.SetApartmentState(ApartmentState.STA);

@@ -179,6 +179,12 @@ public sealed class PendingDuesView : UserControl
 
     private void ShowInvoices()
     {
+        // The students grid also reports a change while the screen is being closed.
+        if (IsDisposed || Disposing || _invoicesGrid.IsDisposed)
+        {
+            return;
+        }
+
         StudentDue? due = SelectedDue;
         _invoicesGrid.DataSource = due?.Invoices;
         _invoicesTitle.Text = due is null ? "Unpaid invoices" : $"Unpaid invoices of {due.StudentName}";
