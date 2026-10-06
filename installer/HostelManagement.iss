@@ -15,7 +15,7 @@
 #endif
 
 #define AppName "Hostel Management System"
-#define AppPublisher "Shri Balaji Hostel"
+#define AppPublisher "OffbeatSoftwaresolutions"
 #define AppExe "HostelManagement.exe"
 
 [Setup]
