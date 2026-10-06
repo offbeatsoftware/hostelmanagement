@@ -53,7 +53,7 @@ public sealed class ReportsView : UserControl
         _reportList.DrawItem += DrawReportItem;
         Panel listCard = FormFields.CreateCard("Report", _reportList);
         listCard.Dock = DockStyle.Left;
-        listCard.Width = 200;
+        listCard.Width = 170;
 
         // ---- Filters (only those of the chosen report are shown) ----
         DateTime today = DateTime.Today;
@@ -107,6 +107,9 @@ public sealed class ReportsView : UserControl
 
         _grid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
         UiTheme.StyleGrid(_grid);
+        // Columns as wide as their content, with a horizontal scroll bar for wide reports.
+        _grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
+        _grid.ScrollBars = ScrollBars.Both;
 
         var body = new Panel { Dock = DockStyle.Fill };
         body.Controls.Add(_grid);
@@ -212,7 +215,6 @@ public sealed class ReportsView : UserControl
                 var gridColumn = new DataGridViewTextBoxColumn
                 {
                     HeaderText = column.Header,
-                    FillWeight = (float)(column.Width * 100),
                     SortMode = DataGridViewColumnSortMode.NotSortable,
                 };
                 if (column.Kind is ReportValueKind.Money or ReportValueKind.Number)
@@ -237,8 +239,7 @@ public sealed class ReportsView : UserControl
 
             _report = report;
             _pdfButton.Enabled = _excelButton.Enabled = true;
-            _messageLabel.ForeColor = UiTheme.TextMuted;
-            _messageLabel.Text = string.Join(", ", report.Subtitles.Skip(1).Take(1));
+            _messageLabel.Text = string.Empty;
         }
         catch (ValidationException ex)
         {
