@@ -52,18 +52,14 @@ public sealed class ScreenshotTests : TestDatabase
 
         SeedSampleData();
         HostelContext.Select(HostelId);
-        Print("REPORTS", () =>
+        Print("REPORTS", () => new MainForm { WindowState = FormWindowState.Normal, Size = new Size(1280, 760) }, form =>
         {
-            var form = new MainForm { WindowState = FormWindowState.Normal, Size = new Size(1280, 760) };
-            form.Shown += (_, _) =>
-            {
-                Button reports = form.Controls.Find("navButtonsPanel", searchAllChildren: true).Single()
-                    .Controls.OfType<Button>().Single(b => b.Text == "Reports");
-                reports.PerformClick();
-                ListBox list = AllControls(form).OfType<ListBox>().Single();
-                list.SelectedIndex = 1; // Room occupancy
-            };
-            return form;
+            Button reports = form.Controls.Find("navButtonsPanel", searchAllChildren: true).Single()
+                .Controls.OfType<Button>().Single(b => b.Text == "Reports");
+            reports.PerformClick();
+            Application.DoEvents();
+            AllControls(form).OfType<ListBox>().Single().SelectedIndex = 1; // Room occupancy
+            Application.DoEvents();
         });
     }
 
@@ -109,7 +105,7 @@ public sealed class ScreenshotTests : TestDatabase
     }
 
     /// <summary>Shows the form, renders it to a small JPEG and writes it to the test output as base64.</summary>
-    private void Print(string name, Func<Form> createForm)
+    private void Print(string name, Func<Form> createForm, Action<Form>? afterShow = null)
     {
         string? base64 = null;
         Exception? failure = null;
@@ -120,6 +116,7 @@ public sealed class ScreenshotTests : TestDatabase
                 using Form form = createForm();
                 form.Show();
                 Application.DoEvents();
+                afterShow?.Invoke(form);
 
                 using var full = new Bitmap(form.ClientSize.Width, form.ClientSize.Height);
                 form.DrawToBitmap(full, new Rectangle(Point.Empty, full.Size));
