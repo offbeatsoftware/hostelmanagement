@@ -108,34 +108,22 @@ public sealed class ScreenshotTests : TestDatabase
     private void Print(string name, Func<Form> createForm, Action<Form>? afterShow = null)
     {
         string? base64 = null;
-        Exception? failure = null;
-        var thread = new Thread(() =>
+        UiThread.Run(() =>
         {
-            try
-            {
-                using Form form = createForm();
-                form.Show();
-                Application.DoEvents();
-                afterShow?.Invoke(form);
+            using Form form = createForm();
+            form.Show();
+            Application.DoEvents();
+            afterShow?.Invoke(form);
 
-                using var full = new Bitmap(form.ClientSize.Width, form.ClientSize.Height);
-                form.DrawToBitmap(full, new Rectangle(Point.Empty, full.Size));
-                using var small = new Bitmap(full, new Size(full.Width * 3 / 5, full.Height * 3 / 5));
-                using var stream = new MemoryStream();
-                small.Save(stream, ImageFormat.Jpeg);
-                base64 = Convert.ToBase64String(stream.ToArray());
-                form.Close();
-            }
-            catch (Exception ex)
-            {
-                failure = ex;
-            }
+            using var full = new Bitmap(form.ClientSize.Width, form.ClientSize.Height);
+            form.DrawToBitmap(full, new Rectangle(Point.Empty, full.Size));
+            using var small = new Bitmap(full, new Size(full.Width * 3 / 5, full.Height * 3 / 5));
+            using var stream = new MemoryStream();
+            small.Save(stream, ImageFormat.Jpeg);
+            base64 = Convert.ToBase64String(stream.ToArray());
+            form.Close();
         });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
 
-        Assert.Null(failure);
         _output.WriteLine($"SCREENSHOT-{name}-BEGIN{base64}SCREENSHOT-{name}-END");
     }
 }

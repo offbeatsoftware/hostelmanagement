@@ -190,35 +190,5 @@ public sealed class MainFormTests : TestDatabase
         });
     }
 
-    internal static void RunOnStaThread(Action action)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            // An exception inside a window message (Load, a grid event, closing a screen) would otherwise end
-            // the whole test process; report it as a failure of this test instead.
-            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException, threadScope: true);
-            Application.ThreadException += (_, e) => failure ??= e.Exception;
-            try
-            {
-                action();
-            }
-            catch (Exception ex)
-            {
-                failure ??= ex;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-
-        if (!thread.Join(TimeSpan.FromMinutes(2)))
-        {
-            throw new TimeoutException("The UI test did not finish (a message box may be open).");
-        }
-        if (failure is not null)
-        {
-            throw new Xunit.Sdk.XunitException($"UI test failed: {failure}");
-        }
-    }
+    internal static void RunOnStaThread(Action action) => UiThread.Run(action);
 }
