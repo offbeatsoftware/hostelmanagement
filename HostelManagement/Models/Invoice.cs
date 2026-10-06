@@ -34,6 +34,9 @@ public sealed class Invoice
         : PendingAmount <= 0 ? InvoiceStatus.Paid
         : InvoiceStatus.PartlyPaid;
 
+    /// <summary>How the invoice is shown when choosing it for a payment.</summary>
+    public string PickerText => $"{InvoiceNumber}   {StudentName}   (pending {Utilities.Money.Format(PendingAmount)})";
+
     public List<InvoiceItem> Items { get; set; } = [];
 }
 

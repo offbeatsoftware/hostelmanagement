@@ -38,7 +38,7 @@ Hostel 1──* Room
 
 ## Schema version
 
-The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **7**).
+The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **8**).
 At startup the application refuses a database with an older or newer version and explains what to do,
 instead of failing later with confusing errors. Increase the version whenever a table or column changes.
 
@@ -48,9 +48,10 @@ instead of failing later with confusing errors. Increase the version whenever a 
 | 2 | Phase 3: College table; Student.CollegeName replaced by Student.CollegeId; college columns removed from Hostel |
 | 3 | Phase 4: SharingType table (capacity and rent per sharing type); Room keeps only SharingTypeId |
 | 4 | Several hostels: HostelId on College, SharingType and Room; Student.CollegeId required |
-| 7 | Phase 7: Hostel.BillingFrequency; Service per hostel (included in rent or extra per month); StudentService |
-| 6 | Phase 6: Room.Gender (rooms are for boys or girls) |
 | 5 | Phase 5: full Aadhaar number and Aadhaar card file on Student; student mobile and admission date required; parent mobile and email required |
+| 6 | Phase 6: Room.Gender (rooms are for boys or girls) |
+| 7 | Phase 7: Hostel.BillingFrequency; Service per hostel (included in rent or extra per month); StudentService |
+| 8 | Phase 9: Payment.ReceiptNumber (unique) and Payment.CreatedDate; Payment.InvoiceId required |
 
 ## Tables
 
@@ -248,13 +249,23 @@ Invoice lines (rent and each service).
 | Column | Type | Notes |
 |---|---|---|
 | PaymentId | AutoNumber | Primary key |
-| StudentId | Number | Required, → Student |
-| InvoiceId | Number | → Invoice (see open questions) |
+| ReceiptNumber | Text(30) | Required, **unique**, for example `SBH/R/2026-27/0001` |
+| StudentId | Number | Required, → Student (the invoice's student) |
+| InvoiceId | Number | Required, → Invoice |
 | PaymentDate | Date/Time | Required, indexed |
 | Amount | Currency | Required |
-| PaymentMethod | Text(30) | Required |
-| Reference | Text(100) | |
+| PaymentMethod | Text(30) | Required: Cash / UPI / Bank transfer / Cheque |
+| Reference | Text(100) | Required for UPI, bank transfer and cheque |
 | Remarks | Text(255) | |
+| CreatedDate | Date/Time | Required; when the payment was entered |
+
+Rules (Phase 9):
+- Every payment is made against an invoice. Part payments are allowed; a payment can never be more than the
+  amount still pending, so there are no advance or extra payments.
+- The payment date cannot be in the future.
+- Receipt number `SBH/R/2026-27/0001`: one running sequence per academic year of the payment date.
+- A payment entered by mistake can be deleted; its amount becomes pending again on the invoice.
+- Receipt PDFs (with the amount in words) are saved in the `Receipts` folder next to the application.
 
 ### EmailHistory
 | Column | Type | Notes |
@@ -286,11 +297,6 @@ Invoice lines (rent and each service).
 | Student: `AadhaarReference` became `AadhaarNumber` + `AadhaarCardPath` | Client decision: store the full number and a scan of the card. |
 | Parent: added `IsPrimaryContact` | Invoice and reminder emails need one recipient when a student has several parents. |
 | EmailHistory: added `InvoiceId` | Shows which invoice an email was about. |
-
-## Open questions
-
-1. **Payments without an invoice (advance payments):** `Payment.InvoiceId` allows empty values so this is
-   possible later, but until confirmed the application will require an invoice for every payment.
 
 ## Changing the schema
 

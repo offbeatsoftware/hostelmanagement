@@ -19,7 +19,7 @@ public static class DatabaseSchema
     /// Increase by one whenever a table or column changes, so databases with an older
     /// layout are detected at startup. Stored in the SchemaInfo table.
     /// </summary>
-    public const int Version = 7;
+    public const int Version = 8;
 
     /// <summary>
     /// The sharing types added to every new hostel. Capacity always equals the sharing type
@@ -213,13 +213,16 @@ public static class DatabaseSchema
         new("Payment", """
             CREATE TABLE [Payment] (
                 [PaymentId]     COUNTER CONSTRAINT [PK_Payment] PRIMARY KEY,
+                [ReceiptNumber] TEXT(30) NOT NULL,
                 [StudentId]     INTEGER NOT NULL,
-                [InvoiceId]     INTEGER,
+                [InvoiceId]     INTEGER NOT NULL,
                 [PaymentDate]   DATETIME NOT NULL,
                 [Amount]        CURRENCY NOT NULL,
                 [PaymentMethod] TEXT(30) NOT NULL,
                 [Reference]     TEXT(100),
                 [Remarks]       TEXT(255),
+                [CreatedDate]   DATETIME NOT NULL,
+                CONSTRAINT [UQ_Payment_ReceiptNumber] UNIQUE ([ReceiptNumber]),
                 CONSTRAINT [FK_Payment_Student] FOREIGN KEY ([StudentId]) REFERENCES [Student] ([StudentId]),
                 CONSTRAINT [FK_Payment_Invoice] FOREIGN KEY ([InvoiceId]) REFERENCES [Invoice] ([InvoiceId])
             )

@@ -164,9 +164,7 @@ public sealed class InvoiceServiceTests : TestDatabase
         Invoice invoice = InvoiceService.Create(student, period);
         Assert.Equal(InvoiceStatus.Unpaid, InvoiceService.GetInvoices(HostelId).Single().Status);
 
-        Db.Execute("INSERT INTO [Payment] ([StudentId], [InvoiceId], [PaymentDate], [Amount], [PaymentMethod]) VALUES (?, ?, ?, ?, ?)",
-            Db.Param("@StudentId", student), Db.Param("@InvoiceId", invoice.InvoiceId), Db.Param("@PaymentDate", DateTime.Today),
-            Db.Param("@Amount", 20_000m), Db.Param("@PaymentMethod", "Cash"));
+        PaymentService.Record(new Payment { InvoiceId = invoice.InvoiceId, PaymentDate = DateTime.Today, Amount = 20_000m });
 
         Invoice listed = InvoiceService.GetInvoices(HostelId).Single();
         Assert.Equal(20_000m, listed.PaidAmount);

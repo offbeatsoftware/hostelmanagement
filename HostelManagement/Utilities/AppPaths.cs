@@ -20,6 +20,7 @@ public static class AppPaths
 
     public static string BackupsFolder => Path.Combine(DataFolder, "Backups");
     public static string InvoicesFolder => Path.Combine(DataFolder, "Invoices");
+    public static string ReceiptsFolder => Path.Combine(DataFolder, "Receipts");
     public static string LogsFolder => Path.Combine(DataFolder, "Logs");
 
     /// <summary>Creates any missing application folders. Safe to call on every start.</summary>
@@ -30,6 +31,7 @@ public static class AppPaths
         Directory.CreateDirectory(StudentDocumentsFolder);
         Directory.CreateDirectory(BackupsFolder);
         Directory.CreateDirectory(InvoicesFolder);
+        Directory.CreateDirectory(ReceiptsFolder);
         Directory.CreateDirectory(LogsFolder);
     }
 }

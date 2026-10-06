@@ -6,7 +6,7 @@ using HostelManagement.Utilities;
 
 namespace HostelManagement.Forms.Views;
 
-/// <summary>Invoices of the selected hostel: create, view/print as PDF, save PDF and delete.</summary>
+/// <summary>Invoices of the selected hostel: create, record a payment, view/print as PDF, save PDF and delete.</summary>
 public sealed class InvoicesView : UserControl
 {
     private const string AllStatuses = "All invoices";
@@ -15,6 +15,7 @@ public sealed class InvoicesView : UserControl
     private readonly TextBox _searchBox;
     private readonly ComboBox _statusFilter;
     private readonly DataGridView _grid;
+    private readonly Button _payButton;
     private readonly Button _viewButton;
     private readonly Button _saveButton;
     private readonly Button _deleteButton;
@@ -46,6 +47,11 @@ public sealed class InvoicesView : UserControl
         UiTheme.StylePrimaryButton(createButton);
         createButton.Click += (_, _) => CreateInvoice();
 
+        _payButton = new Button { Text = "Record Payment" };
+        UiTheme.StyleSecondaryButton(_payButton);
+        _payButton.Width = 140;
+        _payButton.Click += (_, _) => RecordPayment();
+
         _viewButton = new Button { Text = "View / Print" };
         UiTheme.StyleSecondaryButton(_viewButton);
         _viewButton.Width = 120;
@@ -63,7 +69,7 @@ public sealed class InvoicesView : UserControl
         _summaryLabel.ForeColor = UiTheme.TextMuted;
 
         FlowLayoutPanel toolbar = FormFields.CreateButtonRow(
-            _searchBox, _statusFilter, createButton, _viewButton, _saveButton, _deleteButton, _summaryLabel);
+            _searchBox, _statusFilter, createButton, _payButton, _viewButton, _saveButton, _deleteButton, _summaryLabel);
         toolbar.Dock = DockStyle.Top;
 
         _grid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
@@ -143,6 +149,7 @@ public sealed class InvoicesView : UserControl
     private void UpdateButtons()
     {
         bool hasSelection = SelectedInvoice is not null;
+        _payButton.Enabled = SelectedInvoice is { PendingAmount: > 0 };
         _viewButton.Enabled = hasSelection;
         _saveButton.Enabled = hasSelection;
         _deleteButton.Enabled = hasSelection;
@@ -169,6 +176,26 @@ public sealed class InvoicesView : UserControl
         catch (Exception ex)
         {
             ErrorHandler.Handle(ex, "The invoice could not be created.");
+        }
+    }
+
+    private void RecordPayment()
+    {
+        if (SelectedInvoice is not Invoice invoice)
+        {
+            return;
+        }
+
+        try
+        {
+            if (PaymentDialog.Show(this, _hostel, invoice.InvoiceId) is not null)
+            {
+                LoadInvoices(invoice.InvoiceId);
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorHandler.Handle(ex, "The payment could not be recorded.");
         }
     }
 

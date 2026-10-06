@@ -3,8 +3,8 @@ using HostelManagement.Models;
 using HostelManagement.Services;
 using HostelManagement.Utilities;
 using PdfSharp.Drawing;
-using PdfSharp.Fonts;
 using PdfSharp.Pdf;
+using static HostelManagement.Reports.PdfText;
 
 namespace HostelManagement.Reports;
 
@@ -12,18 +12,6 @@ namespace HostelManagement.Reports;
 public static class InvoicePdfWriter
 {
     private const double Margin = 40;
-    private const string FontName = "Arial";
-
-    private static readonly XColor Terracotta = XColor.FromArgb(192, 101, 43);
-    private static readonly XColor Muted = XColor.FromArgb(100, 100, 100);
-    private static readonly XColor Line = XColor.FromArgb(210, 200, 185);
-    private static readonly XColor HeaderFill = XColor.FromArgb(245, 236, 220);
-
-    static InvoicePdfWriter()
-    {
-        // Use the fonts installed in Windows.
-        GlobalFontSettings.UseWindowsFontsUnderWindows = true;
-    }
 
     /// <summary>Saves the invoice PDF in the application's Invoices folder and returns its full path.</summary>
     public static string SaveToInvoicesFolder(InvoicePrintData data)
@@ -49,11 +37,11 @@ public static class InvoicePdfWriter
         using XGraphics g = XGraphics.FromPdfPage(page);
         double width = page.Width.Point - 2 * Margin;
 
-        var title = new XFont(FontName, 20, XFontStyleEx.Bold);
-        var heading = new XFont(FontName, 11, XFontStyleEx.Bold);
-        var body = new XFont(FontName, 9.5, XFontStyleEx.Regular);
-        var bold = new XFont(FontName, 9.5, XFontStyleEx.Bold);
-        var small = new XFont(FontName, 8, XFontStyleEx.Regular);
+        var title = Font(20, bold: true);
+        var heading = Font(11, bold: true);
+        var body = Font(9.5);
+        var bold = Font(9.5, bold: true);
+        var small = Font(8);
 
         // ---- Header: business and hostel on the left, INVOICE on the right ----
         double y = Margin;
@@ -160,36 +148,5 @@ public static class InvoicePdfWriter
             g.DrawString(Fit(g, cells[i], font, cell.Width), font, XBrushes.Black, cell, format);
             x += columns[i];
         }
-    }
-
-    /// <summary>Shortens text with "..." so it fits the column.</summary>
-    private static string Fit(XGraphics g, string text, XFont font, double width)
-    {
-        if (g.MeasureString(text, font).Width <= width)
-        {
-            return text;
-        }
-        while (text.Length > 1 && g.MeasureString(text + "...", font).Width > width)
-        {
-            text = text[..^1];
-        }
-        return text + "...";
-    }
-
-    /// <summary>"Rs. 1,25,000.00" (the rupee sign is not available in every PDF font).</summary>
-    private static string Rupees(decimal amount) => "Rs. " + amount.ToString("N2", Money.Culture);
-
-    /// <summary>Joins label and value pairs, leaving out pairs whose value is empty.</summary>
-    private static string Join(params string[] labelValuePairs)
-    {
-        var parts = new List<string>();
-        for (int i = 0; i + 1 < labelValuePairs.Length; i += 2)
-        {
-            if (labelValuePairs[i + 1].Length > 0)
-            {
-                parts.Add(labelValuePairs[i] + labelValuePairs[i + 1]);
-            }
-        }
-        return string.Join("", parts).Trim(' ', ',');
     }
 }

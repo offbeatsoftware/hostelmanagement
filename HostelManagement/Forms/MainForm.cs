@@ -80,7 +80,7 @@ public partial class MainForm : Form
         new("BILLING", "Invoices", "Create, print and export invoices.",
             hostel => new InvoicesView(hostel!), RequiresHostel: true),
         new("BILLING", "Payments", "Record payments against invoices.",
-            _ => PlaceholderView.Create("Payments", "Phase 9"), RequiresHostel: true),
+            hostel => new PaymentsView(hostel!), RequiresHostel: true),
         new("BILLING", "Pending Dues", "Outstanding invoice balances and reminders.",
             _ => PlaceholderView.Create("Pending Dues", "Phase 10"), RequiresHostel: true),
         new("BILLING", "Reports", "Student, room, payment and dues reports.",

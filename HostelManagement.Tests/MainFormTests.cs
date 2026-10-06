@@ -190,7 +190,7 @@ public sealed class MainFormTests : TestDatabase
         });
     }
 
-    private static void RunOnStaThread(Action action)
+    internal static void RunOnStaThread(Action action)
     {
         Exception? failure = null;
         var thread = new Thread(() =>
