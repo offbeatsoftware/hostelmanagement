@@ -11,7 +11,7 @@ namespace HostelManagement.Forms.Views;
 public sealed class DashboardView : UserControl
 {
     private readonly Hostel _hostel;
-    private readonly FlowLayoutPanel _tiles;
+    private readonly TableLayoutPanel _tiles;
     private readonly PaymentsChart _chart;
     private readonly Label _chartTitle;
     private readonly DataGridView _overdueGrid;
@@ -24,14 +24,12 @@ public sealed class DashboardView : UserControl
         Dock = DockStyle.Fill;
         BackColor = UiTheme.ContentBackground;
 
-        _tiles = new FlowLayoutPanel
+        // Six equal columns, so the figures stay on one row at any window width.
+        _tiles = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 6, RowCount = 1, Height = 96, Margin = Padding.Empty };
+        for (int i = 0; i < 6; i++)
         {
-            Dock = DockStyle.Fill,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            Margin = Padding.Empty,
-            Padding = Padding.Empty,
-        };
+            _tiles.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f / 6));
+        }
 
         _chart = new PaymentsChart { Dock = DockStyle.Fill };
         Panel chartCard = FormFields.CreateCard(string.Empty, _chart);
@@ -40,9 +38,9 @@ public sealed class DashboardView : UserControl
         chartCard.Margin = new Padding(0, 4, 0, 8);
 
         _overdueGrid = CreateListGrid();
-        FormFields.AddGridColumn(_overdueGrid, nameof(StudentDue.StudentName), "Student", 40);
+        FormFields.AddGridColumn(_overdueGrid, nameof(StudentDue.StudentName), "Student", 48);
         FormFields.AddGridColumn(_overdueGrid, nameof(StudentDue.OverdueAmount), "Overdue", 32, format: "C0", alignRight: true);
-        FormFields.AddGridColumn(_overdueGrid, nameof(StudentDue.DaysOverdue), "Days", 18, alignRight: true);
+        FormFields.AddGridColumn(_overdueGrid, nameof(StudentDue.DaysOverdue), "Days", 16, alignRight: true);
 
         _paymentsGrid = CreateListGrid();
         FormFields.AddGridColumn(_paymentsGrid, nameof(Payment.PaymentDate), "Date", 26, format: "dd MMM");
@@ -64,9 +62,10 @@ public sealed class DashboardView : UserControl
         lists.Controls.Add(ListCard("Latest check-ins", _checkInsGrid, new Padding(6, 0, 0, 0)), 2, 0);
 
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Padding = Padding.Empty };
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 52));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 48));
+        // Figures and lists keep their height (five rows per list); the chart gets the rest.
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 100));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 236));
         layout.Controls.Add(_tiles, 0, 0);
         layout.Controls.Add(chartCard, 0, 1);
         layout.Controls.Add(lists, 0, 2);
@@ -87,12 +86,12 @@ public sealed class DashboardView : UserControl
                 $"active, {data.LeftStudents} left"));
             _tiles.Controls.Add(Tile("Beds occupied", $"{data.OccupiedBeds} / {data.TotalBeds}",
                 $"{data.FreeBeds} free"));
-            _tiles.Controls.Add(Tile($"Invoiced {data.AcademicYear}", Money.Format(data.InvoicedThisYear),
+            _tiles.Controls.Add(Tile($"Invoiced {data.AcademicYear}", Money.FormatWhole(data.InvoicedThisYear),
                 "academic year from July"));
-            _tiles.Controls.Add(Tile($"Received in {data.AsOf:MMMM}", Money.Format(data.ReceivedThisMonth),
+            _tiles.Controls.Add(Tile($"Received in {data.AsOf:MMMM}", Money.FormatWhole(data.ReceivedThisMonth),
                 $"{data.AsOf:MMMM yyyy}"));
-            _tiles.Controls.Add(Tile("Pending", Money.Format(data.PendingAmount), "all unpaid invoices"));
-            _tiles.Controls.Add(Tile("Overdue", Money.Format(data.OverdueAmount),
+            _tiles.Controls.Add(Tile("Pending", Money.FormatWhole(data.PendingAmount), "all unpaid invoices"));
+            _tiles.Controls.Add(Tile("Overdue", Money.FormatWhole(data.OverdueAmount),
                 $"{data.OverdueStudents} students, {Invoice.PaymentDueDays}+ days", overdue: data.OverdueAmount > 0));
             _tiles.ResumeLayout();
 
@@ -114,10 +113,10 @@ public sealed class DashboardView : UserControl
     {
         var tile = new Panel
         {
-            Size = new Size(190, 92),
+            Dock = DockStyle.Fill,
             BackColor = Color.White,
             BorderStyle = BorderStyle.FixedSingle,
-            Margin = new Padding(0, 0, 10, 10),
+            Margin = new Padding(0, 0, 8, 8),
             Padding = new Padding(12, 8, 8, 8),
         };
         var captionLabel = new Label { Text = caption, Dock = DockStyle.Top, Height = 22, ForeColor = UiTheme.TextMuted, AutoEllipsis = true };
@@ -143,6 +142,8 @@ public sealed class DashboardView : UserControl
         UiTheme.StyleGrid(grid);
         grid.ScrollBars = ScrollBars.None;
         grid.TabStop = false;
+        // A short list to read, not to pick from: no highlighted row.
+        grid.DataBindingComplete += (_, _) => grid.ClearSelection();
         return grid;
     }
 

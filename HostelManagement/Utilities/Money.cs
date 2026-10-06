@@ -9,6 +9,9 @@ public static class Money
 
     public static string Format(decimal amount) => amount.ToString("C2", Culture);
 
+    /// <summary>Whole rupees for headline figures, for example ₹2,68,500.</summary>
+    public static string FormatWhole(decimal amount) => amount.ToString("C0", Culture);
+
     /// <summary>Short amount for chart axes in the Indian system: ₹850, ₹45K, ₹1.2L, ₹2.5Cr.</summary>
     public static string Compact(decimal amount) => amount switch
     {
