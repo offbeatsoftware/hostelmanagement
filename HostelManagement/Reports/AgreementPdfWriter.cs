@@ -84,15 +84,20 @@ public static class AgreementPdfWriter
             }
             else
             {
-                foreach (List<(string Text, bool Bold)> wrapped in Wrap(g, Words(line), width, body, bold))
+                foreach (List<Word> wrapped in Wrap(g, Words(line), width, body, bold))
                 {
                     Ensure(LineHeight);
                     double x = Margin;
-                    foreach ((string text, bool isBold) in wrapped)
+                    for (int i = 0; i < wrapped.Count; i++)
                     {
-                        XFont font = isBold ? bold : body;
-                        g.DrawString(text, font, XBrushes.Black, x, y + 10.5);
-                        x += g.MeasureString(text + " ", font).Width;
+                        Word word = wrapped[i];
+                        if (i > 0 && !word.Attached)
+                        {
+                            x += g.MeasureString(" ", body).Width;
+                        }
+                        XFont font = word.Bold ? bold : body;
+                        g.DrawString(word.Text, font, XBrushes.Black, x, y + 10.5);
+                        x += g.MeasureString(word.Text, font).Width;
                     }
                     y += LineHeight;
                 }
@@ -132,17 +137,21 @@ public static class AgreementPdfWriter
         pdf.Save(path);
     }
 
+    /// <summary>A piece of text drawn in one font; Attached means no space before it (punctuation after a value).</summary>
+    internal readonly record struct Word(string Text, bool Bold, bool Attached);
+
     /// <summary>Splits a paragraph into words, each marked bold when it is part of a filled in value.</summary>
-    internal static List<(string Text, bool Bold)> Words(string line)
+    internal static List<Word> Words(string line)
     {
-        var words = new List<(string, bool)>();
+        var words = new List<Word>();
         bool isBold = false;
+        bool attached = false;
         var current = new System.Text.StringBuilder();
         void Flush()
         {
             if (current.Length > 0)
             {
-                words.Add((current.ToString(), isBold));
+                words.Add(new Word(current.ToString(), isBold, attached && words.Count > 0));
                 current.Clear();
             }
         }
@@ -151,12 +160,16 @@ public static class AgreementPdfWriter
         {
             if (c == AgreementService.ValueStart || c == AgreementService.ValueEnd)
             {
+                bool hadText = current.Length > 0;
                 Flush();
                 isBold = c == AgreementService.ValueStart;
+                // Text right after a value (or a value right after text) continues the same word.
+                attached = hadText || (c == AgreementService.ValueEnd && words.Count > 0);
             }
             else if (c == ' ')
             {
                 Flush();
+                attached = false;
             }
             else
             {
@@ -167,23 +180,24 @@ public static class AgreementPdfWriter
         return words;
     }
 
-    private static IEnumerable<List<(string Text, bool Bold)>> Wrap(XGraphics g, List<(string Text, bool Bold)> words,
-        double width, XFont body, XFont bold)
+    private static IEnumerable<List<Word>> Wrap(XGraphics g, List<Word> words, double width, XFont body, XFont bold)
     {
-        var line = new List<(string, bool)>();
+        var line = new List<Word>();
         double used = 0;
         double space = g.MeasureString(" ", body).Width;
-        foreach ((string text, bool isBold) in words)
+        foreach (Word word in words)
         {
-            double wordWidth = g.MeasureString(text, isBold ? bold : body).Width;
-            if (line.Count > 0 && used + space + wordWidth > width)
+            double gap = line.Count > 0 && !word.Attached ? space : 0;
+            double wordWidth = g.MeasureString(word.Text, word.Bold ? bold : body).Width;
+            if (line.Count > 0 && !word.Attached && used + gap + wordWidth > width)
             {
                 yield return line;
                 line = [];
                 used = 0;
+                gap = 0;
             }
-            used += (line.Count > 0 ? space : 0) + wordWidth;
-            line.Add((text, isBold));
+            used += gap + wordWidth;
+            line.Add(line.Count == 0 ? word with { Attached = false } : word);
         }
         if (line.Count > 0)
         {

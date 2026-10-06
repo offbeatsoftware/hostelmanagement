@@ -172,9 +172,12 @@ public sealed class AgreementServiceTests : TestDatabase
     [Fact]
     public void Words_MarkFilledValuesBold()
     {
-        string line = $"Name {AgreementService.ValueStart}Aman Sharma{AgreementService.ValueEnd} of Jaipur";
+        string line = $"Name {AgreementService.ValueStart}Aman Sharma{AgreementService.ValueEnd} of Room {AgreementService.ValueStart}101{AgreementService.ValueEnd}, bed";
 
-        Assert.Equal([("Name", false), ("Aman", true), ("Sharma", true), ("of", false), ("Jaipur", false)],
-            AgreementPdfWriter.Words(line));
+        Assert.Equal(
+        [
+            new("Name", false, false), new("Aman", true, false), new("Sharma", true, false), new("of", false, false),
+            new("Room", false, false), new("101", true, false), new(",", false, true), new("bed", false, false),
+        ], AgreementPdfWriter.Words(line));
     }
 }
