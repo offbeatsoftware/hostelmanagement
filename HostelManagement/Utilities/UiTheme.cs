@@ -14,6 +14,7 @@ public static class UiTheme
     public static readonly Font NavFont = new("Segoe UI", 10f);
     public static readonly Font NavGroupFont = new("Segoe UI", 8f, FontStyle.Bold);
     public static readonly Font BrandFont = new("Segoe UI Semibold", 12f);
+    public static readonly Font FigureFont = new("Segoe UI Semibold", 13f);
 
     // Colours
     // Menu: porcelain background, selected item in the terracotta of the hostel facade.

@@ -30,7 +30,7 @@ public sealed class PaymentsChart : Control
         ResizeRedraw = true;
         BackColor = Color.White;
         Font = UiTheme.BodyFont;
-        MinimumSize = new Size(300, 160);
+        MinimumSize = new Size(300, 120);
     }
 
     public void SetData(IReadOnlyList<MonthTotal> months, DateTime today)

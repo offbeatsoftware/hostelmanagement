@@ -18,6 +18,8 @@ public sealed class DashboardView : UserControl
     private readonly DataGridView _paymentsGrid;
     private readonly DataGridView _checkInsGrid;
 
+    private const int MinimumLayoutHeight = 560;
+
     public DashboardView(Hostel hostel)
     {
         _hostel = hostel;
@@ -25,7 +27,7 @@ public sealed class DashboardView : UserControl
         BackColor = UiTheme.ContentBackground;
 
         // Six equal columns, so the figures stay on one row at any window width.
-        _tiles = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 6, RowCount = 1, Height = 96, Margin = Padding.Empty };
+        _tiles = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 6, RowCount = 1, Margin = Padding.Empty };
         for (int i = 0; i < 6; i++)
         {
             _tiles.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f / 6));
@@ -63,13 +65,17 @@ public sealed class DashboardView : UserControl
 
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Padding = Padding.Empty };
         // Figures and lists keep their height (five rows per list); the chart gets the rest.
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 100));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 88));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 236));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 206));
         layout.Controls.Add(_tiles, 0, 0);
         layout.Controls.Add(chartCard, 0, 1);
         layout.Controls.Add(lists, 0, 2);
-        Controls.Add(layout);
+
+        // On a short window the dashboard scrolls instead of squeezing the chart.
+        var scrollHost = new Panel { Dock = DockStyle.Fill, AutoScroll = true, AutoScrollMinSize = new Size(0, MinimumLayoutHeight) };
+        scrollHost.Controls.Add(layout);
+        Controls.Add(scrollHost);
 
         Load += (_, _) => LoadDashboard();
     }
@@ -87,12 +93,11 @@ public sealed class DashboardView : UserControl
             _tiles.Controls.Add(Tile("Beds occupied", $"{data.OccupiedBeds} / {data.TotalBeds}",
                 $"{data.FreeBeds} free"));
             _tiles.Controls.Add(Tile($"Invoiced {data.AcademicYear}", Money.FormatWhole(data.InvoicedThisYear),
-                "academic year from July"));
-            _tiles.Controls.Add(Tile($"Received in {data.AsOf:MMMM}", Money.FormatWhole(data.ReceivedThisMonth),
-                $"{data.AsOf:MMMM yyyy}"));
-            _tiles.Controls.Add(Tile("Pending", Money.FormatWhole(data.PendingAmount), "all unpaid invoices"));
+                "from July"));
+            _tiles.Controls.Add(Tile("Received", Money.FormatWhole(data.ReceivedThisMonth), $"in {data.AsOf:MMMM yyyy}"));
+            _tiles.Controls.Add(Tile("Pending", Money.FormatWhole(data.PendingAmount), "unpaid invoices"));
             _tiles.Controls.Add(Tile("Overdue", Money.FormatWhole(data.OverdueAmount),
-                $"{data.OverdueStudents} students, {Invoice.PaymentDueDays}+ days", overdue: data.OverdueAmount > 0));
+                $"{data.OverdueStudents} students", overdue: data.OverdueAmount > 0));
             _tiles.ResumeLayout();
 
             _chartTitle.Text = $"Payments received per month, academic year {data.AcademicYear}";
@@ -117,15 +122,15 @@ public sealed class DashboardView : UserControl
             BackColor = Color.White,
             BorderStyle = BorderStyle.FixedSingle,
             Margin = new Padding(0, 0, 8, 8),
-            Padding = new Padding(12, 8, 8, 8),
+            Padding = new Padding(10, 6, 6, 6),
         };
-        var captionLabel = new Label { Text = caption, Dock = DockStyle.Top, Height = 22, ForeColor = UiTheme.TextMuted, AutoEllipsis = true };
+        var captionLabel = new Label { Text = caption, Dock = DockStyle.Top, Height = 20, ForeColor = UiTheme.TextMuted, AutoEllipsis = true };
         var valueLabel = new Label
         {
             Text = overdue ? "⚠ " + value : value,
             Dock = DockStyle.Top,
-            Height = 34,
-            Font = UiTheme.HeadingFont,
+            Height = 30,
+            Font = UiTheme.FigureFont,
             ForeColor = overdue ? UiTheme.Danger : UiTheme.TextPrimary,
             AutoEllipsis = true,
         };
@@ -141,6 +146,8 @@ public sealed class DashboardView : UserControl
         var grid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
         UiTheme.StyleGrid(grid);
         grid.ScrollBars = ScrollBars.None;
+        grid.RowTemplate.Height = 24;
+        grid.ColumnHeadersHeight = 26;
         grid.TabStop = false;
         // A short list to read, not to pick from: no highlighted row.
         grid.DataBindingComplete += (_, _) => grid.ClearSelection();
