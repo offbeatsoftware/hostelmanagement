@@ -18,6 +18,7 @@ public sealed class InvoicesView : UserControl
     private readonly Button _payButton;
     private readonly Button _viewButton;
     private readonly Button _saveButton;
+    private readonly Button _emailButton;
     private readonly Button _deleteButton;
     private readonly Label _summaryLabel;
 
@@ -61,6 +62,10 @@ public sealed class InvoicesView : UserControl
         UiTheme.StyleSecondaryButton(_saveButton);
         _saveButton.Click += (_, _) => SaveSelectedInvoice();
 
+        _emailButton = new Button { Text = "Email" };
+        UiTheme.StyleSecondaryButton(_emailButton);
+        _emailButton.Click += async (_, _) => await EmailSelectedInvoice();
+
         _deleteButton = new Button { Text = "Delete" };
         UiTheme.StyleDangerButton(_deleteButton);
         _deleteButton.Click += (_, _) => DeleteSelectedInvoice();
@@ -69,7 +74,7 @@ public sealed class InvoicesView : UserControl
         _summaryLabel.ForeColor = UiTheme.TextMuted;
 
         FlowLayoutPanel toolbar = FormFields.CreateButtonRow(
-            _searchBox, _statusFilter, createButton, _payButton, _viewButton, _saveButton, _deleteButton, _summaryLabel);
+            _searchBox, _statusFilter, createButton, _payButton, _viewButton, _saveButton, _emailButton, _deleteButton, _summaryLabel);
         toolbar.Dock = DockStyle.Top;
 
         _grid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
@@ -155,6 +160,7 @@ public sealed class InvoicesView : UserControl
         _payButton.Enabled = SelectedInvoice is { PendingAmount: > 0 };
         _viewButton.Enabled = hasSelection;
         _saveButton.Enabled = hasSelection;
+        _emailButton.Enabled = hasSelection;
         _deleteButton.Enabled = hasSelection;
     }
 
@@ -247,6 +253,32 @@ public sealed class InvoicesView : UserControl
         catch (Exception ex)
         {
             ErrorHandler.Handle(ex, "The invoice PDF could not be saved.");
+        }
+    }
+
+    /// <summary>Emails the invoice PDF to the student's primary parent.</summary>
+    private async Task EmailSelectedInvoice()
+    {
+        if (SelectedInvoice is not Invoice invoice)
+        {
+            return;
+        }
+
+        try
+        {
+            OutgoingEmail email = EmailService.PrepareInvoice(invoice.InvoiceId);
+            if (Dialogs.Confirm($"Email invoice {invoice.InvoiceNumber} to {email.RecipientName} ({email.RecipientEmail})?"))
+            {
+                await EmailSending.SendAsync(this, [email]);
+            }
+        }
+        catch (ValidationException ex)
+        {
+            Dialogs.Warning(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            ErrorHandler.Handle(ex, "The invoice could not be emailed.");
         }
     }
 

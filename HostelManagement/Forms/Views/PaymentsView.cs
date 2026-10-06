@@ -17,6 +17,7 @@ public sealed class PaymentsView : UserControl
     private readonly DataGridView _grid;
     private readonly Button _viewButton;
     private readonly Button _saveButton;
+    private readonly Button _emailButton;
     private readonly Button _deleteButton;
     private readonly Label _summaryLabel;
 
@@ -56,6 +57,11 @@ public sealed class PaymentsView : UserControl
         UiTheme.StyleSecondaryButton(_saveButton);
         _saveButton.Click += (_, _) => SaveSelectedReceipt();
 
+        _emailButton = new Button { Text = "Email Receipt" };
+        UiTheme.StyleSecondaryButton(_emailButton);
+        _emailButton.Width = 130;
+        _emailButton.Click += async (_, _) => await EmailSelectedReceipt();
+
         _deleteButton = new Button { Text = "Delete" };
         UiTheme.StyleDangerButton(_deleteButton);
         _deleteButton.Click += (_, _) => DeleteSelectedPayment();
@@ -64,7 +70,7 @@ public sealed class PaymentsView : UserControl
         _summaryLabel.ForeColor = UiTheme.TextMuted;
 
         FlowLayoutPanel toolbar = FormFields.CreateButtonRow(
-            _searchBox, _methodFilter, recordButton, _viewButton, _saveButton, _deleteButton, _summaryLabel);
+            _searchBox, _methodFilter, recordButton, _viewButton, _saveButton, _emailButton, _deleteButton, _summaryLabel);
         toolbar.Dock = DockStyle.Top;
 
         _grid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
@@ -147,6 +153,7 @@ public sealed class PaymentsView : UserControl
         bool hasSelection = SelectedPayment is not null;
         _viewButton.Enabled = hasSelection;
         _saveButton.Enabled = hasSelection;
+        _emailButton.Enabled = hasSelection;
         _deleteButton.Enabled = hasSelection;
     }
 
@@ -212,6 +219,32 @@ public sealed class PaymentsView : UserControl
         catch (Exception ex)
         {
             ErrorHandler.Handle(ex, "The receipt PDF could not be saved.");
+        }
+    }
+
+    /// <summary>Emails the receipt PDF to the student's primary parent (only when the admin clicks the button).</summary>
+    private async Task EmailSelectedReceipt()
+    {
+        if (SelectedPayment is not Payment payment)
+        {
+            return;
+        }
+
+        try
+        {
+            OutgoingEmail email = EmailService.PrepareReceipt(payment.PaymentId);
+            if (Dialogs.Confirm($"Email receipt {payment.ReceiptNumber} to {email.RecipientName} ({email.RecipientEmail})?"))
+            {
+                await EmailSending.SendAsync(this, [email]);
+            }
+        }
+        catch (ValidationException ex)
+        {
+            Dialogs.Warning(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            ErrorHandler.Handle(ex, "The receipt could not be emailed.");
         }
     }
 

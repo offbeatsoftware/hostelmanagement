@@ -86,8 +86,8 @@ public partial class MainForm : Form
         new("BILLING", "Reports", "Student, room, payment and dues reports.",
             _ => PlaceholderView.Create("Reports", "Phase 13"), RequiresHostel: true),
 
-        new("SETTINGS", "Email Settings", "SMTP configuration for invoices and reminders.",
-            _ => PlaceholderView.Create("Email Settings", "Phase 11")),
+        new("SETTINGS", "Email Settings", "Gmail account, email texts and the history of emails sent.",
+            _ => new EmailSettingsView()),
         new("SETTINGS", "Backup / Restore", "Back up and restore the database.",
             _ => PlaceholderView.Create("Backup / Restore", "Phase 14")),
         new("SETTINGS", "Application Settings", "Database location and database check.",

@@ -19,6 +19,7 @@ public sealed class PendingDuesView : UserControl
     private readonly DataGridView _invoicesGrid;
     private readonly Label _invoicesTitle;
     private readonly Button _payButton;
+    private readonly Button _remindButton;
     private readonly Label _summaryLabel;
 
     private List<StudentDue> _dues = [];
@@ -32,7 +33,7 @@ public sealed class PendingDuesView : UserControl
         _searchBox = new TextBox
         {
             Font = UiTheme.BodyFont,
-            Width = 220,
+            Width = 180,
             PlaceholderText = "Search student, room or parent",
             Margin = new Padding(0, 4, 8, 0),
         };
@@ -44,6 +45,16 @@ public sealed class PendingDuesView : UserControl
         _payButton.Width = 140;
         _payButton.Click += (_, _) => RecordPayment();
 
+        _remindButton = new Button { Text = "Send Reminder" };
+        UiTheme.StyleSecondaryButton(_remindButton);
+        _remindButton.Width = 130;
+        _remindButton.Click += async (_, _) => await RemindSelectedStudent();
+
+        var remindAllButton = new Button { Text = "Remind All Overdue" };
+        UiTheme.StyleSecondaryButton(remindAllButton);
+        remindAllButton.Width = 160;
+        remindAllButton.Click += async (_, _) => await RemindAllOverdue();
+
         var exportButton = new Button { Text = "Export PDF" };
         UiTheme.StyleSecondaryButton(exportButton);
         exportButton.Width = 110;
@@ -52,7 +63,8 @@ public sealed class PendingDuesView : UserControl
         _summaryLabel = FormFields.CreateMessageLabel();
         _summaryLabel.ForeColor = UiTheme.TextMuted;
 
-        FlowLayoutPanel toolbar = FormFields.CreateButtonRow(_searchBox, _overdueOnlyBox, _payButton, exportButton, _summaryLabel);
+        FlowLayoutPanel toolbar = FormFields.CreateButtonRow(
+            _searchBox, _overdueOnlyBox, _payButton, _remindButton, remindAllButton, exportButton, _summaryLabel);
         toolbar.Dock = DockStyle.Top;
 
         _studentsGrid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
@@ -65,6 +77,7 @@ public sealed class PendingDuesView : UserControl
         FormFields.AddGridColumn(_studentsGrid, nameof(StudentDue.PendingAmount), "Pending", 11, format: "C2", alignRight: true);
         FormFields.AddGridColumn(_studentsGrid, nameof(StudentDue.OverdueAmount), "Overdue", 11, format: "C2", alignRight: true);
         FormFields.AddGridColumn(_studentsGrid, nameof(StudentDue.DueText), "Due", 12);
+        FormFields.AddGridColumn(_studentsGrid, nameof(StudentDue.LastReminderDate), "Last reminder", 10, format: "dd MMM yyyy");
         _studentsGrid.CellFormatting += (_, e) =>
         {
             if (e.RowIndex >= 0 && _studentsGrid.Rows[e.RowIndex].DataBoundItem is StudentDue { IsOverdue: true } &&
@@ -189,6 +202,7 @@ public sealed class PendingDuesView : UserControl
         _invoicesGrid.DataSource = due?.Invoices;
         _invoicesTitle.Text = due is null ? "Unpaid invoices" : $"Unpaid invoices of {due.StudentName}";
         _payButton.Enabled = due is not null;
+        _remindButton.Enabled = due is { IsOverdue: true };
     }
 
     /// <summary>Records a payment for the selected invoice, or the student's oldest unpaid invoice.</summary>
@@ -210,6 +224,64 @@ public sealed class PendingDuesView : UserControl
         catch (Exception ex)
         {
             ErrorHandler.Handle(ex, "The payment could not be recorded.");
+        }
+    }
+
+    /// <summary>Emails a reminder about the selected student's overdue invoices to the primary parent.</summary>
+    private async Task RemindSelectedStudent()
+    {
+        if (SelectedDue is not StudentDue due)
+        {
+            return;
+        }
+
+        try
+        {
+            OutgoingEmail email = EmailService.PrepareReminder(due);
+            string last = due.LastReminderDate is DateTime date ? $"{Environment.NewLine}{Environment.NewLine}The last reminder was sent on {date:dd MMM yyyy}." : "";
+            if (Dialogs.Confirm($"Send a payment reminder for {due.StudentName} to {email.RecipientName} ({email.RecipientEmail})?{last}"))
+            {
+                await EmailSending.SendAsync(this, [email]);
+                LoadDues(due.StudentId);
+            }
+        }
+        catch (ValidationException ex)
+        {
+            Dialogs.Warning(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            ErrorHandler.Handle(ex, "The reminder could not be sent.");
+        }
+    }
+
+    /// <summary>Emails a reminder to the parent of every student of the hostel with overdue invoices.</summary>
+    private async Task RemindAllOverdue()
+    {
+        try
+        {
+            (List<OutgoingEmail> emails, List<string> problems) = EmailService.PrepareReminders(_hostel.HostelId, DateTime.Today);
+            if (emails.Count == 0 && problems.Count == 0)
+            {
+                Dialogs.Info("No student has overdue invoices, so no reminders are needed.");
+                return;
+            }
+            string skipped = problems.Count > 0 ? $"{Environment.NewLine}{problems.Count} students cannot be emailed and will be listed afterwards." : "";
+            if (emails.Count > 0 && !Dialogs.Confirm($"Send payment reminders to the parents of {emails.Count} students with overdue invoices?{skipped}"))
+            {
+                return;
+            }
+
+            await EmailSending.SendAsync(this, emails, problems);
+            LoadDues(SelectedDue?.StudentId);
+        }
+        catch (ValidationException ex)
+        {
+            Dialogs.Warning(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            ErrorHandler.Handle(ex, "The reminders could not be sent.");
         }
     }
 

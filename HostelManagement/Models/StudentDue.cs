@@ -12,6 +12,9 @@ public sealed class StudentDue
     public string ParentName { get; init; } = string.Empty;
     public string ParentMobile { get; init; } = string.Empty;
 
+    /// <summary>When a reminder was last emailed successfully, if ever.</summary>
+    public DateTime? LastReminderDate { get; init; }
+
     /// <summary>The invoices with an amount pending, oldest first.</summary>
     public List<Invoice> Invoices { get; init; } = [];
 

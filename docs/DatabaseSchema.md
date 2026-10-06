@@ -38,7 +38,7 @@ Hostel 1──* Room
 
 ## Schema version
 
-The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **8**).
+The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **9**).
 At startup the application refuses a database with an older or newer version and explains what to do,
 instead of failing later with confusing errors. Increase the version whenever a table or column changes.
 
@@ -52,6 +52,7 @@ instead of failing later with confusing errors. Increase the version whenever a 
 | 6 | Phase 6: Room.Gender (rooms are for boys or girls) |
 | 7 | Phase 7: Hostel.BillingFrequency; Service per hostel (included in rent or extra per month); StudentService |
 | 8 | Phase 9: Payment.ReceiptNumber (unique) and Payment.CreatedDate; Payment.InvoiceId required |
+| 9 | Phase 11: AppSetting table (Gmail account and email texts) |
 
 ## Tables
 
@@ -281,6 +282,19 @@ Rules (Phase 9):
 | SentDate | Date/Time | Required |
 | Status | Text(20) | Required: Sent / Failed |
 | ErrorMessage | Text(255) | |
+
+### AppSetting
+Application settings as key and value pairs (Phase 11).
+
+| Column | Type | Notes |
+|---|---|---|
+| SettingKey | Text(50) | Primary key, for example `Email.SenderEmail`, `Email.Invoice.Subject` |
+| SettingValue | Memo | The value. `Email.AppPassword` is encrypted with Windows (DPAPI) for the signed in Windows user, so after moving the database to another computer or Windows user it must be entered again |
+
+Email rules (Phase 11): one Gmail account for all hostels; invoices and receipts are emailed to the primary
+parent only when the admin clicks the button; reminders list only overdue invoices and attach their PDFs, for
+one student or for all overdue students at once. Every email is written to `EmailHistory`
+(`EmailType` Invoice / Receipt / DueReminder, `Status` Sent / Failed), one row per invoice it was about.
 
 ## Changes from the suggested design in the specification
 

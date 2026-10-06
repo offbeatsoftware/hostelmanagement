@@ -31,6 +31,7 @@
     <PackageReference Include="System.Data.OleDb" Version="8.0.1" />
     <!-- PDF invoices (MIT licence). -->
     <PackageReference Include="PDFsharp" Version="6.2.4" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -41,8 +42,7 @@
     <None Update="Database\HostelManagement.accdb" CopyToOutputDirectory="Never" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
-  <Target Name="CopyEmptyDatabaseIfMissing" AfterTargets="Build"
-          Condition="Exists('Database\HostelManagement.accdb') And !Exists('$(OutDir)Database\HostelManagement.accdb')">
+  <Target Name="CopyEmptyDatabaseIfMissing" AfterTargets="Build" Condition="Exists('Database\HostelManagement.accdb') And !Exists('$(OutDir)Database\HostelManagement.accdb')">
     <Copy SourceFiles="Database\HostelManagement.accdb" DestinationFolder="$(OutDir)Database" />
   </Target>
 

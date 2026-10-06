@@ -4,7 +4,7 @@ A single admin Windows desktop application for managing a private student hostel
 
 **Stack:** C# · .NET 8 · Windows Forms · Microsoft Access (.accdb) · System.Data.OleDb
 
-**Status:** Phase 10 (pending dues), with several hostels. Module screens show a placeholder until their phase is built.
+**Status:** Phase 11 (email through Gmail), with several hostels. Module screens show a placeholder until their phase is built.
 
 ## Requirements
 
@@ -27,7 +27,8 @@ A single admin Windows desktop application for managing a private student hostel
 
 From the command line: `dotnet build HostelManagement.sln` and `dotnet run --project HostelManagement`.
 
-NuGet packages: `System.Data.OleDb` 8.0.1 and `PDFsharp` 6.2.4 (MIT licence, invoice PDFs), restored automatically on build.
+NuGet packages: `System.Data.OleDb` 8.0.1, `PDFsharp` 6.2.4 (MIT licence, PDFs) and
+`System.Security.Cryptography.ProtectedData` 8.0.0 (encrypts the Gmail app password), restored automatically on build.
 
 ## Signing in and choosing a hostel
 

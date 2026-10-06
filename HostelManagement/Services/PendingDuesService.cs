@@ -1,3 +1,4 @@
+using HostelManagement.Data;
 using HostelManagement.Models;
 
 namespace HostelManagement.Services;
@@ -13,6 +14,7 @@ public static class PendingDuesService
     public static List<StudentDue> GetDues(int hostelId, DateTime asOf)
     {
         Dictionary<int, Student> students = StudentService.GetStudents(hostelId).ToDictionary(s => s.StudentId);
+        Dictionary<int, DateTime> lastReminders = EmailHistoryRepository.GetLastReminderDates(hostelId);
 
         return InvoiceService.GetInvoices(hostelId)
             .Where(i => i.PendingAmount > 0)
@@ -32,6 +34,7 @@ public static class PendingDuesService
                     ParentMobile = student?.ParentMobile ?? string.Empty,
                     Invoices = group.OrderBy(i => i.InvoiceDate).ThenBy(i => i.InvoiceId).ToList(),
                     AsOf = asOf.Date,
+                    LastReminderDate = lastReminders.TryGetValue(group.Key, out DateTime last) ? last : null,
                 };
             })
             .OrderByDescending(d => d.DaysOverdue)
