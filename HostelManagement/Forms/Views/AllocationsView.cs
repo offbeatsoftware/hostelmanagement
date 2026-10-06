@@ -68,6 +68,7 @@ public sealed class AllocationsView : UserControl
         _grid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
         UiTheme.StyleGrid(_grid);
         FormFields.AddGridColumn(_grid, nameof(RoomAllocation.RoomNumber), "Room", 8);
+        FormFields.AddGridColumn(_grid, nameof(RoomAllocation.BedText), "Bed", 6);
         FormFields.AddGridColumn(_grid, nameof(RoomAllocation.StudentName), "Student", 20);
         FormFields.AddGridColumn(_grid, nameof(RoomAllocation.StudentMobile), "Mobile", 11);
         FormFields.AddGridColumn(_grid, nameof(RoomAllocation.CheckInDate), "Check-in", 10, format: "dd MMM yyyy");
@@ -141,6 +142,11 @@ public sealed class AllocationsView : UserControl
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 LoadAllocations();
+                if (dialog.SavedAllocation is RoomAllocation allocation &&
+                    Dialogs.Confirm($"{allocation.StudentName} is in room {allocation.RoomAndBed}.\n\nCreate the residency agreement PDF now?"))
+                {
+                    AgreementActions.Download(this, allocation.StudentId);
+                }
             }
         }
         catch (Exception ex)

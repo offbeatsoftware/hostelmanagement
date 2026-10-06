@@ -42,8 +42,16 @@ public static class AllocationService
             .Where(r => r.Gender == gender && r.Available > 0 && r.RoomId != exceptRoomId)
             .ToList();
 
-    /// <summary>Allocates a student to a room.</summary>
-    public static RoomAllocation CheckIn(int studentId, int roomId, DateTime date, string? remarks = null)
+    /// <summary>The free beds of a room (1 up to its capacity), for choosing the bed at check-in or transfer.</summary>
+    public static List<int> GetFreeBeds(int roomId)
+    {
+        Room room = RoomRepository.Get(roomId) ?? throw new ValidationException("This room no longer exists.");
+        List<int> taken = AllocationRepository.GetTakenBeds(null, null, roomId);
+        return Enumerable.Range(1, room.Capacity).Where(bed => !taken.Contains(bed)).ToList();
+    }
+
+    /// <summary>Allocates a student to a room and bed (the lowest free bed when none is given).</summary>
+    public static RoomAllocation CheckIn(int studentId, int roomId, DateTime date, string? remarks = null, int? bedNumber = null)
     {
         date = date.Date;
         Student student = GetStudentForAllocation(studentId);
@@ -68,6 +76,7 @@ public static class AllocationService
                 RoomId = roomId,
                 CheckInDate = date,
                 Remarks = cleanRemarks,
+                BedNumber = ChooseBed(connection, transaction, roomId, bedNumber),
             }));
 
         AppLogger.Info($"Checked in student {studentId} to room {roomId} (allocation {allocationId}).");
@@ -75,7 +84,7 @@ public static class AllocationService
     }
 
     /// <summary>Moves a student to another room: the old allocation ends and the new one starts on the same date.</summary>
-    public static RoomAllocation Transfer(int studentId, int newRoomId, DateTime date, string? remarks = null)
+    public static RoomAllocation Transfer(int studentId, int newRoomId, DateTime date, string? remarks = null, int? bedNumber = null)
     {
         date = date.Date;
         Student student = GetStudentForAllocation(studentId);
@@ -104,6 +113,7 @@ public static class AllocationService
                 RoomId = newRoomId,
                 CheckInDate = date,
                 Remarks = cleanRemarks,
+                BedNumber = ChooseBed(connection, transaction, newRoomId, bedNumber),
             });
         });
 
@@ -135,6 +145,29 @@ public static class AllocationService
         });
 
         AppLogger.Info($"Checked out student {studentId} from room {current.RoomId}.");
+    }
+
+    /// <summary>The requested bed if it is free, otherwise (when none is requested) the lowest free bed of the room.</summary>
+    private static int ChooseBed(System.Data.OleDb.OleDbConnection connection, System.Data.OleDb.OleDbTransaction transaction,
+        int roomId, int? requested)
+    {
+        Room room = RoomRepository.Get(roomId) ?? throw new ValidationException("This room no longer exists.");
+        List<int> taken = AllocationRepository.GetTakenBeds(connection, transaction, roomId);
+        if (requested is int bed)
+        {
+            if (bed < 1 || bed > room.Capacity)
+            {
+                throw new ValidationException($"Room {room.RoomNumber} has beds 1 to {room.Capacity}.");
+            }
+            if (taken.Contains(bed))
+            {
+                throw new ValidationException($"Bed {bed} in room {room.RoomNumber} is already taken.");
+            }
+            return bed;
+        }
+        return Enumerable.Range(1, room.Capacity).FirstOrDefault(b => !taken.Contains(b)) is int free and > 0
+            ? free
+            : throw new ValidationException($"Room {room.RoomNumber} has no free bed.");
     }
 
     private static Student GetStudentForAllocation(int studentId)

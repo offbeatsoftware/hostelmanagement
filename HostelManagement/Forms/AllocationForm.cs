@@ -23,6 +23,7 @@ public sealed class AllocationForm : Form
     private readonly RoomAllocation? _current;
     private readonly ComboBox? _studentBox;
     private readonly ComboBox? _roomBox;
+    private readonly ComboBox? _bedBox;
     private readonly DateTimePicker _datePicker;
     private readonly TextBox _remarksBox;
     private readonly Label _messageLabel;
@@ -50,7 +51,7 @@ public sealed class AllocationForm : Form
         AutoScaleMode = AutoScaleMode.Font;
         Font = UiTheme.BodyFont;
         BackColor = Color.White;
-        ClientSize = new Size(580, 330);
+        ClientSize = new Size(580, 365);
 
         TableLayoutPanel fields = FormFields.CreateTable(labelWidth: 130, inputWidth: 400);
 
@@ -71,6 +72,15 @@ public sealed class AllocationForm : Form
         {
             _roomBox = CreateCombo(nameof(Room.DisplayName), nameof(Room.RoomId));
             FormFields.AddRow(fields, action == AllocationAction.Transfer ? "New room" : "Room", _roomBox, required: true);
+
+            _bedBox = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = UiTheme.BodyFont,
+                Width = 120,
+                Margin = new Padding(0, 4, 0, 4),
+            };
+            FormFields.AddRow(fields, "Bed", _bedBox, required: true);
         }
 
         _datePicker = new DateTimePicker
@@ -97,7 +107,7 @@ public sealed class AllocationForm : Form
         {
             AutoSize = true,
             ForeColor = UiTheme.TextMuted,
-            Location = new Point(20, 215),
+            Location = new Point(20, 250),
             MaximumSize = new Size(540, 0),
             Text = action switch
             {
@@ -108,7 +118,7 @@ public sealed class AllocationForm : Form
         };
 
         _messageLabel = FormFields.CreateMessageLabel();
-        _messageLabel.Location = new Point(20, 245);
+        _messageLabel.Location = new Point(20, 280);
         _messageLabel.MaximumSize = new Size(540, 0);
 
         var saveButton = new Button
@@ -119,7 +129,7 @@ public sealed class AllocationForm : Form
                 AllocationAction.Transfer => "Transfer",
                 _ => "Check-out",
             },
-            Location = new Point(330, 280),
+            Location = new Point(330, 315),
         };
         if (action == AllocationAction.CheckOut)
         {
@@ -131,7 +141,7 @@ public sealed class AllocationForm : Form
         }
         saveButton.Click += (_, _) => Save();
 
-        var cancelButton = new Button { Text = "Cancel", Location = new Point(450, 280) };
+        var cancelButton = new Button { Text = "Cancel", Location = new Point(450, 315) };
         UiTheme.StyleSecondaryButton(cancelButton);
         cancelButton.DialogResult = DialogResult.Cancel;
 
@@ -150,6 +160,10 @@ public sealed class AllocationForm : Form
             if (_studentBox is not null)
             {
                 _studentBox.SelectedIndexChanged += (_, _) => LoadRooms();
+            }
+            if (_roomBox is not null)
+            {
+                _roomBox.SelectedIndexChanged += (_, _) => LoadBeds();
             }
             LoadRooms();
         };
@@ -191,6 +205,7 @@ public sealed class AllocationForm : Form
                 ? []
                 : AllocationService.GetRoomsFor(_hostelId, student.Gender, _current?.RoomId ?? 0);
             _roomBox.DataSource = rooms;
+            LoadBeds();
 
             _messageLabel.Text = string.Empty;
             if (student is not null && !RoomGender.All.Contains(student.Gender))
@@ -208,6 +223,38 @@ public sealed class AllocationForm : Form
             ErrorHandler.Handle(ex, "The rooms could not be loaded.");
         }
     }
+
+    /// <summary>Lists the free beds of the chosen room; the lowest is chosen.</summary>
+    private void LoadBeds()
+    {
+        if (_bedBox is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _bedBox.Items.Clear();
+            if (_roomBox?.SelectedValue is int roomId && roomId > 0)
+            {
+                foreach (int bed in AllocationService.GetFreeBeds(roomId))
+                {
+                    _bedBox.Items.Add(bed);
+                }
+            }
+            if (_bedBox.Items.Count > 0)
+            {
+                _bedBox.SelectedIndex = 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorHandler.Handle(ex, "The beds could not be loaded.");
+        }
+    }
+
+    /// <summary>The allocation made by a check-in, for offering the agreement afterwards.</summary>
+    public RoomAllocation? SavedAllocation { get; private set; }
 
     private void Save()
     {
@@ -230,7 +277,7 @@ public sealed class AllocationForm : Form
             switch (_action)
             {
                 case AllocationAction.CheckIn:
-                    AllocationService.CheckIn(studentId, roomId, date, _remarksBox.Text);
+                    SavedAllocation = AllocationService.CheckIn(studentId, roomId, date, _remarksBox.Text, _bedBox?.SelectedItem as int?);
                     break;
 
                 case AllocationAction.Transfer:
@@ -239,7 +286,7 @@ public sealed class AllocationForm : Form
                     {
                         return;
                     }
-                    AllocationService.Transfer(studentId, roomId, date, _remarksBox.Text);
+                    SavedAllocation = AllocationService.Transfer(studentId, roomId, date, _remarksBox.Text, _bedBox?.SelectedItem as int?);
                     break;
 
                 default:

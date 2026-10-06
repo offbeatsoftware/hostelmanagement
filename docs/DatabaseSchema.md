@@ -38,7 +38,7 @@ Hostel 1──* Room
 
 ## Schema version
 
-The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **10**).
+The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **11**).
 At startup the application refuses a database with an older or newer version and explains what to do,
 instead of failing later with confusing errors. Increase the version whenever a table or column changes.
 
@@ -54,6 +54,7 @@ instead of failing later with confusing errors. Increase the version whenever a 
 | 8 | Phase 9: Payment.ReceiptNumber (unique) and Payment.CreatedDate; Payment.InvoiceId required |
 | 9 | Phase 11: AppSetting table (Gmail account and email texts) |
 | 10 | AdminUser table (admin login with hashed password, email and phone) |
+| 11 | RoomAllocation.BedNumber (bed in the room, for the residency agreement) |
 
 ## Tables
 
@@ -186,6 +187,11 @@ Allocation rules (client decisions, Phase 6):
   starts on the same date.
 - **Check-out**: the allocation ends (CheckedOut) and the student's status is set to Left, in one transaction.
 - A student in a room cannot be set to Left or change gender on the Students screen.
+
+`BedNumber` (Number): the bed in the room, 1 up to the room's capacity. At check-in and transfer the lowest
+free bed is offered and can be changed; two current students can never share a bed, and a room cannot be made
+smaller than a bed in use. The residency agreement (editable text, stored in `AppSetting` as `Agreement.Text`)
+prints the room and bed.
 
 ### Service
 Services of a hostel. Every new hostel gets Wi-Fi and Laundry (included in the rent) and Transport

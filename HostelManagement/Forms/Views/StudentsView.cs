@@ -21,6 +21,7 @@ public sealed class StudentsView : UserControl
     private readonly DataGridView _grid;
     private readonly Button _editButton;
     private readonly Button _deleteButton;
+    private readonly Button _agreementButton;
     private readonly Label _countLabel;
 
     private List<Student> _students = [];
@@ -65,10 +66,31 @@ public sealed class StudentsView : UserControl
         UiTheme.StyleDangerButton(_deleteButton);
         _deleteButton.Click += (_, _) => DeleteSelectedStudent();
 
+        _agreementButton = new Button { Text = "Agreement PDF" };
+        UiTheme.StyleSecondaryButton(_agreementButton);
+        _agreementButton.Width = 140;
+        _agreementButton.Click += (_, _) =>
+        {
+            if (SelectedStudent is Student student)
+            {
+                AgreementActions.Download(this, student.StudentId);
+            }
+        };
+
+        var agreementTextButton = new Button { Text = "Agreement Text..." };
+        UiTheme.StyleSecondaryButton(agreementTextButton);
+        agreementTextButton.Width = 150;
+        agreementTextButton.Click += (_, _) =>
+        {
+            using var dialog = new AgreementTextForm();
+            dialog.ShowDialog(this);
+        };
+
         _countLabel = FormFields.CreateMessageLabel();
         _countLabel.ForeColor = UiTheme.TextMuted;
 
-        FlowLayoutPanel buttonRow = FormFields.CreateButtonRow(addButton, _editButton, _deleteButton, _countLabel);
+        FlowLayoutPanel buttonRow = FormFields.CreateButtonRow(
+            addButton, _editButton, _deleteButton, _agreementButton, agreementTextButton, _countLabel);
         buttonRow.Dock = DockStyle.Top;
 
         _grid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
@@ -209,6 +231,7 @@ public sealed class StudentsView : UserControl
         bool hasSelection = SelectedStudent is not null;
         _editButton.Enabled = hasSelection;
         _deleteButton.Enabled = hasSelection;
+        _agreementButton.Enabled = hasSelection;
     }
 
     private void AddStudent()

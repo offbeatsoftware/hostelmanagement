@@ -19,7 +19,7 @@ public static class DatabaseSchema
     /// Increase by one whenever a table or column changes, so databases with an older
     /// layout are detected at startup. Stored in the SchemaInfo table.
     /// </summary>
-    public const int Version = 10;
+    public const int Version = 11;
 
     /// <summary>
     /// The sharing types added to every new hostel. Capacity always equals the sharing type
@@ -152,6 +152,7 @@ public static class DatabaseSchema
                 [CheckOutDate] DATETIME,
                 [Status]       TEXT(20) NOT NULL,
                 [Remarks]      TEXT(255),
+                [BedNumber]    INTEGER,
                 CONSTRAINT [FK_RoomAllocation_Student] FOREIGN KEY ([StudentId]) REFERENCES [Student] ([StudentId]),
                 CONSTRAINT [FK_RoomAllocation_Room] FOREIGN KEY ([RoomId]) REFERENCES [Room] ([RoomId])
             )

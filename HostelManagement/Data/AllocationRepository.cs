@@ -32,12 +32,24 @@ public static class AllocationRepository
 
     public static int Insert(OleDbConnection connection, OleDbTransaction transaction, RoomAllocation allocation) =>
         Db.Insert(connection, transaction,
-            "INSERT INTO [RoomAllocation] ([StudentId], [RoomId], [CheckInDate], [Status], [Remarks]) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO [RoomAllocation] ([StudentId], [RoomId], [CheckInDate], [Status], [Remarks], [BedNumber]) " +
+            "VALUES (?, ?, ?, ?, ?, ?)",
             Db.Param("@StudentId", allocation.StudentId),
             Db.Param("@RoomId", allocation.RoomId),
             Db.Param("@CheckInDate", allocation.CheckInDate),
             Db.Param("@Status", AllocationStatus.Current),
-            Db.OptionalText("@Remarks", allocation.Remarks));
+            Db.OptionalText("@Remarks", allocation.Remarks),
+            Db.Param("@BedNumber", allocation.BedNumber));
+
+    /// <summary>The bed numbers of the students currently in the room (read inside the check-in transaction).</summary>
+    public static List<int> GetTakenBeds(OleDbConnection? connection, OleDbTransaction? transaction, int roomId)
+    {
+        const string sql = "SELECT [BedNumber] FROM [RoomAllocation] WHERE [RoomId] = ? AND [Status] = ? AND [BedNumber] IS NOT NULL";
+        Func<IDataRecord, int> map = r => r.GetInt("BedNumber");
+        return connection is null
+            ? Db.Query(sql, map, Db.Param("@RoomId", roomId), Db.Param("@Status", AllocationStatus.Current))
+            : Db.Query(connection, transaction, sql, map, Db.Param("@RoomId", roomId), Db.Param("@Status", AllocationStatus.Current));
+    }
 
     /// <summary>Ends a current allocation (transfer or check-out).</summary>
     public static int Close(OleDbConnection connection, OleDbTransaction transaction, int allocationId,
@@ -65,6 +77,7 @@ public static class AllocationRepository
         CheckOutDate = record.GetNullableDate("CheckOutDate"),
         Status = record.GetText("Status"),
         Remarks = record.GetText("Remarks"),
+        BedNumber = record["BedNumber"] is DBNull ? null : record.GetInt("BedNumber"),
         StudentName = record.GetText("StudentName"),
         StudentMobile = record.GetText("Mobile"),
         RoomNumber = record.GetText("RoomNumber"),

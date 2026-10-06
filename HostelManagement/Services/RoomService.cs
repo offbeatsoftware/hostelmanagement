@@ -160,6 +160,13 @@ public static class RoomService
                     $"{sharingType.SharingName} sharing ({sharingType.Capacity} " +
                     $"{(sharingType.Capacity == 1 ? "bed" : "beds")}). Move students out first.");
             }
+            if (AllocationRepository.GetTakenBeds(null, null, existing.RoomId).Where(bed => bed > sharingType.Capacity).ToList()
+                is { Count: > 0 } beyond)
+            {
+                throw new ValidationException(
+                    $"Bed {beyond.Max()} in room {existing.RoomNumber} is in use, so the room cannot be changed to " +
+                    $"{sharingType.SharingName} sharing. Transfer that student to another room first.");
+            }
             if (room.Gender != existing.Gender && existing.Occupied > 0)
             {
                 throw new ValidationException(

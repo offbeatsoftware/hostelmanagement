@@ -80,6 +80,7 @@ automatically on first start:
 | `Invoices`           | Invoice PDFs (`Invoice_SBH-2026-27-0001.pdf`)   |
 | `Receipts`           | Receipt PDFs (`Receipt_SBH-R-2026-27-0001.pdf`) |
 | `Reports`            | Exported reports (PDF and Excel)                |
+| `Agreements`         | Residency agreement PDFs                        |
 | `Logs`               | Technical error logs (`app-yyyyMMdd.log`)       |
 
 **Installation note:** Windows does not let normal users write inside `C:\Program Files`, so the application
