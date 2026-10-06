@@ -74,6 +74,7 @@ public sealed class EmailSettingsView : UserControl
         tabs.TabPages.Add(CreateTemplatePage("Invoice email", EmailType.Invoice, EmailSettings.DefaultInvoice));
         tabs.TabPages.Add(CreateTemplatePage("Receipt email", EmailType.Receipt, EmailSettings.DefaultReceipt));
         tabs.TabPages.Add(CreateTemplatePage("Reminder email", EmailType.DueReminder, EmailSettings.DefaultReminder));
+        tabs.TabPages.Add(CreateTemplatePage("Absence email", EmailType.Absence, EmailSettings.DefaultAbsence));
 
         // ---- History ----
         _historyGrid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
@@ -191,6 +192,7 @@ public sealed class EmailSettingsView : UserControl
             ShowTemplate(EmailType.Invoice, settings.Invoice);
             ShowTemplate(EmailType.Receipt, settings.Receipt);
             ShowTemplate(EmailType.DueReminder, settings.Reminder);
+            ShowTemplate(EmailType.Absence, settings.Absence);
         }
         catch (Exception ex)
         {
@@ -216,6 +218,7 @@ public sealed class EmailSettingsView : UserControl
         Invoice = ReadTemplate(EmailType.Invoice),
         Receipt = ReadTemplate(EmailType.Receipt),
         Reminder = ReadTemplate(EmailType.DueReminder),
+        Absence = ReadTemplate(EmailType.Absence),
     };
 
     private bool Save()

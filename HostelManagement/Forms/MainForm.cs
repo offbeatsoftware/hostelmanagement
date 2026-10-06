@@ -108,6 +108,8 @@ public partial class MainForm : Form
             hostel => new StudentsView(hostel!), RequiresHostel: true),
         new("STUDENTS", "Parents / Guardians", "Parent and guardian contact details.",
             hostel => new ParentsView(hostel!), RequiresHostel: true),
+        new("STUDENTS", "Attendance", "Night attendance, and emails to the parents of absent students.",
+            hostel => new AttendanceView(hostel!), RequiresHostel: true),
 
         new("BILLING", "Invoices", "Create, print and export invoices.",
             hostel => new InvoicesView(hostel!), RequiresHostel: true),
@@ -336,7 +338,7 @@ public partial class MainForm : Form
             FlatStyle = FlatStyle.Flat,
             TextAlign = ContentAlignment.MiddleLeft,
             Padding = new Padding(16, 0, 0, 0),
-            Height = 30,
+            Height = 28,
             Margin = Padding.Empty,
             Cursor = Cursors.Hand,
             UseVisualStyleBackColor = false,

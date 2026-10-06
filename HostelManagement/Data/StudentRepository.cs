@@ -51,7 +51,7 @@ public static class StudentRepository
     public static int CountHistory(int studentId)
     {
         int total = 0;
-        foreach (string table in new[] { "RoomAllocation", "Invoice", "Payment", "EmailHistory" })
+        foreach (string table in new[] { "RoomAllocation", "Invoice", "Payment", "EmailHistory", "Attendance" })
         {
             total += Convert.ToInt32(Db.Scalar($"SELECT COUNT(*) FROM [{table}] WHERE [StudentId] = ?",
                 Db.Param("@StudentId", studentId)));

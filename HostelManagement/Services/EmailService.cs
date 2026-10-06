@@ -145,6 +145,53 @@ public static class EmailService
         return (emails, problems);
     }
 
+    /// <summary>
+    /// Absence emails for the absent students of a saved attendance date (by default only those whose parent was
+    /// not emailed yet). Students that cannot be emailed are returned as problems instead of stopping the others.
+    /// </summary>
+    public static (List<OutgoingEmail> Emails, List<string> Problems) PrepareAbsences(int hostelId, DateTime date, bool includeAlreadyEmailed = false)
+    {
+        EmailSettings settings = GetConfiguredSettings();
+        AttendanceSheet sheet = AttendanceService.GetSheet(hostelId, date);
+        Hostel hostel = HostelService.GetHostel(hostelId) ?? throw new ValidationException("Please select the hostel.");
+        var emails = new List<OutgoingEmail>();
+        var problems = new List<string>();
+
+        foreach (AttendanceEntry entry in sheet.Entries.Where(e => e.IsSaved && !e.IsPresent))
+        {
+            if (entry.ParentEmailedDate is not null && !includeAlreadyEmailed)
+            {
+                continue;
+            }
+            Student? student = StudentService.GetStudent(entry.StudentId);
+            Parent? parent = StudentService.GetPrimaryParent(entry.StudentId);
+            if (student is null || parent is not { Email.Length: > 0 })
+            {
+                problems.Add($"{entry.StudentName}: no primary parent with an email address.");
+                continue;
+            }
+
+            var values = CommonValues(student, parent, hostel);
+            values["AttendanceDate"] = Date(sheet.Date);
+            values["RoomNumber"] = entry.RoomNumber;
+            values["Remarks"] = entry.Remarks;
+            OutgoingEmail email = Build(EmailType.Absence, settings.Absence, values, student, parent, [], []);
+            emails.Add(new OutgoingEmail
+            {
+                EmailType = email.EmailType,
+                StudentId = email.StudentId,
+                StudentName = email.StudentName,
+                AttendanceId = entry.AttendanceId,
+                RecipientEmail = email.RecipientEmail,
+                RecipientName = email.RecipientName,
+                CopyToEmail = email.CopyToEmail,
+                Subject = email.Subject,
+                Body = email.Body,
+            });
+        }
+        return (emails, problems);
+    }
+
     /// <summary>Sends one email through Gmail. Returns null when sent, otherwise a message the admin can act on.</summary>
     public static string? Send(EmailSettings settings, OutgoingEmail email)
     {
@@ -160,9 +207,14 @@ public static class EmailService
         }
     }
 
-    /// <summary>Keeps one history row per invoice the email was about.</summary>
+    /// <summary>Keeps one history row per invoice the email was about; marks an absence as emailed.</summary>
     public static void Log(OutgoingEmail email, string? error)
     {
+        if (error is null && email.AttendanceId is int attendanceId)
+        {
+            AttendanceRepository.SetParentEmailed(attendanceId, DateTime.Now);
+        }
+
         IEnumerable<int?> invoiceIds = email.InvoiceIds.Count > 0 ? email.InvoiceIds.Select(id => (int?)id) : [null];
         foreach (int? invoiceId in invoiceIds)
         {

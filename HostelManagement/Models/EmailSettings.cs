@@ -6,6 +6,7 @@ public static class EmailType
     public const string Invoice = "Invoice";
     public const string Receipt = "Receipt";
     public const string DueReminder = "DueReminder";
+    public const string Absence = "Absence";
 
     public static string DisplayName(string type) => type switch
     {
@@ -47,6 +48,7 @@ public sealed class EmailSettings
     public EmailTemplate Invoice { get; set; } = DefaultInvoice;
     public EmailTemplate Receipt { get; set; } = DefaultReceipt;
     public EmailTemplate Reminder { get; set; } = DefaultReminder;
+    public EmailTemplate Absence { get; set; } = DefaultAbsence;
 
     public bool IsConfigured => SenderEmail.Length > 0 && AppPassword.Length > 0 && SmtpHost.Length > 0;
 
@@ -80,6 +82,20 @@ public sealed class EmailSettings
         {HostelPhone}
         """);
 
+    public static EmailTemplate DefaultAbsence { get; } = new(
+        "{StudentName} was not present at {HostelName} on {AttendanceDate}",
+        """
+        Dear {ParentName},
+
+        This is to inform you that {StudentName} (room {RoomNumber}) was not present in the hostel at the night attendance on {AttendanceDate}.
+
+        If you were not aware of this, please contact the hostel.
+
+        Thank you,
+        {HostelName}
+        {HostelPhone}
+        """);
+
     public static EmailTemplate DefaultReminder { get; } = new(
         "Payment reminder for {StudentName}, {HostelName}",
         """
@@ -105,6 +121,9 @@ public sealed class OutgoingEmail
     public string EmailType { get; init; } = string.Empty;
     public int StudentId { get; init; }
     public string StudentName { get; init; } = string.Empty;
+
+    /// <summary>The attendance record an absence email is about.</summary>
+    public int? AttendanceId { get; init; }
 
     /// <summary>The invoices the email is about (one history row is kept per invoice).</summary>
     public List<int> InvoiceIds { get; init; } = [];

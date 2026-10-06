@@ -38,7 +38,7 @@ Hostel 1──* Room
 
 ## Schema version
 
-The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **11**).
+The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **12**).
 At startup the application refuses a database with an older or newer version and explains what to do,
 instead of failing later with confusing errors. Increase the version whenever a table or column changes.
 
@@ -55,6 +55,7 @@ instead of failing later with confusing errors. Increase the version whenever a 
 | 9 | Phase 11: AppSetting table (Gmail account and email texts) |
 | 10 | AdminUser table (admin login with hashed password, email and phone) |
 | 11 | RoomAllocation.BedNumber (bed in the room, for the residency agreement) |
+| 12 | Attendance table (night attendance, absence emails to parents) |
 
 ## Tables
 
@@ -289,6 +290,24 @@ Rules (Phase 9):
 | SentDate | Date/Time | Required |
 | Status | Text(20) | Required: Sent / Failed |
 | ErrorMessage | Text(255) | |
+
+### Attendance
+Night attendance, marked once a day by the admin.
+
+| Column | Type | Notes |
+|---|---|---|
+| AttendanceId | AutoNumber | Primary key |
+| StudentId | Number | Required, → Student |
+| AttendanceDate | Date/Time | Required, indexed; **unique** together with StudentId (one record per student per night) |
+| IsPresent | Yes/No | Required |
+| Remarks | Text(255) | |
+| MarkedDate | Date/Time | Required; when the attendance was last saved |
+| ParentEmailedDate | Date/Time | When the parent was emailed about the absence (also logged in EmailHistory as `Absence`) |
+
+Rules: the sheet of a date lists the students in a room of the hostel that night (checked in on or before the
+date, not checked out or transferred that day); everyone starts as present. Future dates cannot be marked;
+earlier dates can be opened and corrected. Parents of absent students are emailed only when the admin clicks
+Email Parents, once per date unless the admin chooses to email again.
 
 ### AdminUser
 The admin login. A new database gets the default login admin / admin, which the admin changes on the

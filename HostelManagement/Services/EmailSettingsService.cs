@@ -23,6 +23,7 @@ public static partial class EmailSettingsService
         [EmailType.Invoice] = [.. CommonFields, "InvoiceNumber", "Period", "Amount", "DueDate", "Pending"],
         [EmailType.Receipt] = [.. CommonFields, "InvoiceNumber", "ReceiptNumber", "PaidAmount", "PaymentDate", "PaymentMethod", "Pending"],
         [EmailType.DueReminder] = [.. CommonFields, "InvoiceList", "Pending", "Overdue"],
+        [EmailType.Absence] = [.. CommonFields, "AttendanceDate", "RoomNumber", "Remarks"],
     };
 
     private const string PasswordPrefix = "dpapi:";
@@ -42,6 +43,7 @@ public static partial class EmailSettingsService
             Invoice = new(Value("Email.Invoice.Subject", EmailSettings.DefaultInvoice.Subject), Value("Email.Invoice.Body", EmailSettings.DefaultInvoice.Body)),
             Receipt = new(Value("Email.Receipt.Subject", EmailSettings.DefaultReceipt.Subject), Value("Email.Receipt.Body", EmailSettings.DefaultReceipt.Body)),
             Reminder = new(Value("Email.Reminder.Subject", EmailSettings.DefaultReminder.Subject), Value("Email.Reminder.Body", EmailSettings.DefaultReminder.Body)),
+            Absence = new(Value("Email.Absence.Subject", EmailSettings.DefaultAbsence.Subject), Value("Email.Absence.Body", EmailSettings.DefaultAbsence.Body)),
         };
     }
 
@@ -67,6 +69,8 @@ public static partial class EmailSettingsService
             ["Email.Receipt.Body"] = settings.Receipt.Body.Trim(),
             ["Email.Reminder.Subject"] = settings.Reminder.Subject.Trim(),
             ["Email.Reminder.Body"] = settings.Reminder.Body.Trim(),
+            ["Email.Absence.Subject"] = settings.Absence.Subject.Trim(),
+            ["Email.Absence.Body"] = settings.Absence.Body.Trim(),
         });
         AppLogger.Info("Email settings saved.");
     }
@@ -104,6 +108,7 @@ public static partial class EmailSettingsService
                      (EmailType.Invoice, "invoice", settings.Invoice),
                      (EmailType.Receipt, "receipt", settings.Receipt),
                      (EmailType.DueReminder, "reminder", settings.Reminder),
+                     (EmailType.Absence, "absence", settings.Absence),
                  })
         {
             if (template.Subject.Trim().Length == 0 || template.Body.Trim().Length == 0)

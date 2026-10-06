@@ -13,7 +13,7 @@ public sealed class MainFormTests : TestDatabase
         string[] expected =
         [
             "Dashboard", "Hostels", "Colleges", "Rooms", "Room Allocation", "Services", "Students",
-            "Parents / Guardians", "Invoices", "Payments", "Pending Dues", "Reports",
+            "Parents / Guardians", "Attendance", "Invoices", "Payments", "Pending Dues", "Reports",
             "Admin Account", "Email Settings", "Backup / Restore", "Application Settings",
         ];
 
@@ -71,7 +71,7 @@ public sealed class MainFormTests : TestDatabase
             Assert.Single(content.Controls);
 
             List<Button> buttons = menu.Controls.OfType<Button>().ToList();
-            Assert.Equal(16, buttons.Count);
+            Assert.Equal(17, buttons.Count);
 
             foreach (Button button in buttons)
             {
