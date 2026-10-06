@@ -92,8 +92,7 @@ public sealed class DashboardView : UserControl
                 $"active, {data.LeftStudents} left"));
             _tiles.Controls.Add(Tile("Beds occupied", $"{data.OccupiedBeds} / {data.TotalBeds}",
                 $"{data.FreeBeds} free"));
-            _tiles.Controls.Add(Tile($"Invoiced {data.AcademicYear}", Money.FormatWhole(data.InvoicedThisYear),
-                "from July"));
+            _tiles.Controls.Add(Tile("Invoiced", Money.FormatWhole(data.InvoicedThisYear), $"in {data.AcademicYear}"));
             _tiles.Controls.Add(Tile("Received", Money.FormatWhole(data.ReceivedThisMonth), $"in {data.AsOf:MMMM yyyy}"));
             _tiles.Controls.Add(Tile("Pending", Money.FormatWhole(data.PendingAmount), "unpaid invoices"));
             _tiles.Controls.Add(Tile("Overdue", Money.FormatWhole(data.OverdueAmount),
@@ -124,10 +123,17 @@ public sealed class DashboardView : UserControl
             Margin = new Padding(0, 0, 8, 8),
             Padding = new Padding(10, 6, 6, 6),
         };
-        var captionLabel = new Label { Text = caption, Dock = DockStyle.Top, Height = 20, ForeColor = UiTheme.TextMuted, AutoEllipsis = true };
+        var captionLabel = new Label
+        {
+            Text = overdue ? "⚠ " + caption : caption,
+            Dock = DockStyle.Top,
+            Height = 20,
+            ForeColor = overdue ? UiTheme.Danger : UiTheme.TextMuted,
+            AutoEllipsis = true,
+        };
         var valueLabel = new Label
         {
-            Text = overdue ? "⚠ " + value : value,
+            Text = value,
             Dock = DockStyle.Top,
             Height = 30,
             Font = UiTheme.FigureFont,

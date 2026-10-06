@@ -133,7 +133,7 @@ public sealed class DashboardServiceTests : TestDatabase
 
             List<Control> controls = AllControls(view).ToList();
             Assert.Contains(controls, c => c is Label { Text: "Students" });
-            Assert.Contains(controls, c => c is Label l && l.Text.StartsWith("⚠ ", StringComparison.Ordinal));
+            Assert.Contains(controls, c => c is Label { Text: "⚠ Overdue" });
             PaymentsChart chart = controls.OfType<PaymentsChart>().Single();
             Assert.Single(chart.LabelledBars());
 
