@@ -26,10 +26,23 @@ public static class Db
 
     public static bool IsConfigured => _connectionString is not null;
 
+    /// <summary>
+    /// Set by the automated tests only. They open the database from several threads, including short lived
+    /// window threads; with pooling, a connection opened on such a thread could be released after the thread
+    /// has ended, which ends the test process. The application itself uses one window thread and keeps pooling.
+    /// </summary>
+    internal static bool DisablePooling { get; set; }
+
     internal static void Configure(string providerName, string databaseFile)
     {
         ProviderName = providerName;
-        _connectionString = BuildConnectionString(providerName, databaseFile);
+        var builder = new OleDbConnectionStringBuilder(BuildConnectionString(providerName, databaseFile));
+        if (DisablePooling)
+        {
+            // All OLE DB services except resource pooling.
+            builder["OLE DB Services"] = -4;
+        }
+        _connectionString = builder.ConnectionString;
     }
 
     // Keep this to Provider and Data Source only: ADOX refuses to create a database

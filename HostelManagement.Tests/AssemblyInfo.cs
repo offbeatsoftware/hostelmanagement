@@ -5,8 +5,13 @@ namespace HostelManagement.Tests
 {
     internal static class TestSetup
     {
-        // A message box would block a test run forever; make it throw instead.
+        // A message box would block a test run forever: make it throw instead. Connection pooling is off
+        // because UI tests open the database on short lived window threads (see Db.DisablePooling).
         [System.Runtime.CompilerServices.ModuleInitializer]
-        internal static void DisableMessageBoxes() => Utilities.Dialogs.ThrowInsteadOfShowing = true;
+        internal static void Initialize()
+        {
+            Utilities.Dialogs.ThrowInsteadOfShowing = true;
+            Data.Db.DisablePooling = true;
+        }
     }
 }
