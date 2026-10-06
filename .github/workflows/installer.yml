@@ -18,6 +18,25 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      # The installer always gets an empty database built from this very version's schema
+      # (not the template stored in the repository, which may lag behind).
+      - name: Install Microsoft Access Database Engine 2016 (x64)
+        shell: pwsh
+        run: |
+          $installer = Join-Path $env:RUNNER_TEMP 'accessdatabaseengine_X64.exe'
+          Invoke-WebRequest 'https://download.microsoft.com/download/3/5/C/35C84C36-661A-44E6-9324-8786B8DBE231/accessdatabaseengine_X64.exe' -OutFile $installer
+          $process = Start-Process $installer -ArgumentList '/quiet' -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Access Database Engine install failed with exit code $($process.ExitCode)" }
+
+      - name: Create empty database
+        shell: pwsh
+        env:
+          HOSTEL_TEMPLATE_OUT: ${{ github.workspace }}\HostelManagement\Database\HostelManagement.accdb
+        run: |
+          Remove-Item $env:HOSTEL_TEMPLATE_OUT -ErrorAction SilentlyContinue
+          dotnet test HostelManagement.sln -c Release --filter "FullyQualifiedName~DatabaseTemplateExport"
+          if (-not (Test-Path $env:HOSTEL_TEMPLATE_OUT)) { throw 'The empty database was not created.' }
+
       # Self-contained: .NET 8 is included, so the hostel PC needs nothing but the Access Database Engine.
       - name: Publish
         run: dotnet publish HostelManagement/HostelManagement.csproj -c Release -r win-x64 --self-contained true -o publish

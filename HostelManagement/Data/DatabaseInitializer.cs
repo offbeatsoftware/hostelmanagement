@@ -49,6 +49,14 @@ public static class DatabaseInitializer
             CreateDatabaseFile(provider);
             AppLogger.Info($"Created database {AppPaths.DatabaseFile}.");
         }
+        else if (IsOutdatedAndEmpty())
+        {
+            // For example the empty database of an older installer: nothing is lost by starting afresh.
+            ReleasePooledConnections();
+            File.Delete(AppPaths.DatabaseFile);
+            CreateDatabaseFile(provider);
+            AppLogger.Info($"Replaced an empty database from an earlier version with a new one ({AppPaths.DatabaseFile}).");
+        }
 
         CreateMissingTables();
         AdminUserRepository.EnsureDefaultAdmin();
@@ -194,6 +202,60 @@ public static class DatabaseInitializer
                 "This database was created by a newer version of the application.\n\n" +
                 "Please install the latest version of the application.");
         }
+    }
+
+    /// <summary>
+    /// True for a database of an earlier layout that holds no hostel data yet: no rows in any table, apart from
+    /// the schema version and the default admin login with its first password.
+    /// </summary>
+    private static bool IsOutdatedAndEmpty()
+    {
+        try
+        {
+            using OleDbConnection connection = Db.OpenConnection();
+            HashSet<string> existing = GetExistingTableNames(connection);
+            if (existing.Count == 0)
+            {
+                return false;
+            }
+            if (existing.Contains("SchemaInfo"))
+            {
+                object? stored = Db.Scalar(connection, null, "SELECT MAX([Version]) FROM [SchemaInfo]");
+                if (stored is null or DBNull || Convert.ToInt32(stored) >= DatabaseSchema.Version)
+                {
+                    return false;
+                }
+            }
+
+            foreach (string table in existing.Where(t => t is not "SchemaInfo" and not "AdminUser"))
+            {
+                if (Convert.ToInt32(Db.Scalar(connection, null, $"SELECT COUNT(*) FROM [{table}]")) > 0)
+                {
+                    return false;
+                }
+            }
+            if (existing.Contains("AdminUser"))
+            {
+                List<string> hashes = Db.Query(connection, null, "SELECT [PasswordHash] FROM [AdminUser]", r => r.GetText("PasswordHash"));
+                if (hashes.Count > 1 || hashes.Any(h => !PasswordHasher.Verify(Models.AdminUser.DefaultPassword, h)))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+        catch (OleDbException ex)
+        {
+            AppLogger.Error("Could not check whether the database is an empty database of an earlier version.", ex);
+            return false;
+        }
+    }
+
+    private static void ReleasePooledConnections()
+    {
+        OleDbConnection.ReleaseObjectPool();
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
     }
 
     private static void CreateTable(OleDbConnection connection, TableDefinition table)

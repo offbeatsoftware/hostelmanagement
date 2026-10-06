@@ -60,6 +60,7 @@ public sealed class DatabaseInitializerTests : TestDatabase
     [Fact]
     public void Initialize_DatabaseFromBeforeVersioning_IsRejectedWithFriendlyMessage()
     {
+        AddHostel("Boys Hostel");
         Db.Execute("DROP TABLE [SchemaInfo]");
 
         var ex = Assert.Throws<DatabaseException>(DatabaseInitializer.Initialize);
@@ -69,13 +70,37 @@ public sealed class DatabaseInitializerTests : TestDatabase
     }
 
     [Fact]
-    public void Initialize_OlderSchemaVersion_IsRejected()
+    public void Initialize_OlderSchemaVersionWithData_IsRejected()
     {
+        AddHostel("Boys Hostel");
         Db.Execute("UPDATE [SchemaInfo] SET [Version] = ?", Db.Param("@Version", DatabaseSchema.Version - 1));
 
         var ex = Assert.Throws<DatabaseException>(DatabaseInitializer.Initialize);
 
         Assert.Contains("earlier version", ex.Message);
+    }
+
+    [Fact]
+    public void Initialize_EmptyDatabaseOfAnOlderVersion_IsReplaced()
+    {
+        Db.Execute("UPDATE [SchemaInfo] SET [Version] = ?", Db.Param("@Version", DatabaseSchema.Version - 1));
+        Db.Execute("ALTER TABLE [RoomAllocation] DROP COLUMN [BedNumber]");
+
+        DatabaseInitializer.Initialize();
+
+        Assert.Equal(DatabaseSchema.Version, Convert.ToInt32(Db.Scalar("SELECT MAX([Version]) FROM [SchemaInfo]")));
+        Assert.Equal(0, Convert.ToInt32(Db.Scalar("SELECT COUNT([BedNumber]) FROM [RoomAllocation]")));
+        Assert.True(Services.AuthService.IsValidLogin("admin", "admin"));
+    }
+
+    [Fact]
+    public void Initialize_OlderVersionWithChangedAdminPassword_IsNotReplaced()
+    {
+        Services.AuthService.IsValidLogin("admin", "admin");
+        Services.AuthService.ChangePassword("admin", "Balaji@2026", "Balaji@2026");
+        Db.Execute("UPDATE [SchemaInfo] SET [Version] = ?", Db.Param("@Version", DatabaseSchema.Version - 1));
+
+        Assert.Throws<DatabaseException>(DatabaseInitializer.Initialize);
     }
 
     [Fact]
