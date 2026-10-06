@@ -28,6 +28,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.105.1" />
     <PackageReference Include="System.Data.OleDb" Version="8.0.1" />
     <!-- PDF invoices (MIT licence). -->
     <PackageReference Include="PDFsharp" Version="6.2.4" />

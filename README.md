@@ -4,7 +4,7 @@ A single admin Windows desktop application for managing a private student hostel
 
 **Stack:** C# · .NET 8 · Windows Forms · Microsoft Access (.accdb) · System.Data.OleDb
 
-**Status:** Phase 12 (dashboard), with several hostels. Reports and backup follow in phases 13 and 14.
+**Status:** Phase 13 (reports in PDF and Excel), with several hostels. Backup and restore follow in phase 14.
 
 ## Requirements
 
@@ -28,7 +28,8 @@ A single admin Windows desktop application for managing a private student hostel
 From the command line: `dotnet build HostelManagement.sln` and `dotnet run --project HostelManagement`.
 
 NuGet packages: `System.Data.OleDb` 8.0.1, `PDFsharp` 6.2.4 (MIT licence, PDFs) and
-`System.Security.Cryptography.ProtectedData` 8.0.0 (encrypts the Gmail app password), restored automatically on build.
+`System.Security.Cryptography.ProtectedData` 8.0.0 (encrypts the Gmail app password) and `ClosedXML` 0.105.1
+(MIT licence, Excel reports), restored automatically on build.
 
 ## Signing in and choosing a hostel
 
@@ -77,7 +78,7 @@ automatically on first start:
 | `Backups`            | Database backups                                |
 | `Invoices`           | Invoice PDFs (`Invoice_SBH-2026-27-0001.pdf`)   |
 | `Receipts`           | Receipt PDFs (`Receipt_SBH-R-2026-27-0001.pdf`) |
-| `Reports`            | Exported reports such as the pending dues PDF   |
+| `Reports`            | Exported reports (PDF and Excel)                |
 | `Logs`               | Technical error logs (`app-yyyyMMdd.log`)       |
 
 **Installation note:** Windows does not let normal users write inside `C:\Program Files`, so the application

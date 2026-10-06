@@ -42,6 +42,34 @@ public sealed class ScreenshotTests : TestDatabase
         Print("MAIN", () => new MainForm { WindowState = FormWindowState.Normal, Size = new Size(1280, 760) });
     }
 
+    [Fact]
+    public void ReportsScreen()
+    {
+        if (Environment.GetEnvironmentVariable("PRINT_SCREENSHOTS") is null)
+        {
+            return;
+        }
+
+        SeedSampleData();
+        HostelContext.Select(HostelId);
+        Print("REPORTS", () =>
+        {
+            var form = new MainForm { WindowState = FormWindowState.Normal, Size = new Size(1280, 760) };
+            form.Shown += (_, _) =>
+            {
+                Button reports = form.Controls.Find("navButtonsPanel", searchAllChildren: true).Single()
+                    .Controls.OfType<Button>().Single(b => b.Text == "Reports");
+                reports.PerformClick();
+                ListBox list = AllControls(form).OfType<ListBox>().Single();
+                list.SelectedIndex = 1; // Room occupancy
+            };
+            return form;
+        });
+    }
+
+    private static IEnumerable<Control> AllControls(Control parent) =>
+        parent.Controls.Cast<Control>().SelectMany(c => new[] { c }.Concat(AllControls(c)));
+
     /// <summary>Rooms, students, invoices and payments so the dashboard shows figures, lists and the chart.</summary>
     private void SeedSampleData()
     {

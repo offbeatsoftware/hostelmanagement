@@ -84,7 +84,7 @@ public partial class MainForm : Form
         new("BILLING", "Pending Dues", "Outstanding invoice balances and reminders.",
             hostel => new PendingDuesView(hostel!), RequiresHostel: true),
         new("BILLING", "Reports", "Student, room, payment and dues reports.",
-            _ => PlaceholderView.Create("Reports", "Phase 13"), RequiresHostel: true),
+            hostel => new ReportsView(hostel!), RequiresHostel: true),
 
         new("SETTINGS", "Email Settings", "Gmail account, email texts and the history of emails sent.",
             _ => new EmailSettingsView()),
