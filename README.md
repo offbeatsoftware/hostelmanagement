@@ -4,7 +4,7 @@ A single admin Windows desktop application for managing a private student hostel
 
 **Stack:** C# · .NET 8 · Windows Forms · Microsoft Access (.accdb) · System.Data.OleDb
 
-**Status:** Phase 11 (email through Gmail), with several hostels. Module screens show a placeholder until their phase is built.
+**Status:** Phase 12 (dashboard), with several hostels. Reports and backup follow in phases 13 and 14.
 
 ## Requirements
 

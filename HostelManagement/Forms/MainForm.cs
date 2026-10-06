@@ -59,7 +59,7 @@ public partial class MainForm : Form
     internal static List<NavigationItem> BuildNavigation() =>
     [
         new("OVERVIEW", "Dashboard", "Summary of students, rooms, payments and dues.",
-            _ => PlaceholderView.Create("Dashboard", "Phase 12"), RequiresHostel: true),
+            hostel => new DashboardView(hostel!), RequiresHostel: true),
 
         new("HOSTEL", "Hostels", "Add and edit hostels. Select the hostel to work on at the top right.",
             _ => new HostelsView()),
