@@ -335,7 +335,7 @@ public partial class MainForm : Form
             FlatStyle = FlatStyle.Flat,
             TextAlign = ContentAlignment.MiddleLeft,
             Padding = new Padding(16, 0, 0, 0),
-            Height = 32,
+            Height = 30,
             Margin = Padding.Empty,
             Cursor = Cursors.Hand,
             UseVisualStyleBackColor = false,
