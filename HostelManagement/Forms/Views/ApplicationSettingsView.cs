@@ -29,6 +29,7 @@ public sealed class ApplicationSettingsView : UserControl
         };
         infoTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140));
         infoTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        AddInfoRow(infoTable, "Version", $"{AppInfo.ProductName} {AppInfo.Version}");
         AddInfoRow(infoTable, "Data folder", AppPaths.DataFolder);
         AddInfoRow(infoTable, "Database file", AppPaths.DatabaseFile);
         AddInfoRow(infoTable, "Database engine", Db.ProviderName);
@@ -56,7 +57,14 @@ public sealed class ApplicationSettingsView : UserControl
             Padding = new Padding(0, 8, 0, 0),
             WrapContents = false,
         };
+        var guideButton = new Button { Text = "User Guide", TabIndex = 1 };
+        UiTheme.StyleSecondaryButton(guideButton);
+        guideButton.Width = 120;
+        guideButton.Margin = new Padding(8, 0, 0, 0);
+        guideButton.Click += (_, _) => OpenUserGuide();
+
         buttonRow.Controls.Add(_testButton);
+        buttonRow.Controls.Add(guideButton);
         buttonRow.Controls.Add(_summaryLabel);
 
         _resultsGrid = new DataGridView { Dock = DockStyle.Fill, TabIndex = 1 };
@@ -152,6 +160,25 @@ public sealed class ApplicationSettingsView : UserControl
         {
             Cursor = Cursors.Default;
             _testButton.Enabled = true;
+        }
+    }
+
+    /// <summary>Opens the user guide (UserGuide.pdf next to the program).</summary>
+    private static void OpenUserGuide()
+    {
+        string path = Path.Combine(AppContext.BaseDirectory, "UserGuide.pdf");
+        if (!File.Exists(path))
+        {
+            Dialogs.Warning($"The user guide was not found ({path}). Reinstall the application to restore it.");
+            return;
+        }
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            ErrorHandler.Handle(ex, "The user guide could not be opened. Check that a PDF viewer is installed.");
         }
     }
 }

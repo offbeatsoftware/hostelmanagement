@@ -1,0 +1,48 @@
+name: Build installer
+
+# Builds HostelManagement-Setup-<version>.exe and attaches it to the workflow run
+# (Actions > Build installer > the run > Artifacts > HostelManagement-Setup).
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # Self-contained: .NET 8 is included, so the hostel PC needs nothing but the Access Database Engine.
+      - name: Publish
+        run: dotnet publish HostelManagement/HostelManagement.csproj -c Release -r win-x64 --self-contained true -o publish
+
+      - name: Check the published files
+        shell: pwsh
+        run: |
+          foreach ($file in 'publish\HostelManagement.exe', 'publish\Database\HostelManagement.accdb', 'publish\UserGuide.pdf') {
+            if (-not (Test-Path $file)) { throw "$file is missing from the published files." }
+          }
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          [xml]$project = Get-Content HostelManagement/HostelManagement.csproj
+          $version = ($project.Project.PropertyGroup | ForEach-Object { $_.Version } | Where-Object { $_ }) | Select-Object -First 1
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=$version" installer\HostelManagement.iss
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
+          Get-ChildItem installer\Output
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HostelManagement-Setup
+          path: installer/Output/*.exe
+          retention-days: 30

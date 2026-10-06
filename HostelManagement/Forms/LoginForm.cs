@@ -44,6 +44,7 @@ public sealed class LoginForm : Form
     public LoginForm(IReadOnlyList<Hostel> hostels)
     {
         Text = "Sign in";
+        Icon = AppImages.AppIcon ?? Icon;
         FormBorderStyle = FormBorderStyle.FixedSingle;
         MaximizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;

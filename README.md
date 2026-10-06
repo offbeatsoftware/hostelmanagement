@@ -4,7 +4,12 @@ A single admin Windows desktop application for managing a private student hostel
 
 **Stack:** C# · .NET 8 · Windows Forms · Microsoft Access (.accdb) · System.Data.OleDb
 
-**Status:** Phase 14 (backup and restore): all modules are built. Phase 15 is final testing and the installer.
+**Status:** version 1.0: all modules, residency agreement, installer and user guide.
+
+**For the hostel PC:** download `HostelManagement-Setup-<version>.exe` from GitHub (Actions > *Build installer* >
+latest run > Artifacts) and follow [docs/Installation.md](docs/Installation.md). The user guide is
+[docs/UserGuide.pdf](docs/UserGuide.pdf) (source `docs/UserGuide.html`; rebuild the PDF after editing it with
+`chromium --headless --no-pdf-header-footer --print-to-pdf=docs/UserGuide.pdf docs/UserGuide.html`).
 
 ## Requirements
 

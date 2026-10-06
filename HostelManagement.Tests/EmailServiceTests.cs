@@ -130,6 +130,28 @@ public sealed class EmailServiceTests : TestDatabase
     }
 
     [Fact]
+    public void InvalidSmtpServer_GivesAConnectionMessage()
+    {
+        EmailService.Sender = new SmtpEmailSender();
+        // Nothing listens on port 1 of this computer, so the connection is refused at once.
+        var settings = new EmailSettings { SmtpHost = "127.0.0.1", SmtpPort = 1, SenderEmail = "hostel@gmail.com", AppPassword = "x" };
+
+        string? error = EmailService.SendTest(settings, "owner@example.com");
+
+        Assert.Contains("Could not connect to 127.0.0.1", error);
+    }
+
+    [Fact]
+    public void InvalidRecipientAddress_GivesAnAddressMessage()
+    {
+        EmailService.Sender = new SmtpEmailSender();
+        var settings = new EmailSettings { SmtpHost = "127.0.0.1", SmtpPort = 1, SenderEmail = "hostel@gmail.com", AppPassword = "x" };
+        var email = new OutgoingEmail { EmailType = EmailType.Invoice, RecipientEmail = "parent at example", Subject = "S", Body = "B" };
+
+        Assert.Contains("not valid", EmailService.Send(settings, email));
+    }
+
+    [Fact]
     public void Fill_ReplacesKnownFieldsAndLeavesOthers() =>
         Assert.Equal("Dear Rakesh, {Unknown}",
             EmailSettingsService.Fill("Dear {ParentName}, {Unknown}", new Dictionary<string, string> { ["ParentName"] = "Rakesh" }));

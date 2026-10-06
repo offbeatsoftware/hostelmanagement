@@ -20,6 +20,7 @@ public partial class MainForm : Form
     public MainForm()
     {
         InitializeComponent();
+        Icon = AppImages.AppIcon ?? Icon;
         ApplyTheme();
 
         _navigationItems = BuildNavigation();

@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hostel Management System: User Guide</title>
+<!-- Source of docs/UserGuide.pdf. After editing, rebuild the PDF:
+     chromium --headless --no-pdf-header-footer --print-to-pdf=docs/UserGuide.pdf docs/UserGuide.html -->
+<style>
+  @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+  :root { --terracotta: #c0652b; --ink: #212529; --muted: #6c757d; --beige: #f5ecdc; --line: #e2d8c6; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.5; margin: 0; }
+  h1 { color: var(--terracotta); font-size: 24pt; margin: 0 0 4px; }
+  h2 { color: var(--terracotta); font-size: 15pt; margin: 22px 0 6px; padding-bottom: 3px; border-bottom: 2px solid var(--line); page-break-after: avoid; }
+  h3 { font-size: 11.5pt; margin: 14px 0 4px; page-break-after: avoid; }
+  p, li { margin: 3px 0; }
+  ol, ul { padding-left: 20px; margin: 4px 0 8px; }
+  .subtitle { color: var(--muted); font-size: 12pt; margin-bottom: 18px; }
+  .cover { text-align: center; padding-top: 30mm; page-break-after: always; }
+  .cover img { width: 150mm; border: 1px solid var(--line); margin-top: 14mm; }
+  .note { background: var(--beige); border-left: 4px solid var(--terracotta); padding: 6px 10px; margin: 8px 0; page-break-inside: avoid; }
+  .shot { text-align: center; margin: 8px 0 12px; page-break-inside: avoid; }
+  .shot img { width: 150mm; border: 1px solid var(--line); }
+  .shot div { color: var(--muted); font-size: 9pt; }
+  table { border-collapse: collapse; width: 100%; margin: 6px 0 10px; page-break-inside: avoid; }
+  th, td { border: 1px solid var(--line); padding: 4px 7px; text-align: left; vertical-align: top; }
+  th { background: var(--beige); }
+  .toc li { margin: 1px 0; }
+  .page { page-break-before: always; }
+  b.ui { white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <h1>Shri Balaji Hostel</h1>
+  <div class="subtitle">Hostel Management System: User Guide (version 1.0)</div>
+  <img src="images/login.jpg" alt="Sign in screen">
+</div>
+
+<h2>Contents</h2>
+<ol class="toc">
+  <li>Getting started</li>
+  <li>Setting up a hostel</li>
+  <li>Students and parents</li>
+  <li>Rooms, check-in and the residency agreement</li>
+  <li>Invoices</li>
+  <li>Payments and receipts</li>
+  <li>Pending dues and reminders</li>
+  <li>Email (Gmail)</li>
+  <li>Dashboard and reports</li>
+  <li>Backup and restore</li>
+  <li>Admin account</li>
+  <li>Rules the program follows</li>
+  <li>When something goes wrong</li>
+</ol>
+
+<h2>1. Getting started</h2>
+<p>Start the program from the desktop shortcut <b>Hostel Management System</b>.</p>
+<ol>
+  <li>Enter the user name and password. A new installation uses <b>admin</b> / <b>admin</b>; change the password at once (section 11).</li>
+  <li>Choose the hostel to work on and click <b class="ui">Sign in</b>.</li>
+</ol>
+<p>The menu on the left opens each screen. The hostel you work on is shown at the top right; change it there at any time. Colleges, rooms, students, invoices, payments, dues, reports and the dashboard always show the <b>selected hostel only</b>.</p>
+<div class="note">Fields marked with <b>*</b> are required. Messages in red under a form explain what to correct; nothing is saved until the form is correct.</div>
+
+<h2>2. Setting up a hostel</h2>
+<ol>
+  <li><b>Hostels</b>: click <b class="ui">Add</b>, enter the hostel name (address, phone and email are optional) and choose how often the hostel bills: <b>Twice a year</b> or <b>4 times a year</b>. Each new hostel gets the sharing types Single, Double and Triple, and the services Wi-Fi and Laundry (included in rent) and Transport (charged per month).</li>
+  <li><b>Colleges</b>: add the colleges whose students stay in the hostel.</li>
+  <li><b>Rooms</b>: first enter the <b>yearly rent</b> for each sharing type, then add the rooms: room number, floor, sharing type and whether the room is for boys or girls. The number of beds equals the sharing type.</li>
+  <li><b>Services</b>: set the monthly rate for Transport. Services can be added, changed or switched off.</li>
+</ol>
+
+<h2>3. Students and parents</h2>
+<h3>Add a student</h3>
+<ol>
+  <li><b>Students</b> &gt; <b class="ui">Add</b>.</li>
+  <li><b>Student</b> tab: name, mobile and admission date are required; choose the gender too, it decides the rooms the student can be given. The Aadhaar number is checked for typing mistakes.</li>
+  <li><b>College &amp; Stay</b> tab: college, course and class.</li>
+  <li><b>Parent</b> tab: parent's name, mobile and email (invoices and reminders go to this email).</li>
+  <li><b>Photo &amp; Aadhaar</b> tab: add the photo (JPG or PNG) and the Aadhaar card (image or PDF), at most 5 MB each.</li>
+  <li><b>Services</b> tab: tick Transport if the student uses it.</li>
+</ol>
+<p>Use the search box and the filters (college, course, class, Active/Left) to find students. The Aadhaar number is shown masked (XXXX XXXX 1234) in lists and reports.</p>
+<p><b>Parents / Guardians</b> lists all parents; a student can have more than one, and the one marked <b>primary contact</b> receives the emails.</p>
+
+<h2>4. Rooms, check-in and the residency agreement</h2>
+<h3>Check-in</h3>
+<ol>
+  <li><b>Room Allocation</b> &gt; <b class="ui">Check-in</b>.</li>
+  <li>Choose the student, the room (only rooms for the student's gender with a free bed are listed) and the <b>bed</b>. The lowest free bed is chosen for you; change it if needed.</li>
+  <li>After check-in the program offers to create the <b>residency agreement</b> PDF straight away.</li>
+</ol>
+<h3>Transfer and check-out</h3>
+<p>Select the student in <b>Room Allocation</b> and click <b class="ui">Transfer</b> (to another room, same day) or <b class="ui">Check-out</b>. Check-out sets the student to <b>Left</b>; the history of every room is kept.</p>
+<h3>Residency agreement</h3>
+<p><b>Students</b> &gt; select the student &gt; <b class="ui">Agreement PDF</b>. Choose where to save it; it opens for printing. The agreement fills in the student's name, S/o or D/o with the parent's name, address, Boys or Girls hostel, room and bed number, the number of beds in the room, the check-in date and the annual fee (yearly rent plus 12 months of transport, in figures and words). Students without an address get a dotted line to fill in by hand.</p>
+<p>To change the wording, click <b class="ui">Agreement Text...</b> on the Students screen. Words in curly brackets, such as <code>{StudentName}</code> or <code>{BedNumber}</code>, are filled in for each student. <b class="ui">Restore Default</b> brings back the original text.</p>
+
+<h2>5. Invoices</h2>
+<ol>
+  <li><b>Invoices</b> &gt; <b class="ui">Create</b>.</li>
+  <li>Choose the student and the billing period (July to December and January to June, or four quarters from July), and the invoice date.</li>
+  <li>Check the lines shown and click <b class="ui">Create</b>.</li>
+</ol>
+<p>The invoice holds the rent for the period (yearly rent divided by 2 or 4), Transport per month used, and Wi-Fi and Laundry at no charge. Invoice numbers look like <b>SBH/2026-27/0001</b>. <b class="ui">View / Print</b> opens the PDF, <b class="ui">Save PDF</b> saves it elsewhere, <b class="ui">Email</b> sends it to the parent. An invoice can be deleted only while it has no payments and no emails.</p>
+
+<h2>6. Payments and receipts</h2>
+<ol>
+  <li><b>Invoices</b> &gt; select the invoice &gt; <b class="ui">Record Payment</b> (or <b>Payments</b> &gt; <b class="ui">Record</b>).</li>
+  <li>The pending amount is filled in; change it for a part payment. A payment can never be more than the pending amount.</li>
+  <li>Choose Cash, UPI, Bank transfer or Cheque. For everything except cash, enter the UPI transaction id, bank reference or cheque number.</li>
+</ol>
+<p>Each payment gets a receipt number such as <b>SBH/R/2026-27/0001</b>. On the <b>Payments</b> screen, <b class="ui">View / Print</b> opens the receipt (with the amount in words and the balance still pending) and <b class="ui">Email Receipt</b> sends it to the parent. A payment entered by mistake can be deleted; its amount becomes pending again.</p>
+
+<h2>7. Pending dues and reminders</h2>
+<p><b>Pending Dues</b> shows one line per student who still owes money, including students who have left, most overdue first. Payment is due <b>15 days after the invoice date</b>; after that the invoice is <b>overdue</b> and shown in red (no late fee is charged).</p>
+<ul>
+  <li>Click a student to see the unpaid invoices below; <b class="ui">Record Payment</b> records a payment for the selected invoice.</li>
+  <li><b class="ui">Send Reminder</b> emails the parent of the selected student about the overdue invoices (with the invoice PDFs). <b class="ui">Remind All Overdue</b> does this for every overdue student. The <b>Last reminder</b> column shows when the last reminder was sent.</li>
+  <li><b class="ui">Export PDF</b> saves the list as shown.</li>
+</ul>
+
+<h2>8. Email (Gmail)</h2>
+<p>All emails are sent from the hostel's Gmail account <b>shribalajihostelsuddhowala@gmail.com</b>, and a copy goes to the admin's email (section 11). Gmail needs a 16 letter <b>app password</b>, not the normal password.</p>
+<h3>Create the app password (once)</h3>
+<ol>
+  <li>In a browser, sign in to the hostel's Gmail account and open <b>myaccount.google.com</b> &gt; <b>Security</b>.</li>
+  <li>Turn on <b>2-Step Verification</b> (Google sends a code to the mobile number).</li>
+  <li>Open <b>myaccount.google.com/apppasswords</b>, type a name such as <i>Hostel App</i> and click <b>Create</b>.</li>
+  <li>Copy the 16 letters shown in the yellow box (Google shows them only once).</li>
+</ol>
+<h3>Enter it in the program</h3>
+<ol>
+  <li><b>Settings</b> &gt; <b>Email Settings</b> &gt; <b>Gmail account</b> tab: paste the app password and click <b class="ui">Save</b>.</li>
+  <li>Type an address in <b>Send test to</b> and click <b class="ui">Send Test Email</b>.</li>
+</ol>
+<p>The tabs <b>Invoice email</b>, <b>Receipt email</b> and <b>Reminder email</b> hold the texts of the emails; words in curly brackets are filled in. <b>Email history</b> lists every email, sent or failed, with the reason for a failure.</p>
+<div class="note">If the Gmail password is ever changed, Google cancels the app password: create a new one and enter it again. The app password is also needed again after moving to another PC.</div>
+
+<h2>9. Dashboard and reports</h2>
+<div class="shot"><img src="images/dashboard.jpg" alt="Dashboard"><div>Dashboard with sample data</div></div>
+<p>The <b>Dashboard</b> shows students, beds, the amount invoiced this academic year, received this month, pending and overdue, a chart of payments per month, and short lists of the most overdue students, the latest payments and check-ins.</p>
+<p><b>Reports</b>: choose a report on the left, set the filters, click <b class="ui">Show</b>, then <b class="ui">Export PDF</b> or <b class="ui">Export Excel</b>.</p>
+<table>
+  <tr><th>Report</th><th>Filters</th><th>Shows</th></tr>
+  <tr><td>Student list</td><td>Active/Left, college</td><td>Students with course, room, mobile, masked Aadhaar and parent</td></tr>
+  <tr><td>Room occupancy</td><td>none</td><td>Each room with beds, occupied, free, students and yearly rent</td></tr>
+  <tr><td>Payments received</td><td>dates, payment method</td><td>Payments with a total per day and per method</td></tr>
+  <tr><td>Invoices</td><td>dates, status</td><td>Invoices with total, paid and pending</td></tr>
+  <tr><td>Pending dues</td><td>overdue only</td><td>Students with their unpaid invoices</td></tr>
+</table>
+<div class="shot"><img src="images/reports.jpg" alt="Reports"><div>Reports: room occupancy</div></div>
+
+<h2>10. Backup and restore</h2>
+<p>A backup is one zip file with the database and all photos and Aadhaar cards, saved in <b>C:\HostelManagement\Backups</b>.</p>
+<ul>
+  <li>An <b>automatic backup</b> is made once a day when the program is closed; the last 30 are kept.</li>
+  <li><b class="ui">Backup Now</b> makes a backup at any time; these are never deleted.</li>
+  <li><b>Second copy in</b>: choose a USB drive or a Google Drive / OneDrive folder; every backup is copied there too, so it survives if the PC fails.</li>
+</ul>
+<p><b>Restore</b>: select a backup and click <b class="ui">Restore Selected...</b> (or <b class="ui">Restore From File...</b>). All current data is replaced by the backup; the program first saves a backup of the current data (so a restore can be undone) and then restarts.</p>
+
+<h2>11. Admin account</h2>
+<p><b>Settings</b> &gt; <b>Admin Account</b>: enter the admin's email (it receives a copy of every email sent to parents) and phone, and change the password (at least 6 characters; enter the current password first).</p>
+
+<h2>12. Rules the program follows</h2>
+<table>
+  <tr><th>Topic</th><th>Rule</th></tr>
+  <tr><td>Academic year</td><td>Starts in July. Billing twice a year (Jul to Dec, Jan to Jun) or four times (quarters from July), chosen per hostel.</td></tr>
+  <tr><td>Rent</td><td>Entered per year and sharing type; each invoice charges the yearly rent divided by 2 or 4. A student who joins during a period pays the full installment.</td></tr>
+  <tr><td>Transport</td><td>Charged per month used; part of a month counts as a full month.</td></tr>
+  <tr><td>Due date</td><td>15 days after the invoice date; then overdue. No late fee, no GST, no deposit, no discounts.</td></tr>
+  <tr><td>Payments</td><td>Always against an invoice, part payments allowed, never more than pending. Reference required except for cash.</td></tr>
+  <tr><td>Rooms</td><td>Boys or girls; beds = sharing type; one student per bed. Transfer and check-out on any day.</td></tr>
+  <tr><td>Emails</td><td>Sent only when you click a button; to the primary parent, with a copy to the admin.</td></tr>
+</table>
+
+<h2>13. When something goes wrong</h2>
+<table>
+  <tr><th>Message</th><th>What to do</th></tr>
+  <tr><td>The Microsoft Access Database Engine was not found</td><td>Install "Microsoft Access Database Engine 2016 Redistributable" (64 bit), see Installation.txt in the program folder.</td></tr>
+  <tr><td>The database could not be opened</td><td>Close Microsoft Access or any other program that has the database open and try again.</td></tr>
+  <tr><td>Gmail did not accept the sender address and app password</td><td>Create a new app password (section 8) and enter it in Email Settings.</td></tr>
+  <tr><td>Could not connect to smtp.gmail.com</td><td>Check the internet connection and try again.</td></tr>
+  <tr><td>A file is in use / could not be saved</td><td>Close the PDF or Excel file that is open and try again.</td></tr>
+  <tr><td>Anything else</td><td>The message says what happened; technical details are written to C:\HostelManagement\Logs. Send that file with your question.</td></tr>
+</table>
+
+</body>
+</html>

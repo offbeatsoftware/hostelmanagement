@@ -15,3 +15,7 @@ obj/
 **/Documents/
 **/Backups/
 **/Logs/
+
+# Build output of the installer
+publish/
+installer/Output/
