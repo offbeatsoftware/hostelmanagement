@@ -51,6 +51,7 @@ public static class RoomService
             RoomNumber = Validators.Clean(input.RoomNumber),
             Floor = Validators.Clean(input.Floor),
             SharingTypeId = input.SharingTypeId,
+            Gender = Validators.Clean(input.Gender),
             IsActive = input.IsActive,
             Remarks = Validators.Clean(input.Remarks),
         };
@@ -122,6 +123,11 @@ public static class RoomService
         Validators.CheckLength(room.Floor, 20, "Floor");
         Validators.CheckLength(room.Remarks, 255, "Remarks");
 
+        if (!RoomGender.All.Contains(room.Gender))
+        {
+            throw new ValidationException("Please select whether the room is for boys or girls.");
+        }
+
         Room? existing = null;
         if (room.RoomId > 0)
         {
@@ -153,6 +159,12 @@ public static class RoomService
                     $"Room {existing.RoomNumber} has {existing.Occupied} students, so it cannot be changed to " +
                     $"{sharingType.SharingName} sharing ({sharingType.Capacity} " +
                     $"{(sharingType.Capacity == 1 ? "bed" : "beds")}). Move students out first.");
+            }
+            if (room.Gender != existing.Gender && existing.Occupied > 0)
+            {
+                throw new ValidationException(
+                    $"Room {existing.RoomNumber} has {existing.Occupied} student(s), so it cannot be changed from " +
+                    $"{existing.RoomFor} to {RoomGender.DisplayName(room.Gender)}. Move the students out first.");
             }
             if (!room.IsActive && existing.Occupied > 0)
             {

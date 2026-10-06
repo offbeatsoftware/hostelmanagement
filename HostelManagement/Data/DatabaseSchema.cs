@@ -19,7 +19,7 @@ public static class DatabaseSchema
     /// Increase by one whenever a table or column changes, so databases with an older
     /// layout are detected at startup. Stored in the SchemaInfo table.
     /// </summary>
-    public const int Version = 5;
+    public const int Version = 6;
 
     /// <summary>
     /// The sharing types added to every new hostel. Capacity always equals the sharing type
@@ -84,6 +84,7 @@ public static class DatabaseSchema
                 [RoomNumber]    TEXT(20) NOT NULL,
                 [Floor]         TEXT(20),
                 [SharingTypeId] INTEGER NOT NULL,
+                [Gender]        TEXT(10) NOT NULL,
                 [IsActive]      BIT NOT NULL,
                 [Remarks]       TEXT(255),
                 CONSTRAINT [UQ_Room_HostelNumber] UNIQUE ([HostelId], [RoomNumber]),

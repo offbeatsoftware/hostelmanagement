@@ -43,6 +43,9 @@ public sealed class Student
     public string ParentName { get; set; } = string.Empty;
     public string ParentMobile { get; set; } = string.Empty;
 
+    /// <summary>The student's current room number, empty when not in a room.</summary>
+    public string RoomNumber { get; set; } = string.Empty;
+
     /// <summary>Aadhaar number with only the last four digits visible, for lists and reports.</summary>
     public string AadhaarMasked => AadhaarNumber.Length == 12 ? $"XXXX XXXX {AadhaarNumber[8..]}" : string.Empty;
 }

@@ -75,6 +75,7 @@ public sealed class StudentsView : UserControl
         UiTheme.StyleGrid(_grid);
         FormFields.AddGridColumn(_grid, nameof(Student.StudentName), "Student", 16);
         FormFields.AddGridColumn(_grid, nameof(Student.Mobile), "Mobile", 10);
+        FormFields.AddGridColumn(_grid, nameof(Student.RoomNumber), "Room", 6);
         FormFields.AddGridColumn(_grid, nameof(Student.CollegeName), "College", 14);
         FormFields.AddGridColumn(_grid, nameof(Student.Course), "Course", 10);
         FormFields.AddGridColumn(_grid, nameof(Student.ClassName), "Class", 7);

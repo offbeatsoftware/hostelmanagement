@@ -98,6 +98,7 @@ public sealed class RoomsView : UserControl
         UiTheme.StyleGrid(_roomGrid);
         FormFields.AddGridColumn(_roomGrid, nameof(Room.RoomNumber), "Room", 10);
         FormFields.AddGridColumn(_roomGrid, nameof(Room.Floor), "Floor", 10);
+        FormFields.AddGridColumn(_roomGrid, nameof(Room.RoomFor), "For", 7);
         FormFields.AddGridColumn(_roomGrid, nameof(Room.SharingName), "Sharing", 10);
         FormFields.AddGridColumn(_roomGrid, nameof(Room.Capacity), "Capacity", 8, alignRight: true);
         FormFields.AddGridColumn(_roomGrid, nameof(Room.Occupied), "Occupied", 8, alignRight: true);

@@ -13,6 +13,7 @@ public sealed class RoomEditForm : Form
     private readonly TextBox _floorBox;
     private readonly ComboBox _sharingBox;
     private readonly Label _capacityRentLabel;
+    private readonly ComboBox _genderBox;
     private readonly CheckBox _activeBox;
     private readonly TextBox _remarksBox;
     private readonly Label _messageLabel;
@@ -31,7 +32,7 @@ public sealed class RoomEditForm : Form
         AutoScaleMode = AutoScaleMode.Font;
         Font = UiTheme.BodyFont;
         BackColor = Color.White;
-        ClientSize = new Size(560, 380);
+        ClientSize = new Size(560, 420);
 
         var fields = FormFields.CreateTable(labelWidth: 130, inputWidth: 380);
         _numberBox = FormFields.AddTextBox(fields, "Room number", 20, required: true);
@@ -58,6 +59,18 @@ public sealed class RoomEditForm : Form
             Margin = new Padding(0, 4, 0, 4),
         };
         FormFields.AddRow(fields, string.Empty, _capacityRentLabel);
+
+        _genderBox = new ComboBox
+        {
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Font = UiTheme.BodyFont,
+            Width = 160,
+            Margin = new Padding(0, 4, 0, 4),
+            TabIndex = fields.Controls.Count,
+        };
+        _genderBox.Items.AddRange([RoomGender.DisplayName(RoomGender.Male), RoomGender.DisplayName(RoomGender.Female)]);
+        _genderBox.SelectedIndex = room?.Gender == RoomGender.Female ? 1 : room?.Gender == RoomGender.Male ? 0 : -1;
+        FormFields.AddRow(fields, "Room for", _genderBox, required: true);
 
         _activeBox = new CheckBox
         {
@@ -89,14 +102,14 @@ public sealed class RoomEditForm : Form
         };
 
         _messageLabel = FormFields.CreateMessageLabel();
-        _messageLabel.Location = new Point(20, 285);
+        _messageLabel.Location = new Point(20, 325);
         _messageLabel.MaximumSize = new Size(520, 0);
 
-        var saveButton = new Button { Text = "Save", TabIndex = 1, Location = new Point(310, 330) };
+        var saveButton = new Button { Text = "Save", TabIndex = 1, Location = new Point(310, 370) };
         UiTheme.StylePrimaryButton(saveButton);
         saveButton.Click += (_, _) => Save();
 
-        var cancelButton = new Button { Text = "Cancel", TabIndex = 2, Location = new Point(430, 330) };
+        var cancelButton = new Button { Text = "Cancel", TabIndex = 2, Location = new Point(430, 370) };
         UiTheme.StyleSecondaryButton(cancelButton);
         cancelButton.DialogResult = DialogResult.Cancel;
 
@@ -130,6 +143,12 @@ public sealed class RoomEditForm : Form
                 RoomNumber = _numberBox.Text,
                 Floor = _floorBox.Text,
                 SharingTypeId = _sharingBox.SelectedValue is int id ? id : 0,
+                Gender = _genderBox.SelectedIndex switch
+                {
+                    0 => RoomGender.Male,
+                    1 => RoomGender.Female,
+                    _ => string.Empty,
+                },
                 IsActive = _activeBox.Checked,
                 Remarks = _remarksBox.Text,
             });

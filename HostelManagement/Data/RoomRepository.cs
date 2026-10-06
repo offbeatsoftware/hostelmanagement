@@ -7,7 +7,7 @@ public static class RoomRepository
 {
     // Capacity and rent come from the sharing type; occupancy is counted from current allocations.
     private const string SelectRooms =
-        "SELECT r.[RoomId], r.[HostelId], r.[RoomNumber], r.[Floor], r.[SharingTypeId], r.[IsActive], r.[Remarks], " +
+        "SELECT r.[RoomId], r.[HostelId], r.[RoomNumber], r.[Floor], r.[SharingTypeId], r.[Gender], r.[IsActive], r.[Remarks], " +
         "s.[SharingName], s.[Capacity], s.[Rent], " +
         "(SELECT COUNT(*) FROM [RoomAllocation] AS a WHERE a.[RoomId] = r.[RoomId] AND a.[Status] = ?) AS [Occupied] " +
         "FROM [Room] AS r INNER JOIN [SharingType] AS s ON r.[SharingTypeId] = s.[SharingTypeId]";
@@ -24,22 +24,24 @@ public static class RoomRepository
 
     public static int Insert(Room room) =>
         Db.Insert(
-            "INSERT INTO [Room] ([HostelId], [RoomNumber], [Floor], [SharingTypeId], [IsActive], [Remarks]) " +
-            "VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO [Room] ([HostelId], [RoomNumber], [Floor], [SharingTypeId], [Gender], [IsActive], [Remarks]) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
             Db.Param("@HostelId", room.HostelId),
             Db.Param("@RoomNumber", room.RoomNumber),
             Db.OptionalText("@Floor", room.Floor),
             Db.Param("@SharingTypeId", room.SharingTypeId),
+            Db.Param("@Gender", room.Gender),
             Db.Param("@IsActive", room.IsActive),
             Db.OptionalText("@Remarks", room.Remarks));
 
     public static int Update(Room room) =>
         Db.Execute(
-            "UPDATE [Room] SET [RoomNumber] = ?, [Floor] = ?, [SharingTypeId] = ?, [IsActive] = ?, [Remarks] = ? " +
+            "UPDATE [Room] SET [RoomNumber] = ?, [Floor] = ?, [SharingTypeId] = ?, [Gender] = ?, [IsActive] = ?, [Remarks] = ? " +
             "WHERE [RoomId] = ?",
             Db.Param("@RoomNumber", room.RoomNumber),
             Db.OptionalText("@Floor", room.Floor),
             Db.Param("@SharingTypeId", room.SharingTypeId),
+            Db.Param("@Gender", room.Gender),
             Db.Param("@IsActive", room.IsActive),
             Db.OptionalText("@Remarks", room.Remarks),
             Db.Param("@RoomId", room.RoomId));
@@ -68,6 +70,7 @@ public static class RoomRepository
         RoomNumber = record.GetText("RoomNumber"),
         Floor = record.GetText("Floor"),
         SharingTypeId = record.GetInt("SharingTypeId"),
+        Gender = record.GetText("Gender"),
         IsActive = record.GetBool("IsActive"),
         Remarks = record.GetText("Remarks"),
         SharingName = record.GetText("SharingName"),

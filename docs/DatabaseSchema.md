@@ -38,7 +38,7 @@ Hostel 1──* Room
 
 ## Schema version
 
-The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **5**).
+The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **6**).
 At startup the application refuses a database with an older or newer version and explains what to do,
 instead of failing later with confusing errors. Increase the version whenever a table or column changes.
 
@@ -48,6 +48,7 @@ instead of failing later with confusing errors. Increase the version whenever a 
 | 2 | Phase 3: College table; Student.CollegeName replaced by Student.CollegeId; college columns removed from Hostel |
 | 3 | Phase 4: SharingType table (capacity and rent per sharing type); Room keeps only SharingTypeId |
 | 4 | Several hostels: HostelId on College, SharingType and Room; Student.CollegeId required |
+| 6 | Phase 6: Room.Gender (rooms are for boys or girls) |
 | 5 | Phase 5: full Aadhaar number and Aadhaar card file on Student; student mobile and admission date required; parent mobile and email required |
 
 ## Tables
@@ -105,6 +106,7 @@ Capacity always equals the sharing type and rent is per sharing type and hostel 
 | RoomNumber | Text(20) | Required, **unique within the hostel** (also ignoring upper/lower case) |
 | Floor | Text(20) | Text so values like "Ground" are allowed |
 | SharingTypeId | Number | Required, → SharingType of the same hostel (gives the room's capacity and rent) |
+| Gender | Text(10) | Required: Male / Female, shown as Boys / Girls; only students of that gender can be allocated |
 | IsActive | Yes/No | Active / inactive |
 | Remarks | Text(255) | |
 
@@ -154,15 +156,26 @@ The primary parent is entered together with the student; more guardians are adde
 screen. A student's only parent cannot be deleted; deleting the primary contact makes another parent primary.
 
 ### RoomAllocation
+A student's stay in a room. The history is never deleted.
+
 | Column | Type | Notes |
 |---|---|---|
 | AllocationId | AutoNumber | Primary key |
 | StudentId | Number | Required, → Student |
 | RoomId | Number | Required, → Room |
-| CheckInDate | Date/Time | Required |
+| CheckInDate | Date/Time | Required; not before the admission date, not in the future |
 | CheckOutDate | Date/Time | Empty while the student is in the room |
 | Status | Text(20) | Required: Current / Transferred / CheckedOut (indexed) |
-| Remarks | Text(255) | |
+| Remarks | Text(255) | Check-in remarks, with transfer/check-out remarks added |
+
+Allocation rules (client decisions, Phase 6):
+- A student is in at most one room at a time (one Current allocation).
+- The room must be in the student's hostel, active, for the student's gender, with a free bed.
+- Only Active students with a gender (Male/Female) can be checked in.
+- **Transfer**: the current allocation ends (Transferred, CheckOutDate = date) and a new Current allocation
+  starts on the same date.
+- **Check-out**: the allocation ends (CheckedOut) and the student's status is set to Left, in one transaction.
+- A student in a room cannot be set to Left or change gender on the Students screen.
 
 ### Service
 | Column | Type | Notes |

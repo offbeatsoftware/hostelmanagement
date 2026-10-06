@@ -24,8 +24,8 @@ public sealed class DbTests : TestDatabase
             Db.Param("@Rent", 4500.75m), Db.Param("@SharingTypeId", doubleSharing));
 
         int id = Db.Insert(
-            "INSERT INTO [Room] ([HostelId], [RoomNumber], [Floor], [SharingTypeId], [IsActive], [Remarks]) " +
-            "VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO [Room] ([HostelId], [RoomNumber], [Floor], [SharingTypeId], [Gender], [IsActive], [Remarks]) " +
+            "VALUES (?, ?, ?, ?, 'Male', ?, ?)",
             Db.Param("@HostelId", HostelId),
             Db.Param("@RoomNumber", "101"),
             Db.Param("@Floor", "Ground"),
@@ -107,7 +107,8 @@ public sealed class DbTests : TestDatabase
     [Fact]
     public void UniqueRoomNumber_IsEnforcedAndDetected()
     {
-        const string sql = "INSERT INTO [Room] ([HostelId], [RoomNumber], [SharingTypeId], [IsActive]) VALUES (?, ?, ?, ?)";
+        const string sql = "INSERT INTO [Room] ([HostelId], [RoomNumber], [SharingTypeId], [Gender], [IsActive]) " +
+                           "VALUES (?, ?, ?, 'Male', ?)";
         int hostelId = HostelId;
         int single = SharingTypeId(capacity: 1);
         OleDbParameter[] Room() =>

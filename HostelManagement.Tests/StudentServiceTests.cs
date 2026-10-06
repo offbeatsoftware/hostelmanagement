@@ -287,7 +287,7 @@ public sealed class StudentServiceTests : TestDatabase
     public void Delete_StudentWithRoomHistory_IsRejected()
     {
         Student student = Add();
-        Room room = RoomService.Save(new Room { HostelId = HostelId, RoomNumber = "101", SharingTypeId = SharingTypeId(1) });
+        Room room = RoomService.Save(new Room { HostelId = HostelId, RoomNumber = "101", SharingTypeId = SharingTypeId(1), Gender = RoomGender.Male });
         Data.Db.Execute(
             "INSERT INTO [RoomAllocation] ([StudentId], [RoomId], [CheckInDate], [Status]) VALUES (?, ?, ?, ?)",
             Data.Db.Param("@StudentId", student.StudentId), Data.Db.Param("@RoomId", room.RoomId),

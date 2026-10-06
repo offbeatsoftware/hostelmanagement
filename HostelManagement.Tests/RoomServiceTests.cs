@@ -6,13 +6,15 @@ namespace HostelManagement.Tests;
 
 public sealed class RoomServiceTests : TestDatabase
 {
-    private Room AddRoom(string number, int capacity, bool active = true, string floor = "", int? hostelId = null) =>
+    private Room AddRoom(string number, int capacity, bool active = true, string floor = "", int? hostelId = null,
+        string gender = RoomGender.Male) =>
         RoomService.Save(new Room
         {
             HostelId = hostelId ?? HostelId,
             RoomNumber = number,
             Floor = floor,
             SharingTypeId = SharingTypeId(capacity, hostelId),
+            Gender = gender,
             IsActive = active,
         });
 
@@ -72,6 +74,7 @@ public sealed class RoomServiceTests : TestDatabase
             HostelId = HostelId,
             RoomNumber = "101",
             SharingTypeId = SharingTypeId(1, otherHostel),
+            Gender = RoomGender.Male,
         }));
 
         Assert.Contains("sharing type", ex.Message);
@@ -85,6 +88,7 @@ public sealed class RoomServiceTests : TestDatabase
             HostelId = 9999,
             RoomNumber = "101",
             SharingTypeId = SharingTypeId(1),
+            Gender = RoomGender.Male,
         }));
 
         Assert.Contains("hostel", ex.Message);
@@ -148,7 +152,7 @@ public sealed class RoomServiceTests : TestDatabase
             Assert.Throws<ValidationException>(() => AddRoom("  ", capacity: 1)).Message);
         Assert.Contains("sharing type",
             Assert.Throws<ValidationException>(() =>
-                RoomService.Save(new Room { HostelId = HostelId, RoomNumber = "101", SharingTypeId = 0 })).Message);
+                RoomService.Save(new Room { HostelId = HostelId, RoomNumber = "101", SharingTypeId = 0, Gender = RoomGender.Male })).Message);
     }
 
     [Fact]
@@ -226,6 +230,33 @@ public sealed class RoomServiceTests : TestDatabase
 
         Assert.Contains("cannot be made inactive", ex.Message);
         Assert.True(Find("501").IsActive);
+    }
+
+    [Fact]
+    public void Save_RequiresBoysOrGirls()
+    {
+        var ex = Assert.Throws<ValidationException>(() => AddRoom("101", capacity: 1, gender: ""));
+
+        Assert.Contains("boys or girls", ex.Message);
+    }
+
+    [Fact]
+    public void Save_StoresGenderAndShowsBoysOrGirls()
+    {
+        Assert.Equal("Boys", AddRoom("101", capacity: 1).RoomFor);
+        Assert.Equal("Girls", AddRoom("102", capacity: 1, gender: RoomGender.Female).RoomFor);
+    }
+
+    [Fact]
+    public void Edit_ChangingGenderOfOccupiedRoom_IsRejected()
+    {
+        Room room = AddRoom("103", capacity: 2);
+        AddAllocation(room.RoomId);
+
+        room.Gender = RoomGender.Female;
+        var ex = Assert.Throws<ValidationException>(() => RoomService.Save(room));
+
+        Assert.Contains("cannot be changed from Boys to Girls", ex.Message);
     }
 
     [Fact]

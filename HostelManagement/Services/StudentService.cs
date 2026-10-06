@@ -26,6 +26,10 @@ public static class StudentService
             .GroupBy(p => p.StudentId)
             .ToDictionary(g => g.Key, g => g.First());
 
+        Dictionary<int, string> rooms = AllocationRepository.GetForHostel(hostelId, includeHistory: false)
+            .GroupBy(a => a.StudentId)
+            .ToDictionary(g => g.Key, g => g.First().RoomNumber);
+
         foreach (Student student in students)
         {
             if (primaryParents.TryGetValue(student.StudentId, out Parent? parent))
@@ -33,6 +37,7 @@ public static class StudentService
                 student.ParentName = parent.ParentName;
                 student.ParentMobile = parent.Mobile;
             }
+            student.RoomNumber = rooms.GetValueOrDefault(student.StudentId, string.Empty);
         }
 
         return students.OrderBy(s => s.StudentName, StringComparer.CurrentCultureIgnoreCase).ToList();
@@ -226,6 +231,21 @@ public static class StudentService
 
         College college = CollegeRepository.Get(student.CollegeId)
             ?? throw new ValidationException("Please select the college.");
+
+        if (existing is not null && AllocationRepository.GetCurrentForStudent(existing.StudentId) is RoomAllocation room)
+        {
+            if (student.Status == StudentStatus.Left)
+            {
+                throw new ValidationException(
+                    $"{existing.StudentName} is in room {room.RoomNumber}. Use Check-out on the Room Allocation screen; " +
+                    "it sets the status to Left.");
+            }
+            if (student.Gender != existing.Gender)
+            {
+                throw new ValidationException(
+                    $"{existing.StudentName} is in room {room.RoomNumber}, so the gender cannot be changed. Check out first.");
+            }
+        }
         if (existing is not null &&
             CollegeRepository.Get(existing.CollegeId) is College oldCollege &&
             oldCollege.HostelId != college.HostelId)

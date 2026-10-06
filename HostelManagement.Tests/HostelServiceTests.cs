@@ -132,7 +132,7 @@ public sealed class HostelServiceTests : TestDatabase
     {
         AddCollege(HostelId, "College A");
         AddCollege(HostelId, "College B");
-        RoomService.Save(new Room { HostelId = HostelId, RoomNumber = "101", SharingTypeId = SharingTypeId(1) });
+        RoomService.Save(new Room { HostelId = HostelId, RoomNumber = "101", SharingTypeId = SharingTypeId(1), Gender = RoomGender.Male });
 
         Hostel hostel = HostelService.GetHostel(HostelId)!;
 
