@@ -29,7 +29,18 @@ jobs:
         run: dotnet build HostelManagement.sln -c Release
 
       - name: Test
-        run: dotnet test HostelManagement.sln -c Release --no-build --blame --logger "console;verbosity=normal"
+        run: dotnet test HostelManagement.sln -c Release --no-build --blame --logger "console;verbosity=normal" --diag "${{ runner.temp }}/diag/vstest.log"
+
+      # If the test host crashes, show what it wrote just before (unhandled exceptions, stack traces).
+      - name: Test host diagnostics
+        if: failure()
+        shell: pwsh
+        run: |
+          Get-ChildItem "${{ runner.temp }}/diag" -Filter "*host*" | ForEach-Object {
+            Write-Host "===== $($_.Name)"
+            Select-String -Path $_.FullName -Pattern "Exception|Unhandled|exited|crash|   at " -Context 0,2 |
+              Select-Object -Last 120 | ForEach-Object { $_.ToString() }
+          }
 
       - name: Screenshots for visual check
         if: always()
