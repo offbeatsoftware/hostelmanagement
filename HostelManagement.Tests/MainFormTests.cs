@@ -187,8 +187,12 @@ public sealed class MainFormTests : TestDatabase
             using var form = new LoginForm(HostelService.GetHostels());
             Assert.Equal("Sign in", form.Text);
             Assert.True(form.HasBackgroundPhoto);
+            Assert.Contains(AllTextBoxes(form), t => t.Text == "admin" && !t.UseSystemPasswordChar);
         });
     }
+
+    private static IEnumerable<TextBox> AllTextBoxes(Control parent) =>
+        parent.Controls.Cast<Control>().SelectMany(c => (c is TextBox t ? [t] : Array.Empty<TextBox>()).Concat(AllTextBoxes(c)));
 
     internal static void RunOnStaThread(Action action) => UiThread.Run(action);
 }

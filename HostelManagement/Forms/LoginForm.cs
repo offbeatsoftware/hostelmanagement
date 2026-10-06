@@ -60,6 +60,7 @@ public sealed class LoginForm : Form
             _titleFont, Gold);
 
         _userNameBox = CreateTextBox(Y(116), tabIndex: 0);
+        _userNameBox.Text = Models.AdminUser.DefaultUserName;
         _passwordBox = CreateTextBox(Y(178), tabIndex: 1);
         _passwordBox.UseSystemPasswordChar = true;
 
@@ -132,7 +133,8 @@ public sealed class LoginForm : Form
         CancelButton = exitButton;
 
         Load += (_, _) => KeepPanelInBottomRightCorner();
-        Shown += (_, _) => _userNameBox.Focus();
+        // The user name is filled in, so the cursor starts in the password box.
+        Shown += (_, _) => _passwordBox.Focus();
         Disposed += (_, _) =>
         {
             _background?.Dispose();
