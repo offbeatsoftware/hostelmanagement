@@ -28,6 +28,17 @@ jobs:
       - name: Build
         run: dotnet build HostelManagement.sln -c Release
 
+      # Windows Error Reporting saves a full dump if the test host crashes (analysed below).
+      - name: Enable crash dumps
+        shell: pwsh
+        run: |
+          $dumps = "${{ runner.temp }}\dumps"
+          New-Item -ItemType Directory $dumps -Force | Out-Null
+          $key = 'HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\testhost.exe'
+          New-Item -Path $key -Force | Out-Null
+          New-ItemProperty -Path $key -Name DumpFolder -Value $dumps -PropertyType ExpandString -Force | Out-Null
+          New-ItemProperty -Path $key -Name DumpType -Value 2 -PropertyType DWord -Force | Out-Null
+
       - name: Test
         run: dotnet test HostelManagement.sln -c Release --no-build --blame --logger "console;verbosity=normal" --diag "${{ runner.temp }}/diag/vstest.log"
 
@@ -42,6 +53,18 @@ jobs:
               Select-Object -Last 20 | ForEach-Object { $_.Line }
             Write-Host "----- last lines"
             Get-Content $_.FullName -Tail 25
+          }
+
+      - name: Crash dump stacks
+        if: failure()
+        shell: pwsh
+        run: |
+          $dumps = Get-ChildItem "${{ runner.temp }}\dumps" -Filter *.dmp -ErrorAction SilentlyContinue
+          if (-not $dumps) { Write-Host "No crash dump was written."; exit 0 }
+          dotnet tool install --global dotnet-dump | Out-Null
+          foreach ($dump in $dumps) {
+            Write-Host "===== $($dump.Name)"
+            dotnet-dump analyze $dump.FullName -c "pe -nested" -c "clrthreads" -c "clrstack -all" -c "exit"
           }
 
       - name: Screenshots for visual check
