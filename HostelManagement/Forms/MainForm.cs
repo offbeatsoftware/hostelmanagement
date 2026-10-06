@@ -41,6 +41,38 @@ public partial class MainForm : Form
         };
     }
 
+    /// <summary>Makes the day's automatic backup the first time the application is closed each day.</summary>
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        base.OnFormClosing(e);
+        if (e.Cancel)
+        {
+            return;
+        }
+
+        Cursor = Cursors.WaitCursor;
+        dateStatusLabel.Text = "Making the daily backup...";
+        Application.DoEvents();
+        try
+        {
+            BackupResult? result = BackupService.RunAutomaticIfDue(DateTime.Now);
+            if (result?.SecondCopyProblem is string problem)
+            {
+                Dialogs.Warning("The daily backup was made, but: " + problem);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("The daily backup failed.", ex);
+            Dialogs.Warning("The daily backup could not be made. Please make one on the Backup / Restore screen " +
+                            "next time. Technical details were written to the log file.");
+        }
+        finally
+        {
+            Cursor = Cursors.Default;
+        }
+    }
+
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);
@@ -52,9 +84,8 @@ public partial class MainForm : Form
     }
 
     /// <summary>
-    /// The application menu. Each module replaces its PlaceholderView with a real
-    /// screen when it is implemented in its phase. Screens marked as requiring a hostel
-    /// work on the hostel selected at the top right.
+    /// The application menu. Screens marked as requiring a hostel work on the hostel
+    /// selected at the top right.
     /// </summary>
     internal static List<NavigationItem> BuildNavigation() =>
     [
@@ -88,8 +119,8 @@ public partial class MainForm : Form
 
         new("SETTINGS", "Email Settings", "Gmail account, email texts and the history of emails sent.",
             _ => new EmailSettingsView()),
-        new("SETTINGS", "Backup / Restore", "Back up and restore the database.",
-            _ => PlaceholderView.Create("Backup / Restore", "Phase 14")),
+        new("SETTINGS", "Backup / Restore", "Back up the database, photos and documents, and restore a backup.",
+            _ => new BackupView()),
         new("SETTINGS", "Application Settings", "Database location and database check.",
             _ => new ApplicationSettingsView()),
     ];

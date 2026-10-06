@@ -12,6 +12,8 @@ namespace HostelManagement.Tests
         {
             Utilities.Dialogs.ThrowInsteadOfShowing = true;
             Data.Db.DisablePooling = true;
+            // The main window is opened and closed many times; no daily backup in the tests.
+            Services.BackupService.AutomaticBackupEnabled = false;
         }
     }
 }

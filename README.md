@@ -4,7 +4,7 @@ A single admin Windows desktop application for managing a private student hostel
 
 **Stack:** C# · .NET 8 · Windows Forms · Microsoft Access (.accdb) · System.Data.OleDb
 
-**Status:** Phase 13 (reports in PDF and Excel), with several hostels. Backup and restore follow in phase 14.
+**Status:** Phase 14 (backup and restore): all modules are built. Phase 15 is final testing and the installer.
 
 ## Requirements
 
@@ -75,7 +75,7 @@ automatically on first start:
 | `Database`           | `HostelManagement.accdb`. The build copies the empty database from `HostelManagement/Database` here only when none exists, so a rebuild never overwrites data. |
 | `Photos/Students`    | Student photos (only the file path is stored in the database) |
 | `Documents/Students` | Student documents (only the file path is stored in the database) |
-| `Backups`            | Database backups                                |
+| `Backups`            | Backup zips (database, photos and documents); one automatic backup a day, the last 30 kept |
 | `Invoices`           | Invoice PDFs (`Invoice_SBH-2026-27-0001.pdf`)   |
 | `Receipts`           | Receipt PDFs (`Receipt_SBH-R-2026-27-0001.pdf`) |
 | `Reports`            | Exported reports (PDF and Excel)                |
