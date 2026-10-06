@@ -188,16 +188,23 @@ public static class EmailService
         return error;
     }
 
-    /// <summary>Sends a test email to the sender's own address (not logged).</summary>
-    public static string? SendTest(EmailSettings settings) =>
-        Send(settings, new OutgoingEmail
+    /// <summary>Sends a test email (not logged) to the given address, or to the sender's own address.</summary>
+    public static string? SendTest(EmailSettings settings, string? toEmail = null)
+    {
+        string recipient = Validators.Clean(toEmail);
+        if (recipient.Length > 0 && !Validators.IsValidEmailOrEmpty(recipient))
+        {
+            return "Please enter a valid email address to send the test to.";
+        }
+        return Send(settings, new OutgoingEmail
         {
             EmailType = "Test",
-            RecipientEmail = settings.SenderEmail,
-            RecipientName = settings.SenderName,
+            RecipientEmail = recipient.Length > 0 ? recipient : settings.SenderEmail,
+            RecipientName = recipient.Length > 0 ? string.Empty : settings.SenderName,
             Subject = $"Test email from the {AppInfo.ProductName}",
             Body = $"This test email shows that {AppInfo.BusinessName} can send invoices, receipts and reminders from {settings.SenderEmail}.",
         });
+    }
 
     public static List<EmailHistoryEntry> GetHistory(int maxRows = 500) => EmailHistoryRepository.GetRecent(maxRows);
 

@@ -92,7 +92,7 @@ public sealed class EmailServiceTests : TestDatabase
     [Fact]
     public void Settings_Rules()
     {
-        Assert.Contains("Gmail address", Assert.Throws<ValidationException>(() => EmailSettingsService.Save(new EmailSettings { AppPassword = "x" })).Message);
+        Assert.Contains("Gmail address", Assert.Throws<ValidationException>(() => EmailSettingsService.Save(new EmailSettings { SenderEmail = "", AppPassword = "x" })).Message);
         Assert.Contains("valid sender", Assert.Throws<ValidationException>(() => EmailSettingsService.Save(new EmailSettings { SenderEmail = "hostel", AppPassword = "x" })).Message);
         Assert.Contains("app password", Assert.Throws<ValidationException>(() => EmailSettingsService.Save(new EmailSettings { SenderEmail = "a@gmail.com" })).Message);
 
@@ -103,6 +103,30 @@ public sealed class EmailServiceTests : TestDatabase
 
         var empty = new EmailSettings { SenderEmail = "a@gmail.com", AppPassword = "x", Invoice = new("Subject", "  ") };
         Assert.Contains("invoice email", Assert.Throws<ValidationException>(() => EmailSettingsService.Save(empty)).Message);
+    }
+
+    [Fact]
+    public void Settings_StartWithTheHostelsGmailAddress_ButNoPassword()
+    {
+        EmailSettings settings = EmailSettingsService.Get();
+
+        Assert.Equal("shribalajihostelsuddhowala@gmail.com", settings.SenderEmail);
+        Assert.Equal("", settings.AppPassword);
+        Assert.False(settings.IsConfigured);
+    }
+
+    [Fact]
+    public void TestEmail_GoesToTheChosenAddress_OrToTheSender()
+    {
+        SetUpGmail();
+        EmailSettings settings = EmailSettingsService.Get();
+
+        Assert.Null(EmailService.SendTest(settings, " owner@example.com "));
+        Assert.Null(EmailService.SendTest(settings));
+        Assert.Contains("valid email", EmailService.SendTest(settings, "not an address"));
+
+        Assert.Equal(["owner@example.com", "hostel@gmail.com"], _sender.Sent.Select(e => e.RecipientEmail));
+        Assert.Empty(EmailService.GetHistory());
     }
 
     [Fact]

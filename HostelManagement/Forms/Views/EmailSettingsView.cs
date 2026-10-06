@@ -18,6 +18,7 @@ public sealed class EmailSettingsView : UserControl
     private readonly Dictionary<string, (TextBox Subject, TextBox Body)> _templates = [];
     private readonly DataGridView _historyGrid;
     private readonly Label _messageLabel;
+    private readonly TextBox _testToBox;
 
     public EmailSettingsView()
     {
@@ -52,13 +53,21 @@ public sealed class EmailSettingsView : UserControl
                    "computer or Windows user, enter it again.",
         };
 
-        var testButton = new Button { Text = "Send Test Email", Location = new Point(16, 375) };
+        var testToLabel = new Label { Text = "Send test to", AutoSize = true, Location = new Point(16, 381) };
+        _testToBox = new TextBox
+        {
+            Location = new Point(166, 377),
+            Width = 300,
+            MaxLength = 150,
+            PlaceholderText = "Empty: the Gmail address above",
+        };
+        var testButton = new Button { Text = "Send Test Email", Location = new Point(476, 375) };
         UiTheme.StyleSecondaryButton(testButton);
         testButton.Width = 150;
         testButton.Click += async (_, _) => await SendTestEmail(testButton);
 
         var accountPage = new TabPage("Gmail account") { BackColor = Color.White, AutoScroll = true };
-        accountPage.Controls.AddRange([fields, help, testButton]);
+        accountPage.Controls.AddRange([fields, help, testToLabel, _testToBox, testButton]);
         tabs.TabPages.Add(accountPage);
 
         // ---- Email texts ----
@@ -229,7 +238,7 @@ public sealed class EmailSettingsView : UserControl
         return false;
     }
 
-    /// <summary>Saves, then sends a test email to the Gmail address itself.</summary>
+    /// <summary>Saves, then sends a test email to the address entered (or to the Gmail address itself).</summary>
     private async Task SendTestEmail(Button button)
     {
         if (!Save())
@@ -242,10 +251,11 @@ public sealed class EmailSettingsView : UserControl
         Cursor = Cursors.WaitCursor;
         try
         {
-            string? error = await Task.Run(() => EmailService.SendTest(settings));
+            string to = _testToBox.Text.Trim();
+            string? error = await Task.Run(() => EmailService.SendTest(settings, to));
             if (error is null)
             {
-                FormFields.ShowSuccess(_messageLabel, $"Test email sent to {settings.SenderEmail}. Check its inbox.");
+                FormFields.ShowSuccess(_messageLabel, $"Test email sent to {(to.Length > 0 ? to : settings.SenderEmail)}. Check its inbox.");
             }
             else
             {

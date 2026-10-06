@@ -36,7 +36,7 @@ public static partial class EmailSettingsService
         {
             SmtpHost = Value("Email.SmtpHost", EmailSettings.GmailHost),
             SmtpPort = int.TryParse(Value("Email.SmtpPort", ""), NumberStyles.None, CultureInfo.InvariantCulture, out int port) ? port : EmailSettings.GmailPort,
-            SenderEmail = Value("Email.SenderEmail", ""),
+            SenderEmail = Value("Email.SenderEmail", EmailSettings.DefaultSenderEmail),
             SenderName = Value("Email.SenderName", ""),
             AppPassword = Unprotect(Value("Email.AppPassword", "")),
             Invoice = new(Value("Email.Invoice.Subject", EmailSettings.DefaultInvoice.Subject), Value("Email.Invoice.Body", EmailSettings.DefaultInvoice.Body)),

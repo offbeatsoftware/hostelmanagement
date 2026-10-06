@@ -33,9 +33,12 @@ public sealed class EmailSettings
     public const string GmailHost = "smtp.gmail.com";
     public const int GmailPort = 587;
 
+    /// <summary>The hostel's Gmail account (client decision); the app password is entered on the Email Settings screen.</summary>
+    public const string DefaultSenderEmail = "shribalajihostelsuddhowala@gmail.com";
+
     public string SmtpHost { get; set; } = GmailHost;
     public int SmtpPort { get; set; } = GmailPort;
-    public string SenderEmail { get; set; } = string.Empty;
+    public string SenderEmail { get; set; } = DefaultSenderEmail;
     public string SenderName { get; set; } = string.Empty;
 
     /// <summary>The Gmail app password (16 letters), never the normal Gmail password.</summary>
