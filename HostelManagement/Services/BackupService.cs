@@ -216,6 +216,7 @@ public static class BackupService
                 entry.ExtractToFile(destination);
             }
 
+            Db.ReleaseKeepAlive();
             ReleaseDatabaseConnections();
             File.Copy(Path.Combine(temp, "Database", "HostelManagement.accdb"), AppPaths.DatabaseFile, overwrite: true);
             foreach (string folder in FileFolders)
@@ -236,6 +237,10 @@ public static class BackupService
         finally
         {
             TryDeleteFolder(temp);
+            if (File.Exists(AppPaths.DatabaseFile))
+            {
+                Db.KeepEngineLoaded();
+            }
         }
 
         AppLogger.Info($"Restored backup {Path.GetFileName(zipPath)}; the previous data was saved as {safety.File.FileName}.");

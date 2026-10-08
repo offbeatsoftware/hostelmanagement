@@ -76,6 +76,7 @@ public abstract class TestDatabase : IDisposable
     /// <summary>Releases pooled connections so the .accdb file is no longer locked.</summary>
     internal static void ReleaseDatabaseFile()
     {
+        Db.ReleaseKeepAlive();
         OleDbConnection.ReleaseObjectPool();
         GC.Collect();
         GC.WaitForPendingFinalizers();

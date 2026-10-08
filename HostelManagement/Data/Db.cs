@@ -54,6 +54,27 @@ public static class Db
             DataSource = databaseFile,
         }.ConnectionString;
 
+    private static OleDbConnection? s_keepAlive;
+
+    /// <summary>
+    /// Keeps one connection open while the program runs. The Access Database Engine unloads when its last
+    /// connection to a database closes and loads again on the next one; that reload now and then ends the whole
+    /// process (exit code 0xC000041D, seen in the automated tests). With this connection open the engine stays
+    /// loaded. It is closed only when the database file must be replaced (restore) and at exit.
+    /// </summary>
+    internal static void KeepEngineLoaded()
+    {
+        ReleaseKeepAlive();
+        s_keepAlive = OpenConnection();
+    }
+
+    /// <summary>Closes the connection opened by <see cref="KeepEngineLoaded"/> (before the file is replaced or deleted).</summary>
+    internal static void ReleaseKeepAlive()
+    {
+        s_keepAlive?.Dispose();
+        s_keepAlive = null;
+    }
+
     /// <summary>Opens a new connection. Always dispose it with <c>using</c>.</summary>
     public static OleDbConnection OpenConnection()
     {

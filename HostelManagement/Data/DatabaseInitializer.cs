@@ -41,6 +41,8 @@ public static class DatabaseInitializer
 
     public static void Initialize()
     {
+        // A database opened before (for example before a restore) is released first.
+        Db.ReleaseKeepAlive();
         string provider = ConfigureProvider();
 
         // The build places the empty database from the repository here; create one if it is missing.
@@ -60,6 +62,7 @@ public static class DatabaseInitializer
 
         CreateMissingTables();
         AdminUserRepository.EnsureDefaultAdmin();
+        Db.KeepEngineLoaded();
     }
 
     /// <summary>Finds the installed Access Database Engine and points <see cref="Db"/> at the database file.</summary>
