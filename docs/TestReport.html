@@ -1,0 +1,84 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Test Report</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 16mm 15mm; }
+  :root { --terracotta: #c0652b; --ink: #212529; --muted: #6c757d; --beige: #f5ecdc; --line: #e2d8c6; --green: #2e7d32; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: var(--ink); font-size: 10pt; line-height: 1.45; margin: 0; }
+  h1 { color: var(--terracotta); font-size: 21pt; margin: 0 0 2px; }
+  h2 { color: var(--terracotta); font-size: 13.5pt; margin: 18px 0 6px; padding-bottom: 3px; border-bottom: 2px solid var(--line); page-break-after: avoid; }
+  p, li { margin: 3px 0; }
+  ul { padding-left: 20px; margin: 4px 0 8px; }
+  .subtitle { color: var(--muted); font-size: 11pt; margin-bottom: 12px; }
+  .tiles { display: flex; gap: 8px; margin: 10px 0 6px; }
+  .tile { flex: 1; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; background: #fffaf2; }
+  .tile b { display: block; font-size: 17pt; color: var(--green); }
+  .tile span { color: var(--muted); font-size: 9pt; }
+  .note { background: var(--beige); border-left: 4px solid var(--terracotta); padding: 6px 10px; margin: 8px 0; page-break-inside: avoid; }
+  table { border-collapse: collapse; width: 100%; margin: 6px 0 10px; }
+  tr { page-break-inside: avoid; }
+  th, td { border: 1px solid var(--line); padding: 3px 6px; text-align: left; vertical-align: top; }
+  th { background: var(--beige); }
+  td:first-child { white-space: nowrap; }
+  td.n, th.n { text-align: right; white-space: nowrap; }
+  tr.total td { font-weight: bold; background: #fbf6ee; }
+  .ok { color: var(--green); font-weight: bold; }
+  .small { font-size: 8.5pt; color: var(--muted); }
+</style></head><body>
+<h1>Test Report</h1>
+<div class="subtitle">Hostel Management System, version 1.1.0 &nbsp;|&nbsp; 08 October 2026 &nbsp;|&nbsp; OffbeatSoftwaresolutions</div>
+
+<h2>1. Result</h2>
+<div class="tiles">
+  <div class="tile"><b>319 / 319</b><span>automated test runs passed</span></div>
+  <div class="tile"><b>3 of 3</b><span>full runs green on the same build</span></div>
+  <div class="tile"><b>127 / 137</b><span>test cases passed by automated tests</span></div>
+  <div class="tile"><b>0</b><span>open defects</span></div>
+</div>
+<p class="ok">The application passed every automated test. No failures were found.</p>
+<p>Of the 137 test cases in <b>TestCases.xlsx</b>, 127 were passed by the automated tests. For 15 of these the program logic is proven, and a short look on the client PC is still advised (for example a real Gmail delivery). The remaining 10 cases can only be checked on the client PC, such as installing and uninstalling. They are listed in section 5.</p>
+
+<h2>2. How the tests were run</h2>
+<ul>
+  <li><b>Where:</b> GitHub Actions, Windows Server (windows-latest), with the Microsoft Access Database Engine 2016 (64 bit) installed exactly as on the client PC.</li>
+  <li><b>What:</b> the release build of the application, commit 9512db4. The same build produced the installer HostelManagement-Setup.exe.</li>
+  <li><b>How:</b> 249 test methods (319 runs including data rows). Every test creates its own new Access database, so tests never affect each other or real data. Screens are opened and clicked in a real Windows session.</li>
+  <li><b>Repeats:</b> the full set was run three times (runs 58, 59 and 60) to confirm the results are stable. All three passed: 957 of 957 runs.</li>
+</ul>
+
+<h2>3. Automated results per area</h2>
+<table>
+<tr><th>Area</th><th class=n>Test methods</th><th class=n>Runs</th><th class=n>Passed</th><th class=n>Failed</th></tr>
+<tr><td>Agreement and beds</td><td class=n>10</td><td class=n>10</td><td class=n>10</td><td class=n>0</td></tr><tr><td>Amounts in rupees and sorting</td><td class=n>4</td><td class=n>9</td><td class=n>9</td><td class=n>0</td></tr><tr><td>Application Settings: database check</td><td class=n>2</td><td class=n>2</td><td class=n>2</td><td class=n>0</td></tr><tr><td>Attendance</td><td class=n>6</td><td class=n>6</td><td class=n>6</td><td class=n>0</td></tr><tr><td>Backup / Restore</td><td class=n>10</td><td class=n>10</td><td class=n>10</td><td class=n>0</td></tr><tr><td>Billing periods (half yearly, quarterly)</td><td class=n>4</td><td class=n>14</td><td class=n>14</td><td class=n>0</td></tr><tr><td>Colleges</td><td class=n>12</td><td class=n>13</td><td class=n>13</td><td class=n>0</td></tr><tr><td>Dashboard</td><td class=n>5</td><td class=n>10</td><td class=n>10</td><td class=n>0</td></tr><tr><td>Data access and SQL safety</td><td class=n>12</td><td class=n>12</td><td class=n>12</td><td class=n>0</td></tr><tr><td>Database setup and versions</td><td class=n>13</td><td class=n>13</td><td class=n>13</td><td class=n>0</td></tr><tr><td>Email</td><td class=n>17</td><td class=n>17</td><td class=n>17</td><td class=n>0</td></tr><tr><td>Email, phone and text checks</td><td class=n>5</td><td class=n>15</td><td class=n>15</td><td class=n>0</td></tr><tr><td>Empty database for the installer</td><td class=n>1</td><td class=n>1</td><td class=n>1</td><td class=n>0</td></tr><tr><td>Hostels</td><td class=n>12</td><td class=n>15</td><td class=n>15</td><td class=n>0</td></tr><tr><td>Invoices</td><td class=n>11</td><td class=n>13</td><td class=n>13</td><td class=n>0</td></tr><tr><td>Main window and menu</td><td class=n>9</td><td class=n>9</td><td class=n>9</td><td class=n>0</td></tr><tr><td>Parents</td><td class=n>7</td><td class=n>7</td><td class=n>7</td><td class=n>0</td></tr><tr><td>Payments and receipts</td><td class=n>12</td><td class=n>23</td><td class=n>23</td><td class=n>0</td></tr><tr><td>Pending Dues</td><td class=n>9</td><td class=n>9</td><td class=n>9</td><td class=n>0</td></tr><tr><td>Reports (PDF and Excel)</td><td class=n>9</td><td class=n>9</td><td class=n>9</td><td class=n>0</td></tr><tr><td>Room Allocation</td><td class=n>15</td><td class=n>15</td><td class=n>15</td><td class=n>0</td></tr><tr><td>Rooms and rent</td><td class=n>25</td><td class=n>28</td><td class=n>28</td><td class=n>0</td></tr><tr><td>Screens drawn at 1280 x 760</td><td class=n>3</td><td class=n>3</td><td class=n>3</td><td class=n>0</td></tr><tr><td>Services and transport</td><td class=n>11</td><td class=n>11</td><td class=n>11</td><td class=n>0</td></tr><tr><td>Sign in and Admin Account</td><td class=n>7</td><td class=n>13</td><td class=n>13</td><td class=n>0</td></tr><tr><td>Students, photos and documents</td><td class=n>18</td><td class=n>32</td><td class=n>32</td><td class=n>0</td></tr>
+<tr class="total"><td>Total</td><td class=n>249</td><td class=n>319</td><td class=n>319</td><td class=n>0</td></tr>
+</table>
+
+<h2>4. Test case coverage per module</h2>
+<table>
+<tr><th>Module</th><th class=n>Test cases</th><th class=n>Passed (automated)</th><th class=n>Passed, quick look advised</th><th class=n>Manual on client PC</th></tr>
+<tr><td>Installation</td><td class=n>6</td><td class=n>2</td><td class=n>1</td><td class=n>3</td></tr><tr><td>Sign in</td><td class=n>6</td><td class=n>6</td><td class=n>0</td><td class=n>0</td></tr><tr><td>Admin Account</td><td class=n>6</td><td class=n>6</td><td class=n>0</td><td class=n>0</td></tr><tr><td>Hostels</td><td class=n>5</td><td class=n>5</td><td class=n>0</td><td class=n>0</td></tr><tr><td>Colleges</td><td class=n>3</td><td class=n>3</td><td class=n>0</td><td class=n>0</td></tr><tr><td>Rooms</td><td class=n>9</td><td class=n>9</td><td class=n>0</td><td class=n>0</td></tr><tr><td>Services</td><td class=n>3</td><td class=n>3</td><td class=n>0</td><td class=n>0</td></tr><tr><td>Students</td><td class=n>11</td><td class=n>10</td><td class=n>0</td><td class=n>1</td></tr><tr><td>Parents</td><td class=n>3</td><td class=n>3</td><td class=n>0</td><td class=n>0</td></tr><tr><td>Room Allocation</td><td class=n>9</td><td class=n>8</td><td class=n>0</td><td class=n>1</td></tr><tr><td>Agreement</td><td class=n>7</td><td class=n>6</td><td class=n>1</td><td class=n>0</td></tr><tr><td>Attendance</td><td class=n>9</td><td class=n>6</td><td class=n>2</td><td class=n>1</td></tr><tr><td>Invoices</td><td class=n>11</td><td class=n>10</td><td class=n>1</td><td class=n>0</td></tr><tr><td>Payments</td><td class=n>9</td><td class=n>8</td><td class=n>1</td><td class=n>0</td></tr><tr><td>Pending Dues</td><td class=n>7</td><td class=n>5</td><td class=n>2</td><td class=n>0</td></tr><tr><td>Email</td><td class=n>9</td><td class=n>5</td><td class=n>3</td><td class=n>1</td></tr><tr><td>Dashboard</td><td class=n>4</td><td class=n>3</td><td class=n>1</td><td class=n>0</td></tr><tr><td>Reports</td><td class=n>7</td><td class=n>6</td><td class=n>1</td><td class=n>0</td></tr><tr><td>Backup / Restore</td><td class=n>7</td><td class=n>5</td><td class=n>2</td><td class=n>0</td></tr><tr><td>Application Settings</td><td class=n>2</td><td class=n>1</td><td class=n>0</td><td class=n>1</td></tr><tr><td>General</td><td class=n>2</td><td class=n>2</td><td class=n>0</td><td class=n>0</td></tr><tr><td>Uninstall</td><td class=n>2</td><td class=n>0</td><td class=n>0</td><td class=n>2</td></tr>
+<tr class="total"><td>Total</td><td class=n>137</td><td class=n>112</td><td class=n>15</td><td class=n>10</td></tr>
+</table>
+<p class="small">The Status, Tested by, Date and Remarks columns of TestCases.xlsx are filled in, and each passed case names the automated tests that proved it. The new sheet "Automated Run" holds the run details.</p>
+
+<h2>5. Checks to do on the client PC</h2>
+<p>These 10 test cases need the real PC, the installer or the real Gmail account, and cannot be run automatically:</p>
+<table><tr><th>ID</th><th>Module</th><th>Test case</th><th>What to do</th></tr><tr><td>TC-001</td><td>Installation</td><td>Install on a new PC</td><td>Installer: run on the client PC</td></tr><tr><td>TC-002</td><td>Installation</td><td>Access Database Engine missing</td><td>Installer: run on a PC without the engine</td></tr><tr><td>TC-006</td><td>Installation</td><td>User guide shortcut</td><td>Start menu shortcut on the client PC</td></tr><tr><td>TC-047</td><td>Students</td><td>Search and filters</td><td>Type in the search box and use the filters on the Students screen</td></tr><tr><td>TC-061</td><td>Room Allocation</td><td>Agreement offered after check-in</td><td>Question box after check-in</td></tr><tr><td>TC-074</td><td>Attendance</td><td>Unsaved changes</td><td>Question box when leaving unsaved changes</td></tr><tr><td>TC-106</td><td>Email</td><td>Wrong app password</td><td>Needs the real Gmail account</td></tr><tr><td>TC-133</td><td>Application Settings</td><td>User guide</td><td>Click User Guide in Application Settings</td></tr><tr><td>TC-136</td><td>Uninstall</td><td>Uninstall keeps data</td><td>Uninstall on the client PC</td></tr><tr><td>TC-137</td><td>Uninstall</td><td>Reinstall uses old data</td><td>Reinstall on the client PC</td></tr></table>
+<p>For these 15 cases the logic passed, but a quick look on the client PC is still advised:</p>
+<table><tr><th>ID</th><th>Module</th><th>Test case</th><th>Still check by hand</th></tr><tr><td>TC-005</td><td>Installation</td><td>Update keeps data</td><td>Run the new setup over the installed version once</td></tr><tr><td>TC-062</td><td>Agreement</td><td>Create agreement PDF</td><td>Open the PDF once to look at the layout</td></tr><tr><td>TC-076</td><td>Attendance</td><td>Email parents of absent</td><td>Real delivery through Gmail</td></tr><tr><td>TC-077</td><td>Attendance</td><td>Email again</td><td>Question box before emailing again</td></tr><tr><td>TC-086</td><td>Invoices</td><td>View / Print and Save PDF</td><td>Print once on the office printer</td></tr><tr><td>TC-097</td><td>Payments</td><td>Filter and search</td><td>Search box and filters on the Payments screen</td></tr><tr><td>TC-102</td><td>Pending Dues</td><td>Send reminder</td><td>Real delivery through Gmail</td></tr><tr><td>TC-103</td><td>Pending Dues</td><td>Remind all overdue</td><td>Real delivery through Gmail</td></tr><tr><td>TC-105</td><td>Email</td><td>Test email</td><td>Needs the Gmail app password, entered on the client PC</td></tr><tr><td>TC-108</td><td>Email</td><td>Email invoice</td><td>Real delivery through Gmail</td></tr><tr><td>TC-109</td><td>Email</td><td>Email receipt</td><td>Real delivery through Gmail</td></tr><tr><td>TC-115</td><td>Dashboard</td><td>Chart</td><td>Hover over a bar to see the amount</td></tr><tr><td>TC-123</td><td>Reports</td><td>Export Excel</td><td>Open the file once in Excel</td></tr><tr><td>TC-129</td><td>Backup / Restore</td><td>Restore</td><td>Program restart after restore</td></tr><tr><td>TC-130</td><td>Backup / Restore</td><td>Undo restore</td><td>Restore the &#x27;Before a restore&#x27; backup once</td></tr></table>
+<p>The End-to-End Workflow sheet (26 steps) is the best way to do these checks in one sitting. Each step names its related test cases.</p>
+
+<h2>6. Problem found and fixed during testing</h2>
+<div class="note">
+<p><b>Rare program crash inside the Access Database Engine.</b> Now and then the test process ended without an error message. A crash dump showed the cause: the Access Database Engine unloads when the last connection to the database closes, and loading it again occasionally fails.</p>
+<p><b>Fix:</b> the application now keeps one database connection open from start to exit, on its own thread. It is closed only while a backup is restored. This also protects the installed program when it is left open and idle for a long time.</p>
+<p><b>Result:</b> three full runs passed afterwards with no crash.</p>
+</div>
+
+<h2>7. Notes for go-live</h2>
+<ul>
+  <li><b>Gmail:</b> email sending was tested with a test mail server. Real delivery needs the 16 letter Gmail app password, entered once in Email Settings on the client PC. Then use Send Test Email (TC-105).</li>
+  <li><b>Windows SmartScreen</b> may warn on the first install because the installer is not code signed. Choose More info, then Run anyway.</li>
+  <li><b>Data:</b> keep the daily automatic backup on, and set the second backup folder to a USB drive or cloud folder.</li>
+  <li><b>Future updates:</b> if a later version changes the database layout, it must include an upgrade step for databases that already hold data. Please take Backup Now before installing any update.</li>
+</ul>
+<p class="small">Run links: https://github.com/offbeatsoftware/hostelmanagement/actions/runs/37736840117 &middot; /37736847211 &middot; /37736850027</p>
+</body></html>
