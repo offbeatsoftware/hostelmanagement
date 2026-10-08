@@ -54,7 +54,7 @@ public static class Db
             DataSource = databaseFile,
         }.ConnectionString;
 
-    private static OleDbConnection? s_keepAlive;
+    private static HeldConnection? s_keepAlive;
 
     /// <summary>
     /// Keeps one connection open while the program runs. The Access Database Engine unloads when its last
@@ -65,7 +65,7 @@ public static class Db
     internal static void KeepEngineLoaded()
     {
         ReleaseKeepAlive();
-        s_keepAlive = OpenConnection();
+        s_keepAlive = new HeldConnection(_connectionString ?? throw new DatabaseException(NotOpenedMessage));
     }
 
     /// <summary>Closes the connection opened by <see cref="KeepEngineLoaded"/> (before the file is replaced or deleted).</summary>
@@ -73,6 +73,65 @@ public static class Db
     {
         s_keepAlive?.Dispose();
         s_keepAlive = null;
+    }
+
+    /// <summary>
+    /// Opens a connection to another database file that stays open until the process ends. Used by the automated
+    /// tests, which replace the database for every test: the engine then stays loaded across all of them.
+    /// </summary>
+    internal static void HoldEngineWith(string databaseFile) =>
+        _ = new HeldConnection(BuildConnectionString(ProviderName, databaseFile));
+
+    /// <summary>
+    /// A connection opened and closed on its own thread. The engine must not be asked to close a connection
+    /// from a thread other than the one that opened it, and the callers of <see cref="ReleaseKeepAlive"/> are
+    /// not always on the opening thread.
+    /// </summary>
+    private sealed class HeldConnection : IDisposable
+    {
+        private readonly ManualResetEventSlim _release = new();
+        private readonly Thread _thread;
+
+        public HeldConnection(string connectionString)
+        {
+            Exception? failure = null;
+            using var opened = new ManualResetEventSlim();
+            _thread = new Thread(() =>
+            {
+                OleDbConnection connection;
+                try
+                {
+                    connection = new OleDbConnection(connectionString);
+                    connection.Open();
+                }
+                catch (Exception ex)
+                {
+                    failure = ex;
+                    opened.Set();
+                    return;
+                }
+                opened.Set();
+                _release.Wait();
+                connection.Dispose();
+            })
+            {
+                IsBackground = true,
+                Name = "Database keep-alive",
+            };
+            _thread.Start();
+            opened.Wait();
+            if (failure is not null)
+            {
+                throw new DatabaseException(NotOpenedMessage, failure);
+            }
+        }
+
+        public void Dispose()
+        {
+            _release.Set();
+            _thread.Join();
+            _release.Dispose();
+        }
     }
 
     /// <summary>Opens a new connection. Always dispose it with <c>using</c>.</summary>

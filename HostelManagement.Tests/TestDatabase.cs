@@ -25,7 +25,28 @@ public abstract class TestDatabase : IDisposable
     {
         DatabaseInitializer.ConfigureProvider();
         DatabaseInitializer.CreateDatabaseFile(Db.ProviderName);
+        HoldEngineForTheWholeRun();
         DatabaseInitializer.Initialize();
+    }
+
+    private static bool s_engineHeld;
+
+    /// <summary>
+    /// Every test replaces the database, which closes all connections to the old one. A copy of the first new
+    /// database stays open until the test process ends, so the Access engine is never unloaded and reloaded.
+    /// </summary>
+    private static void HoldEngineForTheWholeRun()
+    {
+        if (s_engineHeld)
+        {
+            return;
+        }
+        string folder = Path.Combine(Path.GetTempPath(), "HostelManagementTests", "Engine-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        string file = Path.Combine(folder, "Anchor.accdb");
+        File.Copy(AppPaths.DatabaseFile, file);
+        Db.HoldEngineWith(file);
+        s_engineHeld = true;
     }
 
     protected string DataFolder { get; }
