@@ -45,6 +45,10 @@ public sealed class EmailServiceTests : TestDatabase
             HostelService.Save(new Hostel { HostelId = HostelId, HostelName = "Test Hostel", Phone = "0141 2222222" });
             _room = AddRoom(beds: 3);
         }
+        if (RoomService.GetRooms(HostelId).Single(r => r.RoomId == _room.RoomId).Available == 0)
+        {
+            _room = AddRoom($"{100 + Count("Room") + 1}", beds: 3);
+        }
         string lower = name.ToLowerInvariant().Replace(' ', '.');
         int id = AddStudentWithParents(name,
             fatherEmail: fatherEmail ? $"{lower}.father@example.com" : "",

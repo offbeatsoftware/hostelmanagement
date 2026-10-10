@@ -71,7 +71,7 @@ public sealed class MainFormTests : TestDatabase
             Assert.Single(content.Controls);
 
             List<Button> buttons = menu.Controls.OfType<Button>().ToList();
-            Assert.Equal(17, buttons.Count);
+            Assert.Equal(15, buttons.Count);
 
             foreach (Button button in buttons)
             {

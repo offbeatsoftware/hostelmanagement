@@ -20,8 +20,6 @@ public sealed class DbTests : TestDatabase
     public void Param_RoundTripsTextNumberMoneyBoolAndNull()
     {
         int doubleSharing = SharingTypeId(capacity: 2);
-        Db.Execute("UPDATE [SharingType] SET [Rent] = ? WHERE [SharingTypeId] = ?",
-            Db.Param("@Rent", 4500.75m), Db.Param("@SharingTypeId", doubleSharing));
 
         int id = Db.Insert(
             "INSERT INTO [Room] ([HostelId], [RoomNumber], [Floor], [SharingTypeId], [Gender], [IsActive], [Remarks]) " +
@@ -34,14 +32,12 @@ public sealed class DbTests : TestDatabase
             Db.Param("@Remarks", null));
 
         var room = Db.Query(
-            "SELECT r.*, s.[Rent] FROM [Room] AS r INNER JOIN [SharingType] AS s " +
-            "ON r.[SharingTypeId] = s.[SharingTypeId] WHERE r.[RoomId] = ?",
+            "SELECT * FROM [Room] WHERE [RoomId] = ?",
             r => new
             {
                 Number = r.GetText("RoomNumber"),
                 Floor = r.GetText("Floor"),
                 SharingTypeId = r.GetInt("SharingTypeId"),
-                Rent = r.GetMoney("Rent"),
                 Active = r.GetBool("IsActive"),
                 RemarksIsNull = r["Remarks"] is DBNull,
             },
@@ -50,9 +46,15 @@ public sealed class DbTests : TestDatabase
         Assert.Equal("101", room.Number);
         Assert.Equal("Ground", room.Floor);
         Assert.Equal(doubleSharing, room.SharingTypeId);
-        Assert.Equal(4500.75m, room.Rent);
         Assert.True(room.Active);
         Assert.True(room.RemarksIsNull);
+
+        int invoiceId = Db.Insert(
+            "INSERT INTO [Invoice] ([InvoiceNumber], [StudentId], [InvoiceDate], [AcademicYear], [RoomRent], [TransportAmount]) " +
+            "VALUES ('SBH/TEST/0001', ?, #01/15/2026#, 2025, ?, ?)",
+            Db.Param("@StudentId", AddStudent()), Db.Param("@RoomRent", 4500.75m), Db.Param("@TransportAmount", 0m));
+        Assert.Equal(4500.75m, Db.Query("SELECT [RoomRent] FROM [Invoice] WHERE [InvoiceId] = ?", r => r.GetMoney("RoomRent"),
+            Db.Param("@InvoiceId", invoiceId)).Single());
     }
 
     [Fact]

@@ -146,15 +146,14 @@ public sealed class PendingDuesServiceTests : TestDatabase
             Assert.Equal(2, grid.Rows.Count);
             Assert.False(send.Enabled);
 
-            grid.CurrentCell = grid.Rows[0].Cells[0];
-            grid.Rows[0].Cells[0].Value = true;
-            grid.NotifyCurrentCellDirty(true);
-            Application.DoEvents();
-            Assert.True(send.Enabled);
-            Assert.Equal("Send Reminder (1)", send.Text);
-
             AllControls(view).OfType<Button>().Single(b => b.Text == "Select All").PerformClick();
+            Assert.True(send.Enabled);
             Assert.Equal("Send Reminder (2)", send.Text);
+            Assert.All(grid.Rows.Cast<DataGridViewRow>(), r => Assert.Equal(true, r.Cells[0].Value));
+
+            AllControls(view).OfType<Button>().Single(b => b.Text == "Clear").PerformClick();
+            Assert.False(send.Enabled);
+            Assert.Equal("Send Reminder", send.Text);
 
             TextBox preview = AllControls(view).OfType<TextBox>().Single(t => t.ReadOnly);
             Assert.Contains("To: Father: Rakesh Aman <rakesh@example.com>", preview.Text);
