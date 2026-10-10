@@ -93,7 +93,7 @@ public sealed class DashboardView : UserControl
                 $"{data.FreeBeds} free"));
             _tiles.Controls.Add(Tile("Fees", Money.FormatWhole(data.InvoicedThisYear), $"for {data.AcademicYear}"));
             _tiles.Controls.Add(Tile("Received", Money.FormatWhole(data.ReceivedThisMonth), $"in {data.AsOf:MMMM yyyy}"));
-            _tiles.Controls.Add(Tile("Received this year", Money.FormatWhole(data.ReceivedThisYear), $"since 1 Jul"));
+            _tiles.Controls.Add(Tile("Year to date", Money.FormatWhole(data.ReceivedThisYear), "received since 1 Jul"));
             _tiles.Controls.Add(Tile("Pending", Money.FormatWhole(data.PendingAmount),
                 $"{data.PendingStudents} students", warning: data.PendingAmount > 0));
             _tiles.ResumeLayout();
