@@ -26,11 +26,12 @@ public sealed class AttendanceServiceTests : TestDatabase
     private Room Room => _room ??= RoomService.Save(new Room
         { HostelId = HostelId, RoomNumber = "101", SharingTypeId = SharingTypeId(3), Gender = RoomGender.Male });
 
-    private int StudentInRoom(string name, DateTime checkIn)
+    private int StudentInRoom(string name, DateTime checkIn, bool fatherEmail = true, bool motherEmail = true)
     {
-        int id = StudentService.Save(
-            new Student { StudentName = name, Gender = RoomGender.Male, Mobile = "9876543210", CollegeId = CollegeId, AdmissionDate = checkIn },
-            new Parent { ParentName = $"Parent of {name}", Mobile = "9812345678", Email = $"{name.ToLowerInvariant()}.parent@example.com" }).StudentId;
+        string lower = name.ToLowerInvariant();
+        int id = AddStudentWithParents(name, admission: checkIn,
+            fatherEmail: fatherEmail ? $"{lower}.father@example.com" : "",
+            motherEmail: motherEmail ? $"{lower}.mother@example.com" : "");
         AllocationService.CheckIn(id, Room.RoomId, checkIn);
         return id;
     }
@@ -64,7 +65,8 @@ public sealed class AttendanceServiceTests : TestDatabase
         Assert.All(twoDaysAgo.Entries, e => Assert.True(e.IsPresent));
         Assert.False(twoDaysAgo.IsMarked);
         Assert.Equal("101, bed 1", twoDaysAgo.Entries.Single(e => e.StudentId == aman).RoomAndBed);
-        Assert.Equal("aman.parent@example.com", twoDaysAgo.Entries.Single(e => e.StudentId == aman).ParentEmail);
+        Assert.Equal("aman.mother@example.com", twoDaysAgo.Entries.Single(e => e.StudentId == aman).ParentEmail);
+        Assert.Equal("9812345679", twoDaysAgo.Entries.Single(e => e.StudentId == aman).ParentMobile);
     }
 
     [Fact]
@@ -105,7 +107,7 @@ public sealed class AttendanceServiceTests : TestDatabase
     }
 
     [Fact]
-    public void AbsenceEmails_GoToTheParentsOfAbsentStudents_Once()
+    public void AbsenceEmails_GoToTheMotherOfAbsentStudents_Once()
     {
         SetUpGmail();
         AuthService.SaveContact("owner@gmail.com", "");
@@ -118,7 +120,8 @@ public sealed class AttendanceServiceTests : TestDatabase
 
         Assert.Empty(problems);
         OutgoingEmail email = Assert.Single(emails);
-        Assert.Equal("ravi.parent@example.com", email.RecipientEmail);
+        Assert.Equal("ravi.mother@example.com", email.RecipientEmail);
+        Assert.Equal("Sunita Ravi", email.RecipientName);
         Assert.Equal("owner@gmail.com", email.CopyToEmail);
         Assert.Equal(EmailType.Absence, email.EmailType);
         Assert.Contains($"on {date:dd MMM yyyy}", email.Subject);
@@ -129,6 +132,21 @@ public sealed class AttendanceServiceTests : TestDatabase
         Assert.Empty(EmailService.PrepareAbsences(HostelId, date).Emails);
         Assert.Single(EmailService.PrepareAbsences(HostelId, date, includeAlreadyEmailed: true).Emails);
         Assert.Equal(EmailType.Absence, EmailService.GetHistory().Single().EmailType);
+    }
+
+    [Fact]
+    public void AbsenceEmails_GoToTheFatherWhenTheMotherHasNoEmail_AndProblemsAreListed()
+    {
+        SetUpGmail();
+        int karan = StudentInRoom("Karan", Today.AddDays(-5), motherEmail: false);
+        int noEmail = StudentInRoom("Nobody", Today.AddDays(-5), fatherEmail: false, motherEmail: false);
+        DateTime date = Today.AddDays(-1);
+        MarkAbsent(date, karan, noEmail);
+
+        (List<OutgoingEmail> emails, List<string> problems) = EmailService.PrepareAbsences(HostelId, date);
+
+        Assert.Equal("karan.father@example.com", Assert.Single(emails).RecipientEmail);
+        Assert.Equal("Nobody: neither the mother nor the father has an email address.", Assert.Single(problems));
     }
 
     [Fact]

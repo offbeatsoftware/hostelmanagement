@@ -8,24 +8,13 @@ namespace HostelManagement.Tests;
 
 public sealed class PaymentServiceTests : TestDatabase
 {
-    // Half of the yearly Double sharing rent of 120000.
     private const decimal InvoiceTotal = 60_000m;
 
-    /// <summary>A student in a room with a 60000 invoice for the previous billing period.</summary>
+    /// <summary>A student in a room with a yearly fee of 60000 (50000 rent and 10000 transport).</summary>
     private Invoice CreateInvoice(string name = "Aman")
     {
-        BillingPeriod period = BillingPeriods.For(
-            BillingPeriods.For(DateTime.Today, BillingFrequency.HalfYearly).From.AddDays(-1), BillingFrequency.HalfYearly);
-
-        RoomService.UpdateRent(SharingTypeId(2), 120_000m);
-        Room room = RoomService.GetRooms(HostelId).FirstOrDefault()
-            ?? RoomService.Save(new Room { HostelId = HostelId, RoomNumber = "101", SharingTypeId = SharingTypeId(2), Gender = RoomGender.Male });
-
-        int studentId = StudentService.Save(
-            new Student { StudentName = name, Gender = RoomGender.Male, Mobile = "9876543210", CollegeId = CollegeId, AdmissionDate = period.From },
-            new Parent { ParentName = "Rakesh", Mobile = "9812345678", Email = "rakesh@example.com" }).StudentId;
-        AllocationService.CheckIn(studentId, room.RoomId, period.From);
-        return InvoiceService.Create(studentId, period);
+        Room room = RoomService.GetRooms(HostelId).FirstOrDefault(r => r.Available > 0) ?? AddRoom($"{100 + Count("Room") + 1}", beds: 3);
+        return CheckInWithFee(AddStudentWithParents(name), room, 50_000m, 10_000m);
     }
 
     private static Payment Pay(Invoice invoice, decimal amount, string method = PaymentMethod.Cash, string reference = "",

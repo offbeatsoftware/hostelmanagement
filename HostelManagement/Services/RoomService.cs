@@ -5,38 +5,15 @@ using HostelManagement.Utilities;
 
 namespace HostelManagement.Services;
 
-/// <summary>Room and rent rules.</summary>
+/// <summary>Room rules. A room's sharing type decides its number of beds; rent is agreed per student.</summary>
 public static class RoomService
 {
-    public const decimal MaxRent = 1_000_000m;
-
-    /// <summary>The hostel's Single/Double/Triple sharing types with their rent.</summary>
+    /// <summary>The hostel's Single/Double/Triple sharing types.</summary>
     public static List<SharingType> GetSharingTypes(int hostelId) => SharingTypeRepository.GetForHostel(hostelId);
 
     /// <summary>The hostel's rooms, sorted by room number (2 before 10).</summary>
     public static List<Room> GetRooms(int hostelId) =>
         RoomRepository.GetForHostel(hostelId).OrderBy(room => room.RoomNumber, NaturalComparer.Instance).ToList();
-
-    /// <summary>Sets the rent for a sharing type of one hostel. It applies to every room of that type in the hostel.</summary>
-    public static void UpdateRent(int sharingTypeId, decimal rent)
-    {
-        if (rent <= 0)
-        {
-            throw new ValidationException("Rent must be more than zero.");
-        }
-        if (rent > MaxRent)
-        {
-            throw new ValidationException($"Rent cannot be more than {Money.Format(MaxRent)}.");
-        }
-        if (decimal.Round(rent, 2) != rent)
-        {
-            throw new ValidationException("Rent can have at most two decimal places.");
-        }
-        if (SharingTypeRepository.UpdateRent(sharingTypeId, rent) == 0)
-        {
-            throw new ValidationException("This sharing type no longer exists.");
-        }
-    }
 
     /// <summary>
     /// Validates and adds a room to input.HostelId, or saves changes to an existing one

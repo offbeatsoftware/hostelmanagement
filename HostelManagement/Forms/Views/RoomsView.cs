@@ -4,7 +4,10 @@ using HostelManagement.Utilities;
 
 namespace HostelManagement.Forms.Views;
 
-/// <summary>Rent per sharing type (top) and the room list with occupancy (bottom) of the selected hostel.</summary>
+/// <summary>
+/// The rooms of the selected hostel with occupancy. A room's sharing type only decides how many students fit in
+/// it; the rent is agreed per student at check-in (client decision, version 1.2).
+/// </summary>
 public sealed class RoomsView : UserControl
 {
     private readonly int _hostelId;
@@ -13,12 +16,6 @@ public sealed class RoomsView : UserControl
     private const string FilterActive = "Active rooms";
     private const string FilterInactive = "Inactive rooms";
     private const string FilterFreeBeds = "Rooms with free beds";
-
-    private readonly TableLayoutPanel _rentFields;
-    private readonly Dictionary<int, TextBox> _rentBoxes = new();
-    private readonly Label _rentMessage;
-    private readonly Label _installmentLabel;
-    private readonly string _billingFrequency;
 
     private readonly TextBox _searchBox;
     private readonly ComboBox _filterBox;
@@ -33,37 +30,8 @@ public sealed class RoomsView : UserControl
     public RoomsView(Hostel hostel)
     {
         _hostelId = hostel.HostelId;
-        _billingFrequency = hostel.BillingFrequency;
         Dock = DockStyle.Fill;
         BackColor = UiTheme.ContentBackground;
-
-        // ---- Rent by sharing type ----
-        _rentFields = FormFields.CreateTable(labelWidth: 160, inputWidth: 160);
-        var saveRentButton = new Button { Text = "Save Rent" };
-        UiTheme.StylePrimaryButton(saveRentButton);
-        saveRentButton.Click += (_, _) => SaveRent();
-        _rentMessage = FormFields.CreateMessageLabel();
-
-        var rentBody = new FlowLayoutPanel
-        {
-            FlowDirection = FlowDirection.TopDown,
-            WrapContents = false,
-            AutoSize = true,
-            Dock = DockStyle.Top,
-        };
-        _installmentLabel = new Label
-        {
-            AutoSize = true,
-            ForeColor = UiTheme.TextMuted,
-            Font = UiTheme.BodyFont,
-            Margin = new Padding(0, 4, 0, 0),
-        };
-        rentBody.Controls.Add(_rentFields);
-        rentBody.Controls.Add(_installmentLabel);
-        rentBody.Controls.Add(FormFields.CreateButtonRow(saveRentButton, _rentMessage));
-        Panel rentCard = FormFields.CreateCard("Yearly rent per student by sharing type", rentBody);
-        rentCard.Dock = DockStyle.Top;
-        rentCard.AutoSize = true;
 
         // ---- Rooms ----
         _searchBox = new TextBox
@@ -114,9 +82,8 @@ public sealed class RoomsView : UserControl
         FormFields.AddGridColumn(_roomGrid, nameof(Room.Capacity), "Capacity", 8, alignRight: true);
         FormFields.AddGridColumn(_roomGrid, nameof(Room.Occupied), "Occupied", 8, alignRight: true);
         FormFields.AddGridColumn(_roomGrid, nameof(Room.Available), "Available", 8, alignRight: true);
-        FormFields.AddGridColumn(_roomGrid, nameof(Room.Rent), "Rent / year", 12, format: "C2", alignRight: true);
         FormFields.AddGridColumn(_roomGrid, nameof(Room.Status), "Status", 9);
-        FormFields.AddGridColumn(_roomGrid, nameof(Room.Remarks), "Remarks", 25);
+        FormFields.AddGridColumn(_roomGrid, nameof(Room.Remarks), "Remarks", 37);
         _roomGrid.CellFormatting += FormatRoomCell;
         _roomGrid.CellDoubleClick += (_, e) =>
         {
@@ -133,10 +100,7 @@ public sealed class RoomsView : UserControl
         Panel roomCard = FormFields.CreateCard($"Rooms of {hostel.HostelName}", roomBody);
         roomCard.Dock = DockStyle.Fill;
 
-        // Docked controls are laid out in reverse order of adding.
         Controls.Add(roomCard);
-        Controls.Add(new Panel { Dock = DockStyle.Top, Height = 16 });
-        Controls.Add(rentCard);
 
         Load += (_, _) => LoadData();
     }
@@ -146,81 +110,11 @@ public sealed class RoomsView : UserControl
         try
         {
             _sharingTypes = RoomService.GetSharingTypes(_hostelId);
-            BuildRentFields();
             LoadRooms();
         }
         catch (Exception ex)
         {
             ErrorHandler.Handle(ex, "The rooms could not be loaded.");
-        }
-    }
-
-    private void BuildRentFields()
-    {
-        _rentFields.SuspendLayout();
-        _rentFields.Controls.Clear();
-        _rentFields.RowStyles.Clear();
-        _rentFields.RowCount = 0;
-        _rentBoxes.Clear();
-
-        foreach (SharingType type in _sharingTypes)
-        {
-            TextBox box = FormFields.AddTextBox(_rentFields, type.DisplayName, 15);
-            box.TextAlign = HorizontalAlignment.Right;
-            box.Text = type.Rent.ToString("N2", Money.Culture);
-            _rentBoxes[type.SharingTypeId] = box;
-        }
-        _rentFields.ResumeLayout();
-
-        // Show what each invoice will charge: the yearly rent split into the hostel's installments.
-        string periods = string.Join(", ", BillingPeriods.ForAcademicYear(DateTime.Today, _billingFrequency)
-            .Select(p => $"{p.From:MMM} to {p.To:MMM}"));
-        string amounts = string.Join(", ", _sharingTypes.Select(t =>
-            $"{t.SharingName} {Money.Format(BillingPeriods.InstallmentAmount(t.Rent, _billingFrequency))}"));
-        _installmentLabel.Text =
-            $"Billed {BillingFrequency.DisplayName(_billingFrequency).ToLowerInvariant()} ({periods}).\n" +
-            $"Per installment: {amounts}.";
-
-        if (_sharingTypes.Any(type => type.Rent == 0))
-        {
-            _rentMessage.ForeColor = UiTheme.TextMuted;
-            _rentMessage.Text = "Enter the yearly rent for each sharing type and click Save Rent.";
-        }
-    }
-
-    private void SaveRent()
-    {
-        // Check every value first so nothing is saved when one of them is wrong.
-        var newRents = new Dictionary<int, decimal>();
-        foreach (SharingType type in _sharingTypes)
-        {
-            if (!Money.TryParse(_rentBoxes[type.SharingTypeId].Text, out decimal rent) || rent <= 0)
-            {
-                FormFields.ShowError(_rentMessage, $"Please enter a valid rent for {type.SharingName} sharing.");
-                _rentBoxes[type.SharingTypeId].Focus();
-                return;
-            }
-            newRents[type.SharingTypeId] = rent;
-        }
-
-        try
-        {
-            foreach ((int sharingTypeId, decimal rent) in newRents)
-            {
-                RoomService.UpdateRent(sharingTypeId, rent);
-            }
-            _sharingTypes = RoomService.GetSharingTypes(_hostelId);
-            BuildRentFields();
-            LoadRooms();
-            FormFields.ShowSuccess(_rentMessage, $"Rent saved at {DateTime.Now:HH:mm}.");
-        }
-        catch (ValidationException ex)
-        {
-            FormFields.ShowError(_rentMessage, ex.Message);
-        }
-        catch (Exception ex)
-        {
-            ErrorHandler.Handle(ex, "The rent could not be saved.");
         }
     }
 

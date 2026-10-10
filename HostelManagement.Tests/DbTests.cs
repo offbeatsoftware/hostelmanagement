@@ -61,8 +61,8 @@ public sealed class DbTests : TestDatabase
         // DateTime.Now has milliseconds, which cause "Data type mismatch" unless OleDbType.Date is used.
         DateTime now = DateTime.Now;
         int id = Db.Insert(
-            "INSERT INTO [Student] ([StudentName], [CollegeId], [Mobile], [DateOfBirth], [AdmissionDate], [Status]) " +
-            "VALUES (?, ?, '9876543210', ?, ?, ?)",
+            "INSERT INTO [Student] ([StudentName], [CollegeId], [Mobile], [FatherName], [FatherMobile], [DateOfBirth], [AdmissionDate], [Status]) " +
+            "VALUES (?, ?, '9876543210', 'Father', '9811111111', ?, ?, ?)",
             Db.Param("@StudentName", "Date Test"),
             Db.Param("@CollegeId", CollegeId),
             Db.Param("@DateOfBirth", new DateTime(2006, 2, 28)),
@@ -127,23 +127,38 @@ public sealed class DbTests : TestDatabase
     }
 
     [Fact]
-    public void ForeignKey_RejectsParentForUnknownStudent()
+    public void ForeignKey_RejectsInvoiceForUnknownStudent()
     {
         var ex = Assert.Throws<OleDbException>(() => Db.Execute(
-            "INSERT INTO [Parent] ([StudentId], [ParentName], [Mobile], [Email], [IsPrimaryContact]) " +
-                "VALUES (?, ?, '9876543210', 'parent@example.com', ?)",
-            Db.Param("@StudentId", 9999), Db.Param("@ParentName", "Nobody"), Db.Param("@IsPrimaryContact", true)));
+            "INSERT INTO [Invoice] ([InvoiceNumber], [StudentId], [InvoiceDate], [AcademicYear], [RoomRent], [TransportAmount]) " +
+                "VALUES ('SBH/TEST/0001', ?, #01/15/2026#, 2025, 1000, 0)",
+            Db.Param("@StudentId", 9999)));
 
         Assert.False(Db.IsDuplicateKeyError(ex));
-        Assert.Equal(0, Count("Parent"));
+        Assert.Equal(0, Count("Invoice"));
+    }
+
+    [Fact]
+    public void Invoice_OnlyOnePerStudentAndAcademicYear()
+    {
+        int studentId = AddStudent();
+        const string Insert =
+            "INSERT INTO [Invoice] ([InvoiceNumber], [StudentId], [InvoiceDate], [AcademicYear], [RoomRent], [TransportAmount]) " +
+            "VALUES (?, ?, #01/15/2026#, 2025, 1000, 0)";
+        Db.Execute(Insert, Db.Param("@InvoiceNumber", "SBH/TEST/0001"), Db.Param("@StudentId", studentId));
+
+        var ex = Assert.Throws<OleDbException>(() =>
+            Db.Execute(Insert, Db.Param("@InvoiceNumber", "SBH/TEST/0002"), Db.Param("@StudentId", studentId)));
+
+        Assert.True(Db.IsDuplicateKeyError(ex));
     }
 
     [Fact]
     public void RequiredColumn_RejectsNull()
     {
         Assert.Throws<OleDbException>(() => Db.Execute(
-            "INSERT INTO [Student] ([StudentName], [CollegeId], [Mobile], [AdmissionDate], [Status]) " +
-            "VALUES (?, ?, '9876543210', #01/15/2026#, ?)",
+            "INSERT INTO [Student] ([StudentName], [CollegeId], [Mobile], [FatherName], [FatherMobile], [AdmissionDate], [Status]) " +
+            "VALUES (?, ?, '9876543210', 'Father', '9811111111', #01/15/2026#, ?)",
             Db.Param("@StudentName", null), Db.Param("@CollegeId", CollegeId), Db.Param("@Status", "Active")));
     }
 
@@ -151,8 +166,8 @@ public sealed class DbTests : TestDatabase
     public void Student_WithoutCollege_IsRejected()
     {
         Assert.Throws<OleDbException>(() => Db.Execute(
-            "INSERT INTO [Student] ([StudentName], [Mobile], [AdmissionDate], [Status]) " +
-            "VALUES (?, '9876543210', #01/15/2026#, ?)",
+            "INSERT INTO [Student] ([StudentName], [Mobile], [FatherName], [FatherMobile], [AdmissionDate], [Status]) " +
+            "VALUES (?, '9876543210', 'Father', '9811111111', #01/15/2026#, ?)",
             Db.Param("@StudentName", "No College"), Db.Param("@Status", "Active")));
     }
 
@@ -163,19 +178,19 @@ public sealed class DbTests : TestDatabase
         int studentId = Db.InTransaction((connection, transaction) =>
         {
             int id = Db.Insert(connection, transaction,
-                "INSERT INTO [Student] ([StudentName], [CollegeId], [Mobile], [AdmissionDate], [Status]) " +
-            "VALUES (?, ?, '9876543210', #01/15/2026#, ?)",
-                Db.Param("@StudentName", "With Parent"), Db.Param("@CollegeId", collegeId), Db.Param("@Status", "Active"));
+                "INSERT INTO [Student] ([StudentName], [CollegeId], [Mobile], [FatherName], [FatherMobile], [AdmissionDate], [Status]) " +
+            "VALUES (?, ?, '9876543210', 'Father', '9811111111', #01/15/2026#, ?)",
+                Db.Param("@StudentName", "With Invoice"), Db.Param("@CollegeId", collegeId), Db.Param("@Status", "Active"));
             Db.Execute(connection, transaction,
-                "INSERT INTO [Parent] ([StudentId], [ParentName], [Mobile], [Email], [IsPrimaryContact]) " +
-                "VALUES (?, ?, '9876543210', 'parent@example.com', ?)",
-                Db.Param("@StudentId", id), Db.Param("@ParentName", "Parent"), Db.Param("@IsPrimaryContact", true));
+                "INSERT INTO [Invoice] ([InvoiceNumber], [StudentId], [InvoiceDate], [AcademicYear], [RoomRent], [TransportAmount]) " +
+                "VALUES ('SBH/TEST/0001', ?, #01/15/2026#, 2025, 1000, 0)",
+                Db.Param("@StudentId", id));
             return id;
         });
 
         Assert.True(studentId > 0);
         Assert.Equal(1, Count("Student"));
-        Assert.Equal(1, Count("Parent"));
+        Assert.Equal(1, Count("Invoice"));
     }
 
     [Fact]
@@ -185,8 +200,8 @@ public sealed class DbTests : TestDatabase
         Assert.Throws<InvalidOperationException>(() => Db.InTransaction((connection, transaction) =>
         {
             Db.Execute(connection, transaction,
-                "INSERT INTO [Student] ([StudentName], [CollegeId], [Mobile], [AdmissionDate], [Status]) " +
-            "VALUES (?, ?, '9876543210', #01/15/2026#, ?)",
+                "INSERT INTO [Student] ([StudentName], [CollegeId], [Mobile], [FatherName], [FatherMobile], [AdmissionDate], [Status]) " +
+            "VALUES (?, ?, '9876543210', 'Father', '9811111111', #01/15/2026#, ?)",
                 Db.Param("@StudentName", "Rolled Back"), Db.Param("@CollegeId", collegeId), Db.Param("@Status", "Active"));
             throw new InvalidOperationException("Simulated failure");
         }));

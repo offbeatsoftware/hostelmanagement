@@ -15,8 +15,8 @@ public sealed class ReportsView : UserControl
     private const string Students = "Student list";
     private const string Rooms = "Room occupancy";
     private const string Payments = "Payments received";
-    private const string InvoiceList = "Invoices";
-    private const string Dues = "Pending dues";
+    private const string InvoiceList = "Fees (invoices)";
+    private const string Dues = "Pending fees";
 
     private readonly Hostel _hostel;
     private readonly ListBox _reportList;
@@ -26,7 +26,7 @@ public sealed class ReportsView : UserControl
     private readonly ComboBox _collegeBox;
     private readonly ComboBox _methodBox;
     private readonly ComboBox _invoiceStatusBox;
-    private readonly CheckBox _overdueOnlyBox;
+    private readonly ComboBox _yearBox;
     private readonly Dictionary<Control, string[]> _filterReports = [];
     private readonly DataGridView _grid;
     private readonly Label _messageLabel;
@@ -74,17 +74,21 @@ public sealed class ReportsView : UserControl
 
         _methodBox = Combo(130, [ReportService.AllOption, .. PaymentMethod.All]);
         _invoiceStatusBox = Combo(130,
-            [ReportService.AllOption, InvoiceStatus.Unpaid, InvoiceStatus.PartlyPaid, InvoiceStatus.Overdue, InvoiceStatus.Paid]);
-        _overdueOnlyBox = new CheckBox { Text = "Overdue only", AutoSize = true, Margin = new Padding(0, 7, 12, 0) };
+            [ReportService.AllOption, InvoiceStatus.Unpaid, InvoiceStatus.PartlyPaid, InvoiceStatus.Paid]);
+        // This academic year first, then the next and the earlier ones.
+        int year = AcademicYear.Current;
+        _yearBox = Combo(110,
+            [AcademicYear.Label(year), AcademicYear.Label(year + 1), .. Enumerable.Range(1, 5).Select(i => AcademicYear.Label(year - i)),
+             ReportService.AllOption]);
 
         var filters = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 40, WrapContents = false, Padding = new Padding(0, 4, 0, 0) };
-        AddFilter(filters, "From", _fromPicker, Payments, InvoiceList);
-        AddFilter(filters, "To", _toPicker, Payments, InvoiceList);
+        AddFilter(filters, "From", _fromPicker, Payments);
+        AddFilter(filters, "To", _toPicker, Payments);
+        AddFilter(filters, "Year", _yearBox, InvoiceList);
         AddFilter(filters, "Status", _studentStatusBox, Students);
         AddFilter(filters, "College", _collegeBox, Students);
         AddFilter(filters, "Paid by", _methodBox, Payments);
         AddFilter(filters, "Status", _invoiceStatusBox, InvoiceList);
-        AddFilter(filters, null, _overdueOnlyBox, Dues);
 
         var showButton = new Button { Text = "Show" };
         UiTheme.StylePrimaryButton(showButton);
@@ -195,8 +199,9 @@ public sealed class ReportsView : UserControl
             _collegeBox.SelectedValue is int collegeId && collegeId > 0 ? collegeId : null),
         Rooms => ReportService.RoomOccupancy(_hostel),
         Payments => ReportService.PaymentsReceived(_hostel, _fromPicker.Value.Date, _toPicker.Value.Date, Choice(_methodBox)),
-        InvoiceList => ReportService.Invoices(_hostel, _fromPicker.Value.Date, _toPicker.Value.Date, Choice(_invoiceStatusBox)),
-        _ => ReportService.PendingDues(_hostel, DateTime.Today, _overdueOnlyBox.Checked),
+        InvoiceList => ReportService.Invoices(_hostel, Choice(_yearBox) is string label ? int.Parse(label[..4], System.Globalization.CultureInfo.InvariantCulture) : null,
+            Choice(_invoiceStatusBox)),
+        _ => ReportService.PendingDues(_hostel, DateTime.Today),
     };
 
     /// <summary>Builds the chosen report and shows it in the grid; totals and group lines are bold.</summary>

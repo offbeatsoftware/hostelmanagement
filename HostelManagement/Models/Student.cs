@@ -25,6 +25,14 @@ public sealed class Student
     public string Mobile { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
 
+    // Father and mother (client decision, version 1.2): father's name and mobile are required.
+    public string FatherName { get; set; } = string.Empty;
+    public string FatherMobile { get; set; } = string.Empty;
+    public string FatherEmail { get; set; } = string.Empty;
+    public string MotherName { get; set; } = string.Empty;
+    public string MotherMobile { get; set; } = string.Empty;
+    public string MotherEmail { get; set; } = string.Empty;
+
     /// <summary>Photo file, relative to the data folder (for example Photos\Students\S12_20261005.jpg).</summary>
     public string PhotoPath { get; set; } = string.Empty;
 
@@ -40,12 +48,31 @@ public sealed class Student
 
     // Read only values filled in when students are listed.
     public string CollegeName { get; set; } = string.Empty;
-    public string ParentName { get; set; } = string.Empty;
-    public string ParentMobile { get; set; } = string.Empty;
 
     /// <summary>The student's current room number, empty when not in a room.</summary>
     public string RoomNumber { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Who receives fee emails (invoice, receipt, fee reminder): the father, or the mother when the father
+    /// has no email (client decision). Null when neither has an email.
+    /// </summary>
+    public EmailContact? FeeContact =>
+        FatherEmail.Length > 0 ? new EmailContact(FatherName, FatherEmail, "Father")
+        : MotherEmail.Length > 0 ? new EmailContact(MotherName.Length > 0 ? MotherName : "Parent", MotherEmail, "Mother")
+        : null;
+
+    /// <summary>
+    /// Who receives attendance emails: the mother, or the father when the mother has no email (client decision).
+    /// Null when neither has an email.
+    /// </summary>
+    public EmailContact? AttendanceContact =>
+        MotherEmail.Length > 0 ? new EmailContact(MotherName.Length > 0 ? MotherName : "Parent", MotherEmail, "Mother")
+        : FatherEmail.Length > 0 ? new EmailContact(FatherName, FatherEmail, "Father")
+        : null;
+
     /// <summary>Aadhaar number with only the last four digits visible, for lists and reports.</summary>
     public string AadhaarMasked => AadhaarNumber.Length == 12 ? $"XXXX XXXX {AadhaarNumber[8..]}" : string.Empty;
 }
+
+/// <summary>A parent who receives an email: the name used in the greeting, the address and Father or Mother.</summary>
+public sealed record EmailContact(string Name, string Email, string Relation);

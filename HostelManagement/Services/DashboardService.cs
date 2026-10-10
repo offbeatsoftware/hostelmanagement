@@ -3,9 +3,9 @@ using HostelManagement.Models;
 namespace HostelManagement.Services;
 
 /// <summary>
-/// Dashboard of the selected hostel (client decisions, Phase 12): students, beds, amount invoiced this
-/// academic year, amount received this month, pending and overdue totals, the five most overdue students,
-/// the latest payments and check-ins, and payments received per month of the academic year.
+/// Dashboard of the selected hostel: students, beds, the fees of this academic year, the amount received this
+/// month and year, the pending fees, the five students with the highest pending fees, the latest payments and
+/// check-ins, and payments received per month of the academic year.
 /// </summary>
 public static class DashboardService
 {
@@ -14,31 +14,31 @@ public static class DashboardService
     public static DashboardData Get(int hostelId, DateTime asOf)
     {
         DateTime today = asOf.Date;
-        DateTime yearStart = BillingPeriods.ForAcademicYear(today, BillingFrequency.HalfYearly)[0].From;
-        DateTime yearEnd = yearStart.AddYears(1);
+        int academicYear = Models.AcademicYear.Of(today);
+        DateTime yearStart = Models.AcademicYear.Start(academicYear);
         var monthStart = new DateTime(today.Year, today.Month, 1);
 
         List<Student> students = StudentService.GetStudents(hostelId);
         List<Room> rooms = RoomService.GetRooms(hostelId);
         List<Invoice> invoices = InvoiceService.GetInvoices(hostelId);
         List<Payment> payments = PaymentService.GetPayments(hostelId);
-        List<StudentDue> dues = PendingDuesService.GetDues(hostelId, today);
+        List<StudentDue> dues = PendingDuesService.GetDues(hostelId);
 
         return new DashboardData
         {
             AsOf = today,
-            AcademicYear = InvoiceService.AcademicYearLabel(today),
+            AcademicYear = Models.AcademicYear.Label(academicYear),
             ActiveStudents = students.Count(s => s.Status == StudentStatus.Active),
             LeftStudents = students.Count(s => s.Status == StudentStatus.Left),
             TotalBeds = rooms.Where(r => r.IsActive).Sum(r => r.Capacity),
             OccupiedBeds = rooms.Sum(r => r.Occupied),
             FreeBeds = rooms.Sum(r => r.Available),
-            InvoicedThisYear = invoices.Where(i => i.BillingFrom >= yearStart && i.BillingFrom < yearEnd).Sum(i => i.TotalAmount),
+            InvoicedThisYear = invoices.Where(i => i.AcademicYear == academicYear).Sum(i => i.TotalAmount),
             ReceivedThisMonth = payments.Where(p => p.PaymentDate >= monthStart && p.PaymentDate <= today).Sum(p => p.Amount),
+            ReceivedThisYear = payments.Where(p => p.PaymentDate >= yearStart && p.PaymentDate <= today).Sum(p => p.Amount),
             PendingAmount = dues.Sum(d => d.PendingAmount),
-            OverdueAmount = dues.Sum(d => d.OverdueAmount),
-            OverdueStudents = dues.Count(d => d.IsOverdue),
-            MostOverdue = dues.Where(d => d.IsOverdue).Take(ListSize).ToList(),
+            PendingStudents = dues.Count,
+            HighestPending = dues.Take(ListSize).ToList(),
             LatestPayments = payments.Take(ListSize).ToList(),
             RecentCheckIns = AllocationService.GetAllocations(hostelId, includeHistory: true)
                 .OrderByDescending(a => a.CheckInDate)

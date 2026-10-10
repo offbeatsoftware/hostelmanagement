@@ -27,9 +27,6 @@ public sealed class EmailServiceTests : TestDatabase
 
     private readonly FakeSender _sender = new();
     private static readonly DateTime Today = DateTime.Today;
-    private static BillingPeriod Previous => BillingPeriods.For(
-        BillingPeriods.For(Today, BillingFrequency.HalfYearly).From.AddDays(-1), BillingFrequency.HalfYearly);
-    private static BillingPeriod BeforePrevious => BillingPeriods.For(Previous.From.AddDays(-1), BillingFrequency.HalfYearly);
     private Room? _room;
 
     public EmailServiceTests()
@@ -40,23 +37,25 @@ public sealed class EmailServiceTests : TestDatabase
     private static void SetUpGmail() =>
         EmailSettingsService.Save(new EmailSettings { SenderEmail = "hostel@gmail.com", SenderName = "Shri Balaji Hostel", AppPassword = "abcd efgh ijkl mnop" });
 
-    private int StudentInRoom(string name)
+    /// <summary>A student in a room with a fee of 60000 (rent 50000, transport 10000) for this academic year.</summary>
+    private int StudentInRoom(string name, bool fatherEmail = true, bool motherEmail = true)
     {
         if (_room is null)
         {
             HostelService.Save(new Hostel { HostelId = HostelId, HostelName = "Test Hostel", Phone = "0141 2222222" });
-            RoomService.UpdateRent(SharingTypeId(3), 120_000m);
-            _room = RoomService.Save(new Room { HostelId = HostelId, RoomNumber = "101", SharingTypeId = SharingTypeId(3), Gender = RoomGender.Male });
+            _room = AddRoom(beds: 3);
         }
-        int id = StudentService.Save(
-            new Student { StudentName = name, Gender = RoomGender.Male, Mobile = "9876543210", CollegeId = CollegeId, AdmissionDate = BeforePrevious.From },
-            new Parent { ParentName = $"Parent of {name}", Mobile = "9812345678", Email = $"{name.ToLowerInvariant()}.parent@example.com" }).StudentId;
-        AllocationService.CheckIn(id, _room.RoomId, BeforePrevious.From);
+        string lower = name.ToLowerInvariant().Replace(' ', '.');
+        int id = AddStudentWithParents(name,
+            fatherEmail: fatherEmail ? $"{lower}.father@example.com" : "",
+            motherEmail: motherEmail ? $"{lower}.mother@example.com" : "");
+        CheckInWithFee(id, _room, 50_000m, 10_000m);
         return id;
     }
 
-    private static Invoice Invoice(int studentId, BillingPeriod period, int daysAgo) =>
-        InvoiceService.Create(studentId, period, Today.AddDays(-daysAgo));
+    private static Invoice Fee(int studentId) => InvoiceService.GetForYear(studentId, AcademicYear.Current)!;
+
+    private StudentDue Due(int studentId) => PendingDuesService.GetDue(HostelId, studentId)!;
 
     [Fact]
     public void Settings_AreSavedWithTheAppPasswordEncrypted()
@@ -81,7 +80,7 @@ public sealed class EmailServiceTests : TestDatabase
     {
         SetUpGmail();
         EmailSettings settings = EmailSettingsService.Get();
-        settings.Reminder = new EmailTemplate("Fees due for {StudentName}", "Dear {ParentName}, please pay {Overdue}.");
+        settings.Reminder = new EmailTemplate("Fees due for {StudentName}", "Dear {ParentName}, please pay {Pending}.");
 
         EmailSettingsService.Save(settings);
 
@@ -159,26 +158,29 @@ public sealed class EmailServiceTests : TestDatabase
     [Fact]
     public void PrepareInvoice_WithoutGmailAccount_AsksToSetItUp()
     {
-        Invoice invoice = Invoice(StudentInRoom("Aman"), Previous, daysAgo: 1);
+        Invoice invoice = Fee(StudentInRoom("Aman"));
 
         Assert.Contains("Email Settings", Assert.Throws<ValidationException>(() => EmailService.PrepareInvoice(invoice.InvoiceId)).Message);
     }
 
     [Fact]
-    public void InvoiceEmail_GoesToTheParentWithThePdf_AndIsLogged()
+    public void InvoiceEmail_GoesToTheFatherWithThePdf_AndIsLogged()
     {
         SetUpGmail();
-        Invoice invoice = Invoice(StudentInRoom("Aman"), Previous, daysAgo: 1);
+        Invoice invoice = Fee(StudentInRoom("Aman"));
 
         OutgoingEmail email = EmailService.PrepareInvoice(invoice.InvoiceId);
         Assert.Null(EmailService.SendAndLog(email));
 
         OutgoingEmail sent = _sender.Sent.Single();
-        Assert.Equal("aman.parent@example.com", sent.RecipientEmail);
+        Assert.Equal("aman.father@example.com", sent.RecipientEmail);
         Assert.Equal($"Invoice {invoice.InvoiceNumber} for Aman, Test Hostel", sent.Subject);
-        Assert.Contains("Dear Parent of Aman,", sent.Body);
-        Assert.Contains("Amount: Rs. 60,000.00", sent.Body);
-        Assert.Contains($"Due date: {invoice.DueDate:dd MMM yyyy}", sent.Body);
+        Assert.Contains("Dear Rakesh Aman,", sent.Body);
+        Assert.Contains($"academic year {AcademicYear.Label(AcademicYear.Current)}", sent.Body);
+        Assert.Contains("Room rent: Rs. 50,000.00", sent.Body);
+        Assert.Contains("Transport: Rs. 10,000.00", sent.Body);
+        Assert.Contains("Total fee: Rs. 60,000.00", sent.Body);
+        Assert.Contains("Pending: Rs. 60,000.00", sent.Body);
         Assert.Contains("0141 2222222", sent.Body);
         Assert.DoesNotContain("{", sent.Body);
         Assert.True(File.Exists(sent.AttachmentPaths.Single()));
@@ -196,7 +198,7 @@ public sealed class EmailServiceTests : TestDatabase
     {
         SetUpGmail();
         AuthService.SaveContact("owner@gmail.com", "98290 12345");
-        Invoice invoice = Invoice(StudentInRoom("Aman"), Previous, daysAgo: 1);
+        Invoice invoice = Fee(StudentInRoom("Aman"));
         EmailSettings settings = EmailSettingsService.Get();
         settings.Invoice = new EmailTemplate("Invoice {InvoiceNumber}", "Questions? Call {AdminPhone} or write to {AdminEmail}.");
         EmailSettingsService.Save(settings);
@@ -205,7 +207,7 @@ public sealed class EmailServiceTests : TestDatabase
 
         Assert.Equal("owner@gmail.com", email.CopyToEmail);
         Assert.Equal("Questions? Call 98290 12345 or write to owner@gmail.com.", email.Body);
-        Payment payment = PaymentService.Record(new Payment { InvoiceId = invoice.InvoiceId, PaymentDate = Today, Amount = 100m });
+        Payment payment = Pay(invoice.InvoiceId, 100m);
         Assert.Equal("owner@gmail.com", EmailService.PrepareReceipt(payment.PaymentId).CopyToEmail);
     }
 
@@ -213,7 +215,7 @@ public sealed class EmailServiceTests : TestDatabase
     public void NoAdminEmail_NoCopy()
     {
         SetUpGmail();
-        Invoice invoice = Invoice(StudentInRoom("Aman"), Previous, daysAgo: 1);
+        Invoice invoice = Fee(StudentInRoom("Aman"));
 
         Assert.Equal("", EmailService.PrepareInvoice(invoice.InvoiceId).CopyToEmail);
     }
@@ -222,7 +224,7 @@ public sealed class EmailServiceTests : TestDatabase
     public void FailedEmail_IsLoggedWithAMessageTheAdminCanActOn()
     {
         SetUpGmail();
-        Invoice invoice = Invoice(StudentInRoom("Aman"), Previous, daysAgo: 1);
+        Invoice invoice = Fee(StudentInRoom("Aman"));
         _sender.Failure = new SmtpException("The SMTP server requires a secure connection or the client was not authenticated. " +
                                             "The server response was: 5.7.0 Authentication Required.");
 
@@ -238,7 +240,7 @@ public sealed class EmailServiceTests : TestDatabase
     public void ReceiptEmail_ShowsThePaymentAndBalance()
     {
         SetUpGmail();
-        Invoice invoice = Invoice(StudentInRoom("Aman"), Previous, daysAgo: 1);
+        Invoice invoice = Fee(StudentInRoom("Aman"));
         Payment payment = PaymentService.Record(new Payment
             { InvoiceId = invoice.InvoiceId, PaymentDate = Today, Amount = 15_000m, PaymentMethod = PaymentMethod.Upi, Reference = "UPI1" });
 
@@ -247,44 +249,89 @@ public sealed class EmailServiceTests : TestDatabase
         Assert.Equal(EmailType.Receipt, email.EmailType);
         Assert.Contains(payment.ReceiptNumber, email.Subject);
         Assert.Contains("Rs. 15,000.00", email.Body);
-        Assert.Contains("Balance pending on this invoice: Rs. 45,000.00", email.Body);
+        Assert.Equal("aman.father@example.com", email.RecipientEmail);
+        Assert.Contains("Total fee: Rs. 60,000.00", email.Body);
+        Assert.Contains("Balance pending: Rs. 45,000.00", email.Body);
         Assert.StartsWith("Receipt_", Path.GetFileName(email.AttachmentPaths.Single()));
     }
 
     [Fact]
-    public void Reminders_GoOnlyToStudentsWithOverdueInvoices_AndListOnlyThoseInvoices()
+    public void FeeReminder_ShowsTotalPaidAndPending_WithTheInvoicePdf_AndGoesToTheFather()
     {
         SetUpGmail();
         int aman = StudentInRoom("Aman");
-        int ravi = StudentInRoom("Ravi");
-        Invoice amanOverdue = Invoice(aman, BeforePrevious, daysAgo: 40);
-        Invoice amanNotDue = Invoice(aman, Previous, daysAgo: 2);
-        Invoice(ravi, Previous, daysAgo: 2);
+        Payment first = Pay(Fee(aman).InvoiceId, 10_000m);
+        Pay(Fee(aman).InvoiceId, 3_000m);
 
-        (List<OutgoingEmail> emails, List<string> problems) = EmailService.PrepareReminders(HostelId, Today);
+        OutgoingEmail reminder = EmailService.PrepareReminder(Due(aman));
 
-        Assert.Empty(problems);
-        OutgoingEmail reminder = Assert.Single(emails);
-        Assert.Equal("aman.parent@example.com", reminder.RecipientEmail);
-        Assert.Equal([amanOverdue.InvoiceId], reminder.InvoiceIds);
-        Assert.Contains(amanOverdue.InvoiceNumber, reminder.Body);
-        Assert.DoesNotContain(amanNotDue.InvoiceNumber, reminder.Body);
-        Assert.Contains("Total pending: Rs. 1,20,000.00", reminder.Body);
-        Assert.Single(reminder.AttachmentPaths);
-
-        Assert.Null(PendingDuesService.GetDues(HostelId, Today).Single(d => d.StudentId == aman).LastReminderDate);
-        EmailService.SendAndLog(reminder);
-        Assert.Equal(Today, PendingDuesService.GetDues(HostelId, Today).Single(d => d.StudentId == aman).LastReminderDate?.Date);
+        Assert.Equal(EmailType.DueReminder, reminder.EmailType);
+        Assert.Equal("aman.father@example.com", reminder.RecipientEmail);
+        Assert.Equal("Fee reminder for Aman, Test Hostel", reminder.Subject);
+        Assert.Contains("Total fee: Rs. 60,000.00", reminder.Body);
+        Assert.Contains("Paid so far: Rs. 13,000.00", reminder.Body);
+        Assert.Contains("Pending amount: Rs. 47,000.00", reminder.Body);
+        Assert.Contains($"{Fee(aman).InvoiceNumber}): room rent Rs. 50,000.00 + transport Rs. 10,000.00 = Rs. 60,000.00", reminder.Body);
+        Assert.Equal([Fee(aman).InvoiceId], reminder.InvoiceIds);
+        Assert.StartsWith("Invoice_", Path.GetFileName(reminder.AttachmentPaths.Single()));
+        Assert.DoesNotContain("{", reminder.Body);
+        Assert.NotNull(first);
     }
 
     [Fact]
-    public void Reminder_StudentWithNothingOverdue_IsRejected()
+    public void FeeReminders_GoToTheChosenStudents_MotherWhenTheFatherHasNoEmail_AndProblemsAreListed()
     {
         SetUpGmail();
-        Invoice(StudentInRoom("Aman"), Previous, daysAgo: 2);
-        StudentDue due = PendingDuesService.GetDues(HostelId, Today).Single();
+        int aman = StudentInRoom("Aman");
+        int ravi = StudentInRoom("Ravi", fatherEmail: false);
+        int noEmail = StudentInRoom("No Email", fatherEmail: false, motherEmail: false);
+        StudentInRoom("Not Chosen");
 
-        Assert.Contains("no overdue", Assert.Throws<ValidationException>(() => EmailService.PrepareReminder(due)).Message);
+        (List<OutgoingEmail> emails, List<string> problems) = EmailService.PrepareReminders([Due(aman), Due(ravi), Due(noEmail)]);
+
+        Assert.Equal(["aman.father@example.com", "ravi.mother@example.com"], emails.Select(e => e.RecipientEmail));
+        Assert.Equal("Sunita Ravi", emails[1].RecipientName);
+        Assert.Contains("Dear Sunita Ravi,", emails[1].Body);
+        Assert.Equal("No Email: Neither the father nor the mother of No Email has an email address. Add one on the Students screen.",
+            Assert.Single(problems));
+
+        Assert.Null(Due(aman).LastReminderDate);
+        EmailService.SendAndLog(emails[0]);
+        Assert.Equal(Today, Due(aman).LastReminderDate?.Date);
+    }
+
+    [Fact]
+    public void FeeReminder_TextChangedOnTheScreen_IsUsedForThatSending_AndCanBeSavedAsDefault()
+    {
+        SetUpGmail();
+        int aman = StudentInRoom("Aman");
+        var text = new EmailTemplate("Please pay {Pending}", "Dear {ParentName}, {StudentName} owes {Pending} of {TotalAmount}.");
+
+        OutgoingEmail email = EmailService.PrepareReminder(Due(aman), text);
+        (string to, string subject, string body) = EmailService.PreviewReminder(Due(aman), text);
+
+        Assert.Equal("Please pay Rs. 60,000.00", email.Subject);
+        Assert.Equal("Dear Rakesh Aman, Aman owes Rs. 60,000.00 of Rs. 60,000.00.", email.Body);
+        Assert.Equal((email.Subject, email.Body), (subject, body));
+        Assert.Equal("Father: Rakesh Aman <aman.father@example.com>", to);
+        Assert.Equal(EmailSettings.DefaultReminder, EmailSettingsService.Get().Reminder);
+
+        EmailSettingsService.SaveReminderText(text);
+        Assert.Equal(text, EmailSettingsService.Get().Reminder);
+
+        var unknown = new EmailTemplate("Overdue {Overdue}", "Body");
+        Assert.Contains("{Overdue}", Assert.Throws<ValidationException>(() => EmailService.ValidateReminderText(unknown)).Message);
+        Assert.Throws<ValidationException>(() => EmailSettingsService.SaveReminderText(unknown));
+    }
+
+    [Fact]
+    public void FeeReminder_StudentWithNothingPending_IsRejected()
+    {
+        SetUpGmail();
+        int aman = StudentInRoom("Aman");
+        var paidUp = new StudentDue { StudentId = aman, StudentName = "Aman", Invoices = [] };
+
+        Assert.Contains("no pending fee", Assert.Throws<ValidationException>(() => EmailService.PrepareReminder(paidUp)).Message);
     }
 
     [Fact]

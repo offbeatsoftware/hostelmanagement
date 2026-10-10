@@ -6,11 +6,11 @@ using HostelManagement.Utilities;
 namespace HostelManagement.Services;
 
 /// <summary>Everything printed on a receipt. The invoice's paid and pending amounts include this payment.</summary>
-public sealed record ReceiptPrintData(Payment Payment, Invoice Invoice, Hostel Hostel, Student Student, Parent? Parent);
+public sealed record ReceiptPrintData(Payment Payment, Invoice Invoice, Hostel Hostel, Student Student);
 
 /// <summary>
-/// Payments (client decisions, Phase 9): every payment is made against an invoice; part payments are
-/// allowed but never more than the amount still pending (no advance or extra payments); methods are cash,
+/// Payments (client decisions): every payment is made against a student's yearly invoice; the student pays
+/// any amount any number of times, but never more than the amount still pending (no advance or extra payments); methods are cash,
 /// UPI, bank transfer and cheque, and every method except cash needs a reference. Each payment gets a
 /// receipt number such as SBH/R/2026-27/0001, one sequence per academic year of the payment date.
 /// </summary>
@@ -26,7 +26,8 @@ public static class PaymentService
     public static List<Invoice> GetInvoicesWithPending(int hostelId) =>
         InvoiceService.GetInvoices(hostelId)
             .Where(i => i.PendingAmount > 0)
-            .OrderBy(i => i.InvoiceDate)
+            .OrderBy(i => i.AcademicYear)
+            .ThenBy(i => i.StudentName, StringComparer.CurrentCultureIgnoreCase)
             .ThenBy(i => i.InvoiceId)
             .ToList();
 
@@ -79,13 +80,13 @@ public static class PaymentService
         AppLogger.Info($"Deleted payment {payment.ReceiptNumber} of {payment.Amount} against invoice {payment.InvoiceNumber}.");
     }
 
-    /// <summary>Hostel, student, parent and invoice details for printing the receipt.</summary>
+    /// <summary>Hostel, student and invoice details for printing the receipt.</summary>
     public static ReceiptPrintData GetReceiptData(int paymentId)
     {
         Payment payment = PaymentRepository.Get(paymentId)
             ?? throw new ValidationException("This payment no longer exists.");
         InvoicePrintData invoiceData = InvoiceService.GetPrintData(payment.InvoiceId);
-        return new ReceiptPrintData(payment, invoiceData.Invoice, invoiceData.Hostel, invoiceData.Student, invoiceData.Parent);
+        return new ReceiptPrintData(payment, invoiceData.Invoice, invoiceData.Hostel, invoiceData.Student);
     }
 
     private static void Validate(Payment payment)

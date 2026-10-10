@@ -17,26 +17,16 @@ public sealed record StudentFileChanges(
 
 public static class StudentService
 {
-    /// <summary>Students of a hostel, sorted by name, with their primary parent's name and mobile.</summary>
+    /// <summary>Students of a hostel, sorted by name, with their current room.</summary>
     public static List<Student> GetStudents(int hostelId)
     {
         List<Student> students = StudentRepository.GetForHostel(hostelId);
-        Dictionary<int, Parent> primaryParents = ParentRepository.GetForHostel(hostelId)
-            .Where(p => p.IsPrimaryContact)
-            .GroupBy(p => p.StudentId)
-            .ToDictionary(g => g.Key, g => g.First());
-
         Dictionary<int, string> rooms = AllocationRepository.GetForHostel(hostelId, includeHistory: false)
             .GroupBy(a => a.StudentId)
             .ToDictionary(g => g.Key, g => g.First().RoomNumber);
 
         foreach (Student student in students)
         {
-            if (primaryParents.TryGetValue(student.StudentId, out Parent? parent))
-            {
-                student.ParentName = parent.ParentName;
-                student.ParentMobile = parent.Mobile;
-            }
             student.RoomNumber = rooms.GetValueOrDefault(student.StudentId, string.Empty);
         }
 
@@ -45,25 +35,14 @@ public static class StudentService
 
     public static Student? GetStudent(int studentId) => StudentRepository.Get(studentId);
 
-    /// <summary>The student's primary contact (null only for records created outside the application).</summary>
-    public static Parent? GetPrimaryParent(int studentId) =>
-        ParentRepository.GetForStudent(studentId).FirstOrDefault(p => p.IsPrimaryContact);
-
     /// <summary>
-    /// Validates and saves a student together with the primary parent, then stores the photo and
+    /// Validates and saves a student with the father's and mother's details, then stores the photo and
     /// Aadhaar card. Everything is checked before anything is saved.
     /// </summary>
-    /// <param name="extraServiceIds">
-    /// The extra services (such as transport) the student uses, or null to leave them unchanged.
-    /// A newly selected service starts on the admission date for a new student and today otherwise;
-    /// a removed one ends today.
-    /// </param>
-    public static Student Save(Student input, Parent primaryParent, StudentFileChanges? files = null,
-        IReadOnlyCollection<int>? extraServiceIds = null)
+    public static Student Save(Student input, StudentFileChanges? files = null)
     {
         files ??= new StudentFileChanges();
         Student student = Clean(input);
-        Parent parent = ParentService.Clean(primaryParent);
 
         Student? existing = null;
         if (student.StudentId > 0)
@@ -73,7 +52,6 @@ public static class StudentService
         }
 
         Validate(student, existing);
-        ParentService.Validate(parent);
         if (files.NewPhotoFile is not null)
         {
             StudentFileService.ValidatePhoto(files.NewPhotoFile);
@@ -81,10 +59,6 @@ public static class StudentService
         if (files.NewAadhaarCardFile is not null)
         {
             StudentFileService.ValidateAadhaarCard(files.NewAadhaarCardFile);
-        }
-        if (extraServiceIds is not null)
-        {
-            ValidateExtraServices(student, extraServiceIds);
         }
 
         Db.InTransaction((connection, transaction) =>
@@ -97,24 +71,6 @@ public static class StudentService
             {
                 StudentRepository.Update(connection, transaction, student);
             }
-
-            parent.StudentId = student.StudentId;
-            parent.IsPrimaryContact = true;
-            if (parent.ParentId == 0)
-            {
-                parent.ParentId = ParentRepository.Insert(connection, transaction, parent);
-            }
-            else
-            {
-                ParentRepository.Update(connection, transaction, parent);
-            }
-            ParentRepository.SetPrimary(connection, transaction, student.StudentId, parent.ParentId);
-
-            if (extraServiceIds is not null)
-            {
-                DateTime startDate = existing is null ? student.AdmissionDate : DateTime.Today;
-                SaveExtraServices(connection, transaction, student.StudentId, extraServiceIds, startDate);
-            }
         });
 
         SaveFiles(student.StudentId, existing, files);
@@ -122,7 +78,7 @@ public static class StudentService
     }
 
     /// <summary>
-    /// Deletes a student, their parents and files. Students with room, invoice, payment or email
+    /// Deletes a student and their files. Students with room, invoice, payment or email
     /// history are kept for the records; mark them as Left instead.
     /// </summary>
     public static void Delete(int studentId)
@@ -137,59 +93,10 @@ public static class StudentService
                 "Edit the student and set the status to Left instead.");
         }
 
-        Db.InTransaction((connection, transaction) =>
-        {
-            ParentRepository.DeleteForStudent(connection, transaction, studentId);
-            StudentServiceRepository.DeleteForStudent(connection, transaction, studentId);
-            StudentRepository.Delete(connection, transaction, studentId);
-        });
+        Db.InTransaction((connection, transaction) => StudentRepository.Delete(connection, transaction, studentId));
 
         StudentFileService.TryDelete(student.PhotoPath);
         StudentFileService.TryDelete(student.AadhaarCardPath);
-    }
-
-    /// <summary>The extra services the student uses now.</summary>
-    public static List<StudentServiceUse> GetCurrentServices(int studentId) =>
-        StudentServiceRepository.GetCurrentForStudent(studentId);
-
-    /// <summary>Selected services must be active extra services of the student's hostel.</summary>
-    private static void ValidateExtraServices(Student student, IReadOnlyCollection<int> serviceIds)
-    {
-        int hostelId = CollegeRepository.Get(student.CollegeId)?.HostelId ?? 0;
-        HashSet<int> allowed = ServiceItemService.GetActiveExtraServices(hostelId).Select(s => s.ServiceId).ToHashSet();
-        HashSet<int> current = student.StudentId > 0
-            ? StudentServiceRepository.GetCurrentForStudent(student.StudentId).Select(u => u.ServiceId).ToHashSet()
-            : [];
-
-        // A service already in use may stay selected even if it was made inactive later.
-        if (serviceIds.Any(id => !allowed.Contains(id) && !current.Contains(id)))
-        {
-            throw new ValidationException("Only active extra services of the student's hostel can be selected.");
-        }
-    }
-
-    private static void SaveExtraServices(System.Data.OleDb.OleDbConnection connection,
-        System.Data.OleDb.OleDbTransaction transaction, int studentId, IReadOnlyCollection<int> serviceIds, DateTime startDate)
-    {
-        List<StudentServiceUse> current = StudentServiceRepository.GetCurrentForStudent(studentId);
-
-        foreach (StudentServiceUse use in current.Where(u => !serviceIds.Contains(u.ServiceId)))
-        {
-            if (use.StartDate.Date >= DateTime.Today)
-            {
-                // Started today or later and removed again: it was never really used.
-                StudentServiceRepository.Delete(connection, transaction, use.StudentServiceId);
-            }
-            else
-            {
-                StudentServiceRepository.Stop(connection, transaction, use.StudentServiceId, DateTime.Today);
-            }
-        }
-
-        foreach (int serviceId in serviceIds.Distinct().Where(id => current.All(u => u.ServiceId != id)))
-        {
-            StudentServiceRepository.Start(connection, transaction, studentId, serviceId, startDate.Date);
-        }
     }
 
     private static void SaveFiles(int studentId, Student? existing, StudentFileChanges files)
@@ -230,13 +137,21 @@ public static class StudentService
         ClassName = Validators.Clean(input.ClassName),
         Mobile = Validators.Clean(input.Mobile),
         Email = Validators.Clean(input.Email),
+        FatherName = Validators.Clean(input.FatherName),
+        FatherMobile = Validators.Clean(input.FatherMobile),
+        FatherEmail = Validators.Clean(input.FatherEmail),
+        MotherName = Validators.Clean(input.MotherName),
+        MotherMobile = Validators.Clean(input.MotherMobile),
+        MotherEmail = Validators.Clean(input.MotherEmail),
         AadhaarNumber = Validators.CleanAadhaar(input.AadhaarNumber),
         AdmissionDate = input.AdmissionDate.Date,
         Status = Validators.Clean(input.Status),
         Remarks = Validators.Clean(input.Remarks),
     };
 
-    /// <summary>Name, mobile, college and admission date are required (client decision).</summary>
+    /// <summary>
+    /// Name, mobile, college, admission date and the father's name and mobile are required (client decision).
+    /// </summary>
     private static void Validate(Student student, Student? existing)
     {
         if (student.StudentName.Length == 0)
@@ -247,7 +162,21 @@ public static class StudentService
         {
             throw new ValidationException("Please enter the student's mobile number.");
         }
+        if (student.FatherName.Length == 0)
+        {
+            throw new ValidationException("Please enter the father's name.");
+        }
+        if (student.FatherMobile.Length == 0)
+        {
+            throw new ValidationException("Please enter the father's mobile number.");
+        }
         Validators.CheckLength(student.StudentName, 150, "Student name");
+        Validators.CheckLength(student.FatherName, 150, "Father's name");
+        Validators.CheckLength(student.FatherMobile, 20, "Father's mobile");
+        Validators.CheckLength(student.FatherEmail, 150, "Father's email");
+        Validators.CheckLength(student.MotherName, 150, "Mother's name");
+        Validators.CheckLength(student.MotherMobile, 20, "Mother's mobile");
+        Validators.CheckLength(student.MotherEmail, 150, "Mother's email");
         Validators.CheckLength(student.Address, 255, "Address");
         Validators.CheckLength(student.Course, 100, "Course");
         Validators.CheckLength(student.ClassName, 50, "Class");
@@ -262,6 +191,22 @@ public static class StudentService
         if (!Validators.IsValidEmailOrEmpty(student.Email))
         {
             throw new ValidationException("Please enter a valid email address for the student.");
+        }
+        if (!Validators.IsValidPhoneOrEmpty(student.FatherMobile))
+        {
+            throw new ValidationException("Please enter a valid mobile number for the father.");
+        }
+        if (!Validators.IsValidEmailOrEmpty(student.FatherEmail))
+        {
+            throw new ValidationException("Please enter a valid email address for the father.");
+        }
+        if (!Validators.IsValidPhoneOrEmpty(student.MotherMobile))
+        {
+            throw new ValidationException("Please enter a valid mobile number for the mother.");
+        }
+        if (!Validators.IsValidEmailOrEmpty(student.MotherEmail))
+        {
+            throw new ValidationException("Please enter a valid email address for the mother.");
         }
         if (student.Gender.Length > 0 && !Student.Genders.Contains(student.Gender))
         {

@@ -4,7 +4,10 @@ using HostelManagement.Utilities;
 
 namespace HostelManagement.Forms.Views;
 
-/// <summary>Students of the selected hostel with search, filters, add, edit and delete.</summary>
+/// <summary>
+/// Students of the selected hostel with search, filters, add, edit and delete, the agreement PDF and I-cards
+/// (select one or more students for I-cards).
+/// </summary>
 public sealed class StudentsView : UserControl
 {
     private const string AllColleges = "All colleges";
@@ -22,6 +25,8 @@ public sealed class StudentsView : UserControl
     private readonly Button _editButton;
     private readonly Button _deleteButton;
     private readonly Button _agreementButton;
+    private readonly Button _idCardButton;
+    private readonly Button _transportCardButton;
     private readonly Label _countLabel;
 
     private List<Student> _students = [];
@@ -37,7 +42,7 @@ public sealed class StudentsView : UserControl
         {
             Font = UiTheme.BodyFont,
             Width = 260,
-            PlaceholderText = "Search name or mobile (student or parent)",
+            PlaceholderText = "Search name or mobile (student or father)",
             Margin = new Padding(0, 4, 8, 0),
         };
         _searchBox.TextChanged += (_, _) => ShowStudents();
@@ -77,32 +82,44 @@ public sealed class StudentsView : UserControl
             }
         };
 
-        var agreementTextButton = new Button { Text = "Agreement Text..." };
+        var agreementTextButton = new Button { Text = "Agreement Text" };
         UiTheme.StyleSecondaryButton(agreementTextButton);
-        agreementTextButton.Width = 150;
+        agreementTextButton.Width = 130;
         agreementTextButton.Click += (_, _) =>
         {
             using var dialog = new AgreementTextForm();
             dialog.ShowDialog(this);
         };
 
+        _idCardButton = new Button { Text = "I-Card" };
+        UiTheme.StyleSecondaryButton(_idCardButton);
+        _idCardButton.Width = 90;
+        _idCardButton.Click += (_, _) => IdCardActions.Download(this, SelectedStudentIds(), transport: false);
+
+        _transportCardButton = new Button { Text = "Transport I-Card" };
+        UiTheme.StyleSecondaryButton(_transportCardButton);
+        _transportCardButton.Width = 140;
+        _transportCardButton.Click += (_, _) => IdCardActions.Download(this, SelectedStudentIds(), transport: true);
+
         _countLabel = FormFields.CreateMessageLabel();
         _countLabel.ForeColor = UiTheme.TextMuted;
 
         FlowLayoutPanel buttonRow = FormFields.CreateButtonRow(
-            addButton, _editButton, _deleteButton, _agreementButton, agreementTextButton, _countLabel);
+            addButton, _editButton, _deleteButton, _agreementButton, agreementTextButton, _idCardButton, _transportCardButton,
+            _countLabel);
         buttonRow.Dock = DockStyle.Top;
 
         _grid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
         UiTheme.StyleGrid(_grid);
+        _grid.MultiSelect = true;
         FormFields.AddGridColumn(_grid, nameof(Student.StudentName), "Student", 16);
         FormFields.AddGridColumn(_grid, nameof(Student.Mobile), "Mobile", 10);
         FormFields.AddGridColumn(_grid, nameof(Student.RoomNumber), "Room", 6);
         FormFields.AddGridColumn(_grid, nameof(Student.CollegeName), "College", 14);
         FormFields.AddGridColumn(_grid, nameof(Student.Course), "Course", 10);
         FormFields.AddGridColumn(_grid, nameof(Student.ClassName), "Class", 7);
-        FormFields.AddGridColumn(_grid, nameof(Student.ParentName), "Parent", 12);
-        FormFields.AddGridColumn(_grid, nameof(Student.ParentMobile), "Parent mobile", 10);
+        FormFields.AddGridColumn(_grid, nameof(Student.FatherName), "Father", 12);
+        FormFields.AddGridColumn(_grid, nameof(Student.FatherMobile), "Father mobile", 10);
         FormFields.AddGridColumn(_grid, nameof(Student.AadhaarMasked), "Aadhaar", 10);
         FormFields.AddGridColumn(_grid, nameof(Student.AdmissionDate), "Admission", 8, format: "dd MMM yyyy");
         FormFields.AddGridColumn(_grid, nameof(Student.Status), "Status", 6);
@@ -145,6 +162,22 @@ public sealed class StudentsView : UserControl
     }
 
     private Student? SelectedStudent => _grid.CurrentRow?.DataBoundItem as Student;
+
+    /// <summary>The selected students in list order (the current row when none is highlighted).</summary>
+    private List<int> SelectedStudentIds()
+    {
+        List<int> ids = _grid.SelectedRows.Cast<DataGridViewRow>()
+            .OrderBy(r => r.Index)
+            .Select(r => r.DataBoundItem)
+            .OfType<Student>()
+            .Select(s => s.StudentId)
+            .ToList();
+        if (ids.Count == 0 && SelectedStudent is Student current)
+        {
+            ids.Add(current.StudentId);
+        }
+        return ids;
+    }
 
     private void LoadStudents(int? selectStudentId = null)
     {
@@ -196,8 +229,10 @@ public sealed class StudentsView : UserControl
             students = students.Where(s =>
                 s.StudentName.Contains(search, StringComparison.CurrentCultureIgnoreCase) ||
                 s.Mobile.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                s.ParentMobile.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                s.ParentName.Contains(search, StringComparison.CurrentCultureIgnoreCase));
+                s.FatherMobile.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                s.FatherName.Contains(search, StringComparison.CurrentCultureIgnoreCase) ||
+                s.MotherMobile.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                s.MotherName.Contains(search, StringComparison.CurrentCultureIgnoreCase));
         }
         students = Filter(students, _collegeFilter, AllColleges, s => s.CollegeName);
         students = Filter(students, _courseFilter, AllCourses, s => s.Course);
@@ -232,6 +267,8 @@ public sealed class StudentsView : UserControl
         _editButton.Enabled = hasSelection;
         _deleteButton.Enabled = hasSelection;
         _agreementButton.Enabled = hasSelection;
+        _idCardButton.Enabled = hasSelection;
+        _transportCardButton.Enabled = hasSelection;
     }
 
     private void AddStudent()
@@ -242,8 +279,7 @@ public sealed class StudentsView : UserControl
             return;
         }
 
-        using var dialog = new StudentEditForm(_colleges, null, null,
-            ServiceItemService.GetActiveExtraServices(_hostelId), ServiceItemService.GetIncludedServices(_hostelId));
+        using var dialog = new StudentEditForm(_colleges);
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
             _searchBox.Clear();
@@ -268,15 +304,7 @@ public sealed class StudentsView : UserControl
                 return;
             }
 
-            // Offer the active extra services plus any the student still uses that were made inactive later.
-            List<StudentServiceUse> uses = StudentService.GetCurrentServices(student.StudentId);
-            List<ServiceItem> allServices = ServiceItemService.GetServices(_hostelId);
-            List<ServiceItem> extraServices = allServices
-                .Where(s => !s.IsIncludedInRent && (s.IsActive || uses.Any(u => u.ServiceId == s.ServiceId)))
-                .ToList();
-
-            using var dialog = new StudentEditForm(_colleges, student, StudentService.GetPrimaryParent(student.StudentId),
-                extraServices, ServiceItemService.GetIncludedServices(_hostelId), uses.Select(u => u.ServiceId).ToList());
+            using var dialog = new StudentEditForm(_colleges, student);
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 LoadStudents(student.StudentId);
@@ -291,7 +319,7 @@ public sealed class StudentsView : UserControl
     private void DeleteSelectedStudent()
     {
         if (SelectedStudent is not Student student ||
-            !Dialogs.Confirm($"Delete {student.StudentName} with their parent details, photo and Aadhaar card?"))
+            !Dialogs.Confirm($"Delete {student.StudentName} with their photo and Aadhaar card?"))
         {
             return;
         }

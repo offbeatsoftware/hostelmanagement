@@ -222,7 +222,7 @@ public sealed class PaymentsView : UserControl
         }
     }
 
-    /// <summary>Emails the receipt PDF to the student's primary parent (only when the admin clicks the button).</summary>
+    /// <summary>Emails the receipt PDF to the father, or the mother when the father has no email (only when the admin clicks the button).</summary>
     private async Task EmailSelectedReceipt()
     {
         if (SelectedPayment is not Payment payment)

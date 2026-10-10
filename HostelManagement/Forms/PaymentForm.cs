@@ -123,7 +123,7 @@ public sealed class PaymentForm : Form
             return;
         }
 
-        _invoiceInfoLabel.Text = $"{invoice.PeriodText}:  total {Money.Format(invoice.TotalAmount)},  " +
+        _invoiceInfoLabel.Text = $"Fee {invoice.YearText}:  total {Money.Format(invoice.TotalAmount)},  " +
                                  $"paid {Money.Format(invoice.PaidAmount)},  pending {Money.Format(invoice.PendingAmount)}";
         _amountBox.Text = invoice.PendingAmount.ToString("N2", Money.Culture);
     }

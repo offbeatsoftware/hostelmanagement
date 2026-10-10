@@ -6,7 +6,7 @@ namespace HostelManagement.Forms.Views;
 
 /// <summary>
 /// Dashboard of the selected hostel: headline figures, payments received per month of the academic year,
-/// and short lists of the most overdue students, the latest payments and the latest check-ins.
+/// and short lists of the students with the highest pending fees, the latest payments and the latest check-ins.
 /// </summary>
 public sealed class DashboardView : UserControl
 {
@@ -14,7 +14,7 @@ public sealed class DashboardView : UserControl
     private readonly TableLayoutPanel _tiles;
     private readonly PaymentsChart _chart;
     private readonly Label _chartTitle;
-    private readonly DataGridView _overdueGrid;
+    private readonly DataGridView _pendingGrid;
     private readonly DataGridView _paymentsGrid;
     private readonly DataGridView _checkInsGrid;
 
@@ -39,10 +39,9 @@ public sealed class DashboardView : UserControl
         chartCard.Dock = DockStyle.Fill;
         chartCard.Margin = new Padding(0, 4, 0, 8);
 
-        _overdueGrid = CreateListGrid();
-        FormFields.AddGridColumn(_overdueGrid, nameof(StudentDue.StudentName), "Student", 48);
-        FormFields.AddGridColumn(_overdueGrid, nameof(StudentDue.OverdueAmount), "Overdue", 32, format: "C0", alignRight: true);
-        FormFields.AddGridColumn(_overdueGrid, nameof(StudentDue.DaysOverdue), "Days", 16, alignRight: true);
+        _pendingGrid = CreateListGrid();
+        FormFields.AddGridColumn(_pendingGrid, nameof(StudentDue.StudentName), "Student", 52);
+        FormFields.AddGridColumn(_pendingGrid, nameof(StudentDue.PendingAmount), "Pending", 44, format: "C0", alignRight: true);
 
         _paymentsGrid = CreateListGrid();
         FormFields.AddGridColumn(_paymentsGrid, nameof(Payment.PaymentDate), "Date", 26, format: "dd MMM");
@@ -59,7 +58,7 @@ public sealed class DashboardView : UserControl
         {
             lists.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33f));
         }
-        lists.Controls.Add(ListCard("Most overdue students", _overdueGrid, new Padding(0, 0, 6, 0)), 0, 0);
+        lists.Controls.Add(ListCard("Highest pending fees", _pendingGrid, new Padding(0, 0, 6, 0)), 0, 0);
         lists.Controls.Add(ListCard("Latest payments", _paymentsGrid, new Padding(3, 0, 3, 0)), 1, 0);
         lists.Controls.Add(ListCard("Latest check-ins", _checkInsGrid, new Padding(6, 0, 0, 0)), 2, 0);
 
@@ -92,17 +91,17 @@ public sealed class DashboardView : UserControl
                 $"active, {data.LeftStudents} left"));
             _tiles.Controls.Add(Tile("Beds occupied", $"{data.OccupiedBeds} / {data.TotalBeds}",
                 $"{data.FreeBeds} free"));
-            _tiles.Controls.Add(Tile("Invoiced", Money.FormatWhole(data.InvoicedThisYear), $"in {data.AcademicYear}"));
+            _tiles.Controls.Add(Tile("Fees", Money.FormatWhole(data.InvoicedThisYear), $"for {data.AcademicYear}"));
             _tiles.Controls.Add(Tile("Received", Money.FormatWhole(data.ReceivedThisMonth), $"in {data.AsOf:MMMM yyyy}"));
-            _tiles.Controls.Add(Tile("Pending", Money.FormatWhole(data.PendingAmount), "unpaid invoices"));
-            _tiles.Controls.Add(Tile("Overdue", Money.FormatWhole(data.OverdueAmount),
-                $"{data.OverdueStudents} students", overdue: data.OverdueAmount > 0));
+            _tiles.Controls.Add(Tile("Received this year", Money.FormatWhole(data.ReceivedThisYear), $"since 1 Jul"));
+            _tiles.Controls.Add(Tile("Pending", Money.FormatWhole(data.PendingAmount),
+                $"{data.PendingStudents} students", warning: data.PendingAmount > 0));
             _tiles.ResumeLayout();
 
             _chartTitle.Text = $"Payments received per month, academic year {data.AcademicYear}";
             _chart.SetData(data.PaymentsPerMonth, data.AsOf);
 
-            _overdueGrid.DataSource = data.MostOverdue;
+            _pendingGrid.DataSource = data.HighestPending;
             _paymentsGrid.DataSource = data.LatestPayments;
             _checkInsGrid.DataSource = data.RecentCheckIns;
         }
@@ -112,8 +111,8 @@ public sealed class DashboardView : UserControl
         }
     }
 
-    /// <summary>A headline figure: caption, big value and a short note. Overdue shows a warning sign, not colour alone.</summary>
-    private static Panel Tile(string caption, string value, string note, bool overdue = false)
+    /// <summary>A headline figure: caption, big value and a short note. Pending fees show a warning sign, not colour alone.</summary>
+    private static Panel Tile(string caption, string value, string note, bool warning = false)
     {
         var tile = new Panel
         {
@@ -125,10 +124,10 @@ public sealed class DashboardView : UserControl
         };
         var captionLabel = new Label
         {
-            Text = overdue ? "⚠ " + caption : caption,
+            Text = warning ? "⚠ " + caption : caption,
             Dock = DockStyle.Top,
             Height = 20,
-            ForeColor = overdue ? UiTheme.Danger : UiTheme.TextMuted,
+            ForeColor = warning ? UiTheme.Danger : UiTheme.TextMuted,
             AutoEllipsis = true,
         };
         var valueLabel = new Label
@@ -137,7 +136,7 @@ public sealed class DashboardView : UserControl
             Dock = DockStyle.Top,
             Height = 30,
             Font = UiTheme.FigureFont,
-            ForeColor = overdue ? UiTheme.Danger : UiTheme.TextPrimary,
+            ForeColor = warning ? UiTheme.Danger : UiTheme.TextPrimary,
             AutoEllipsis = true,
         };
         var noteLabel = new Label { Text = note, Dock = DockStyle.Top, Height = 20, ForeColor = UiTheme.TextMuted, AutoEllipsis = true };

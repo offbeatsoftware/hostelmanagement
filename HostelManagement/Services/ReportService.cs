@@ -5,8 +5,8 @@ using HostelManagement.Utilities;
 namespace HostelManagement.Services;
 
 /// <summary>
-/// Reports of the selected hostel (client decisions, Phase 13): student list, room occupancy, payments
-/// received between two dates with daily and method totals, invoices for a period and pending dues.
+/// Reports of the selected hostel: student list, room occupancy, payments received between two dates with
+/// daily and method totals, the yearly fees (invoices) of an academic year and the pending fees.
 /// Each report is a <see cref="ReportTable"/> that the screen shows and exports to PDF and Excel.
 /// </summary>
 public static class ReportService
@@ -29,7 +29,7 @@ public static class ReportService
         var rows = students.Select(s => new ReportRow(
         [
             s.StudentName, s.CollegeName, Join(s.Course, s.ClassName), s.RoomNumber, s.Mobile, s.AadhaarMasked,
-            s.ParentName, s.ParentMobile, s.AdmissionDate, s.Status,
+            s.FatherName, s.FatherMobile, s.AdmissionDate, s.Status,
         ])).ToList();
         rows.Add(new ReportRow([$"{students.Count} students", null, null, null, null, null, null, null, null, null], ReportRowStyle.Total));
 
@@ -40,7 +40,7 @@ public static class ReportService
             Columns =
             [
                 new("Student", Width: 1.6), new("College", Width: 1.5), new("Course / class", Width: 1.2), new("Room", Width: 0.5),
-                new("Mobile", Width: 0.9), new("Aadhaar", Width: 1), new("Parent", Width: 1.3), new("Parent mobile", Width: 0.9),
+                new("Mobile", Width: 0.9), new("Aadhaar", Width: 1), new("Father", Width: 1.3), new("Father mobile", Width: 0.9),
                 new("Admission", ReportValueKind.Date, 0.8), new("Status", Width: 0.6),
             ],
             Rows = rows,
@@ -58,23 +58,23 @@ public static class ReportService
         var rows = rooms.Select(r => new ReportRow(
         [
             r.RoomNumber, r.Floor, r.RoomFor, r.SharingName, r.Capacity, r.Occupied, r.Available,
-            string.Join(", ", studentsByRoom.GetValueOrDefault(r.RoomId, [])), r.Rent, r.Status,
+            string.Join(", ", studentsByRoom.GetValueOrDefault(r.RoomId, [])), r.Status,
         ])).ToList();
         rows.Add(new ReportRow(
         [
             $"{rooms.Count} rooms", null, null, null, rooms.Where(r => r.IsActive).Sum(r => r.Capacity), rooms.Sum(r => r.Occupied),
-            rooms.Sum(r => r.Available), null, null, null,
+            rooms.Sum(r => r.Available), null, null,
         ], ReportRowStyle.Total));
 
         return new ReportTable
         {
             Title = "Room Occupancy",
-            Subtitles = Subtitles(hostel, "Current students in each room; rent is per year"),
+            Subtitles = Subtitles(hostel, "Current students in each room"),
             Columns =
             [
                 new("Room", Width: 0.6), new("Floor", Width: 0.5), new("For", Width: 0.5), new("Sharing", Width: 0.7),
                 new("Beds", ReportValueKind.Number, 0.5), new("Occupied", ReportValueKind.Number, 0.6), new("Free", ReportValueKind.Number, 0.5),
-                new("Students", Width: 3.2), new("Yearly rent", ReportValueKind.Money, 1), new("Status", Width: 0.6),
+                new("Students", Width: 4.2), new("Status", Width: 0.6),
             ],
             Rows = rows,
             FileName = $"Rooms_{SafeName(hostel.HostelName)}_{DateTime.Today:yyyy-MM-dd}",
@@ -125,81 +125,72 @@ public static class ReportService
         };
     }
 
-    /// <summary>Invoices dated between two dates (inclusive), optionally only Unpaid, Partly paid, Paid or Overdue.</summary>
-    public static ReportTable Invoices(Hostel hostel, DateTime from, DateTime to, string? status = null)
+    /// <summary>The yearly fees (invoices) of an academic year, or of all years, optionally only Unpaid, Partly paid or Paid.</summary>
+    public static ReportTable Invoices(Hostel hostel, int? academicYear, string? status = null)
     {
-        CheckDates(from, to);
         List<Invoice> invoices = InvoiceService.GetInvoices(hostel.HostelId)
-            .Where(i => i.InvoiceDate >= from.Date && i.InvoiceDate <= to.Date)
-            .Where(i => status is null || (status == InvoiceStatus.Overdue ? i.IsOverdue : i.Status == status))
-            .OrderBy(i => i.InvoiceDate)
-            .ThenBy(i => i.InvoiceId)
+            .Where(i => academicYear is null || i.AcademicYear == academicYear)
+            .Where(i => status is null || i.Status == status)
+            .OrderBy(i => i.AcademicYear)
+            .ThenBy(i => i.StudentName, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
 
         var rows = invoices.Select(i => new ReportRow(
         [
-            i.InvoiceNumber, i.InvoiceDate, i.StudentName, i.PeriodText, i.DueDate, i.TotalAmount, i.PaidAmount, i.PendingAmount,
-            i.IsOverdue ? $"{i.Status}, overdue" : i.Status,
+            i.InvoiceNumber, i.YearText, i.StudentName, i.RoomRent, i.TransportAmount, i.TotalAmount, i.PaidAmount, i.PendingAmount, i.Status,
         ])).ToList();
         rows.Add(new ReportRow(
         [
-            $"{invoices.Count} invoices", null, null, null, null, invoices.Sum(i => i.TotalAmount), invoices.Sum(i => i.PaidAmount),
-            invoices.Sum(i => i.PendingAmount), null,
+            $"{invoices.Count} invoices", null, null, invoices.Sum(i => i.RoomRent), invoices.Sum(i => i.TransportAmount),
+            invoices.Sum(i => i.TotalAmount), invoices.Sum(i => i.PaidAmount), invoices.Sum(i => i.PendingAmount), null,
         ], ReportRowStyle.Total));
 
+        string yearText = academicYear is int year ? $"Academic year {AcademicYear.Label(year)}" : "All academic years";
         return new ReportTable
         {
-            Title = "Invoices",
-            Subtitles = Subtitles(hostel, $"Invoice date {Date(from)} to {Date(to)}, {(status is null ? "all invoices" : status.ToLowerInvariant())}"),
+            Title = "Fees (Invoices)",
+            Subtitles = Subtitles(hostel, $"{yearText}, {(status is null ? "all invoices" : status.ToLowerInvariant())}"),
             Columns =
             [
-                new("Invoice no.", Width: 1.3), new("Date", ReportValueKind.Date, 0.8), new("Student", Width: 1.5),
-                new("Billing period", Width: 1.4), new("Due date", ReportValueKind.Date, 0.8), new("Total", ReportValueKind.Money, 1),
-                new("Paid", ReportValueKind.Money, 1), new("Pending", ReportValueKind.Money, 1), new("Status", Width: 1),
+                new("Invoice no.", Width: 1.3), new("Year", Width: 0.6), new("Student", Width: 1.6),
+                new("Room rent", ReportValueKind.Money, 1), new("Transport", ReportValueKind.Money, 1), new("Total fee", ReportValueKind.Money, 1),
+                new("Paid", ReportValueKind.Money, 1), new("Pending", ReportValueKind.Money, 1), new("Status", Width: 0.8),
             ],
             Rows = rows,
-            FileName = $"Invoices_{SafeName(hostel.HostelName)}_{from:yyyy-MM-dd}_to_{to:yyyy-MM-dd}",
+            FileName = $"Fees_{SafeName(hostel.HostelName)}_{(academicYear is int y ? AcademicYear.Label(y) : "all-years")}",
         };
     }
 
-    /// <summary>Pending dues: a bold line per student, then that student's unpaid invoices.</summary>
-    public static ReportTable PendingDues(Hostel hostel, DateTime asOf, bool overdueOnly = false)
+    /// <summary>Pending fees: a bold line per student with total, paid and pending, then that student's invoices.</summary>
+    public static ReportTable PendingDues(Hostel hostel, DateTime asOf)
     {
-        List<StudentDue> dues = PendingDuesService.GetDues(hostel.HostelId, asOf)
-            .Where(d => !overdueOnly || d.IsOverdue)
-            .ToList();
+        List<StudentDue> dues = PendingDuesService.GetDues(hostel.HostelId);
 
         var rows = new List<ReportRow>();
         foreach (StudentDue due in dues)
         {
             string name = due.StudentStatus == StudentStatus.Left ? $"{due.StudentName} (left)" : due.StudentName;
             rows.Add(new ReportRow(
-                [name, due.RoomNumber, due.ParentText, null, null, due.PendingAmount, due.OverdueAmount, due.IsOverdue ? due.DaysOverdue : null],
+                [name, due.RoomNumber, due.FatherText, null, due.TotalAmount, due.PaidAmount, due.PendingAmount],
                 ReportRowStyle.Group));
             rows.AddRange(due.Invoices.Select(i => new ReportRow(
-            [
-                $"    {i.InvoiceNumber} ({i.PeriodText})", null, null, i.InvoiceDate, i.DueDate, i.PendingAmount,
-                i.DaysOverdue(asOf) > 0 ? i.PendingAmount : 0m, i.DaysOverdue(asOf) > 0 ? i.DaysOverdue(asOf) : null,
-            ])));
+                [$"    {i.InvoiceNumber}", null, null, i.YearText, i.TotalAmount, i.PaidAmount, i.PendingAmount])));
         }
         rows.Add(new ReportRow(
-            [$"{dues.Count} students", null, null, null, null, dues.Sum(d => d.PendingAmount), dues.Sum(d => d.OverdueAmount), null],
+            [$"{dues.Count} students", null, null, null, dues.Sum(d => d.TotalAmount), dues.Sum(d => d.PaidAmount), dues.Sum(d => d.PendingAmount)],
             ReportRowStyle.Total));
 
         return new ReportTable
         {
-            Title = "Pending Dues",
-            Subtitles = Subtitles(hostel,
-                $"As on {Date(asOf)}, {(overdueOnly ? "overdue students only" : "all students with an amount pending")}, " +
-                $"payment due {Invoice.PaymentDueDays} days after the invoice date"),
+            Title = "Pending Fees",
+            Subtitles = Subtitles(hostel, $"As on {Date(asOf)}, all students with an amount pending"),
             Columns =
             [
-                new("Student / invoice", Width: 2.2), new("Room", Width: 0.5), new("Parent / mobile", Width: 1.8),
-                new("Invoice date", ReportValueKind.Date, 0.8), new("Due date", ReportValueKind.Date, 0.8),
-                new("Pending", ReportValueKind.Money, 1), new("Overdue", ReportValueKind.Money, 1), new("Days overdue", ReportValueKind.Number, 0.7),
+                new("Student / invoice", Width: 2.2), new("Room", Width: 0.5), new("Father / mobile", Width: 1.8), new("Year", Width: 0.6),
+                new("Total fee", ReportValueKind.Money, 1), new("Paid", ReportValueKind.Money, 1), new("Pending", ReportValueKind.Money, 1),
             ],
             Rows = rows,
-            FileName = $"PendingDues_{SafeName(hostel.HostelName)}_{asOf:yyyy-MM-dd}",
+            FileName = $"PendingFees_{SafeName(hostel.HostelName)}_{asOf:yyyy-MM-dd}",
         };
     }
 

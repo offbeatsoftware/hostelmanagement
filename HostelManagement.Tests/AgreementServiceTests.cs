@@ -13,15 +13,15 @@ public sealed class AgreementServiceTests : TestDatabase
 
     private Room TripleRoom(string number = "101", string gender = RoomGender.Male)
     {
-        RoomService.UpdateRent(SharingTypeId(3), 90_000m);
         return RoomService.Save(new Room { HostelId = HostelId, RoomNumber = number, SharingTypeId = SharingTypeId(3), Gender = gender });
     }
 
-    private int AddStudent(string name, string gender = RoomGender.Male, string address = "12 MG Road, Jaipur", IReadOnlyCollection<int>? services = null) =>
-        StudentService.Save(
-            new Student { StudentName = name, Gender = gender, Mobile = "9876543210", CollegeId = CollegeId, AdmissionDate = CheckInDate, Address = address },
-            new Parent { ParentName = $"Parent of {name}", Mobile = "9812345678", Email = "parent@example.com" },
-            extraServiceIds: services).StudentId;
+    private int AddStudent(string name, string gender = RoomGender.Male, string address = "12 MG Road, Jaipur") =>
+        StudentService.Save(new Student
+        {
+            StudentName = name, Gender = gender, Mobile = "9876543210", CollegeId = CollegeId, AdmissionDate = CheckInDate, Address = address,
+            FatherName = $"Father of {name}", FatherMobile = "9812345678",
+        }).StudentId;
 
     private static string Plain(string text) =>
         text.Replace(AgreementService.ValueStart.ToString(), "").Replace(AgreementService.ValueEnd.ToString(), "");
@@ -85,27 +85,24 @@ public sealed class AgreementServiceTests : TestDatabase
     // ---- Agreement ----
 
     [Fact]
-    public void Prepare_FillsTheStudentParentAddressRoomBedAndFee()
+    public void Prepare_FillsTheStudentFatherAddressRoomBedAndFee()
     {
         Room room = TripleRoom();
-        ServiceItem transport = ServiceItemService.GetServices(HostelId).Single(s => s.ServiceName == "Transport");
-        transport.MonthlyRate = 1_500m;
-        ServiceItemService.Save(transport);
-        int aman = AddStudent("Aman Sharma", services: [transport.ServiceId]);
-        AllocationService.CheckIn(aman, room.RoomId, CheckInDate, bedNumber: 2);
+        int aman = AddStudent("Aman Sharma");
+        AllocationService.CheckIn(aman, room.RoomId, CheckInDate, bedNumber: 2, fee: new YearFee(90_000m, 18_000m));
 
         AgreementDocument document = AgreementService.Prepare(aman, AgreementDate);
         string text = Plain(document.FilledText);
 
         Assert.Contains("on date 06 Oct 2026 between", text);
         Assert.Contains("Name Aman Sharma", text);
-        Assert.Contains("S/o Parent of Aman Sharma", text);
+        Assert.Contains("S/o Father of Aman Sharma", text);
         Assert.Contains("R/o 12 MG Road, Jaipur", text);
         Assert.Contains("Shri Balaji Boys Hostel", text);
         Assert.Contains("consisting of Room No. 101, one bed room with three separate beds belongs to three different students", text);
         Assert.Contains("allotted bed no. 2 in Room no. 101", text);
         Assert.Contains($"w.e.f {CheckInDate:dd MMM yyyy}", text);
-        // 90,000 yearly rent + 12 x 1,500 transport.
+        // The fee agreed at check-in: 90,000 room rent + 18,000 transport.
         Assert.Contains("annual fee of Rs. 1,08,000/- (Rupees One Lakh Eight Thousand Only)", text);
         Assert.Contains($"{AgreementService.ValueStart}Aman Sharma{AgreementService.ValueEnd}", document.FilledText);
         Assert.DoesNotContain("{", text);
@@ -117,11 +114,11 @@ public sealed class AgreementServiceTests : TestDatabase
     {
         Room room = TripleRoom(gender: RoomGender.Female);
         int priya = AddStudent("Priya", RoomGender.Female, address: "");
-        AllocationService.CheckIn(priya, room.RoomId, CheckInDate);
+        AllocationService.CheckIn(priya, room.RoomId, CheckInDate, fee: new YearFee(90_000m, 0m));
 
         string text = Plain(AgreementService.Prepare(priya, AgreementDate).FilledText);
 
-        Assert.Contains("D/o Parent of Priya", text);
+        Assert.Contains("D/o Father of Priya", text);
         Assert.Contains("Shri Balaji Girls Hostel", text);
         Assert.Contains("R/o ......", text);
         Assert.Contains("annual fee of Rs. 90,000/- (Rupees Ninety Thousand Only)", text);
@@ -144,7 +141,7 @@ public sealed class AgreementServiceTests : TestDatabase
         AgreementService.SaveTemplate("# AGREEMENT\nRoom {RoomNumber}, bed {BedNumber}, fee Rs. {AnnualRent}");
         Room room = TripleRoom();
         int aman = AddStudent("Aman");
-        AllocationService.CheckIn(aman, room.RoomId, CheckInDate);
+        AllocationService.CheckIn(aman, room.RoomId, CheckInDate, fee: new YearFee(90_000m, 0m));
         Assert.Equal("# AGREEMENT" + Environment.NewLine + "Room 101, bed 1, fee Rs. 90,000/-",
             Plain(AgreementService.Prepare(aman, AgreementDate).FilledText));
 

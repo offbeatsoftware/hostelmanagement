@@ -1,4 +1,3 @@
-using HostelManagement.Data;
 using HostelManagement.Models;
 using HostelManagement.Reports;
 using HostelManagement.Services;
@@ -6,199 +5,230 @@ using Xunit;
 
 namespace HostelManagement.Tests;
 
+/// <summary>Yearly fees agreed per student (client decision, version 1.2).</summary>
 public sealed class InvoiceServiceTests : TestDatabase
 {
-    private const decimal YearlyDoubleRent = 120_000m;
-
-    // A billing period completely in the past, so every date in it can be used for check-in.
-    private BillingPeriod PastPeriod(string frequency = BillingFrequency.HalfYearly) =>
-        BillingPeriods.For(BillingPeriods.For(DateTime.Today, frequency).From.AddDays(-1), frequency);
-
-    private Room SetUpRoom(string frequency = BillingFrequency.HalfYearly, bool setRent = true)
-    {
-        if (frequency != BillingFrequency.HalfYearly)
-        {
-            HostelService.Save(new Hostel { HostelId = HostelId, HostelName = "Test Hostel", BillingFrequency = frequency });
-        }
-        if (setRent)
-        {
-            RoomService.UpdateRent(SharingTypeId(2), YearlyDoubleRent);
-        }
-        return RoomService.Save(new Room { HostelId = HostelId, RoomNumber = "101", SharingTypeId = SharingTypeId(2), Gender = RoomGender.Male });
-    }
-
-    private int StudentInRoom(Room room, DateTime checkIn, string name = "Aman", IReadOnlyCollection<int>? services = null)
-    {
-        int id = StudentService.Save(
-            new Student { StudentName = name, Gender = RoomGender.Male, Mobile = "9876543210", CollegeId = CollegeId, AdmissionDate = checkIn },
-            new Parent { ParentName = "Rakesh", Mobile = "9812345678", Email = "rakesh@example.com" },
-            extraServiceIds: services).StudentId;
-        AllocationService.CheckIn(id, room.RoomId, checkIn);
-        return id;
-    }
-
-    private ServiceItem Transport(decimal rate)
-    {
-        ServiceItem transport = ServiceItemService.GetServices(HostelId).Single(s => s.ServiceName == "Transport");
-        transport.MonthlyRate = rate;
-        return ServiceItemService.Save(transport);
-    }
-
-    private static int MonthsInclusive(DateTime from, DateTime to) => (to.Year - from.Year) * 12 + to.Month - from.Month + 1;
+    private static string Prefix(int year) => $"SBH/{AcademicYear.Label(year)}/";
 
     [Fact]
-    public void Preview_RentIsHalfTheYearlyRent_IncludedServicesAtNoCharge()
+    public void CheckIn_WithFee_CreatesTheYearlyInvoiceWithRentAndTransport()
     {
-        BillingPeriod period = PastPeriod();
-        int student = StudentInRoom(SetUpRoom(), period.From);
+        int student = AddStudentWithParents();
 
-        Invoice invoice = InvoiceService.Preview(student, period);
+        Invoice invoice = CheckInWithFee(student, AddRoom(), rent: 50_000m, transport: 12_000m);
 
-        Assert.Equal(60_000m, invoice.Items[0].Amount);
-        Assert.Equal($"Room rent: room 101 (Double sharing), {period.Name}", invoice.Items[0].Description);
-        Assert.Equal(["Laundry (included in rent)", "Wi-Fi (included in rent)"], invoice.Items.Skip(1).Select(i => i.Description));
-        Assert.All(invoice.Items.Skip(1), i => Assert.Equal(0m, i.Amount));
-        Assert.Equal(60_000m, invoice.TotalAmount);
+        Assert.Equal(Prefix(AcademicYear.Current) + "0001", invoice.InvoiceNumber);
+        Assert.Equal(AcademicYear.Current, invoice.AcademicYear);
+        Assert.Equal(YearStart, invoice.InvoiceDate);
+        Assert.Equal(50_000m, invoice.RoomRent);
+        Assert.Equal(12_000m, invoice.TransportAmount);
+        Assert.Equal(62_000m, invoice.TotalAmount);
+        Assert.True(invoice.HasTransport);
+        Assert.Equal(0m, invoice.PaidAmount);
+        Assert.Equal(62_000m, invoice.PendingAmount);
+        Assert.Equal(InvoiceStatus.Unpaid, invoice.Status);
     }
 
     [Fact]
-    public void Preview_QuarterlyHostel_ChargesAQuarterOfTheYearlyRent()
+    public void TwoStudentsInTheSameRoom_HaveTheirOwnFees()
     {
-        BillingPeriod period = PastPeriod(BillingFrequency.Quarterly);
-        int student = StudentInRoom(SetUpRoom(BillingFrequency.Quarterly), period.From);
+        Room room = AddRoom(beds: 2);
 
-        Assert.Equal(30_000m, InvoiceService.Preview(student, period).TotalAmount);
+        Invoice aman = CheckInWithFee(AddStudentWithParents("Aman"), room, 50_000m);
+        Invoice ravi = CheckInWithFee(AddStudentWithParents("Ravi"), room, 45_000m, 8_000m);
+
+        Assert.Equal(50_000m, aman.TotalAmount);
+        Assert.False(aman.HasTransport);
+        Assert.Equal(53_000m, ravi.TotalAmount);
+        Assert.Equal(Prefix(AcademicYear.Current) + "0002", ravi.InvoiceNumber);
+    }
+
+    [Theory]
+    [InlineData(0, 0, "room rent for the year")]
+    [InlineData(50_000, -1, "cannot be negative")]
+    [InlineData(50_000.123, 0, "two decimal places")]
+    [InlineData(20_000_000, 0, "cannot be more than")]
+    public void CheckIn_FeeIsChecked_AndNothingIsSavedWhenItIsWrong(double rent, double transport, string expected)
+    {
+        int student = AddStudentWithParents();
+
+        var ex = Assert.Throws<ValidationException>(() =>
+            AllocationService.CheckIn(student, AddRoom().RoomId, YearStart, fee: new YearFee((decimal)rent, (decimal)transport)));
+
+        Assert.Contains(expected, ex.Message);
+        Assert.Equal(0, Count("Invoice"));
+        Assert.Equal(0, Count("RoomAllocation"));
     }
 
     [Fact]
-    public void Preview_StudentJoiningMidPeriod_PaysTheFullInstallment()
+    public void CheckIn_StudentWhoAlreadyHasAFeeForTheYear_KeepsIt()
     {
-        BillingPeriod period = PastPeriod();
-        int student = StudentInRoom(SetUpRoom(), period.To.AddDays(-5));
+        int student = AddStudentWithParents();
+        InvoiceService.Create(student, AcademicYear.Current, new YearFee(40_000m, 0m), YearStart);
 
-        Assert.Equal(60_000m, InvoiceService.Preview(student, period).Items[0].Amount);
-    }
+        var ex = Assert.Throws<ValidationException>(() =>
+            AllocationService.CheckIn(student, AddRoom().RoomId, YearStart, fee: new YearFee(50_000m, 0m)));
+        Assert.Contains("already has a fee", ex.Message);
 
-    [Fact]
-    public void Preview_TransportIsChargedPerMonth_PartMonthCountsAsFullMonth()
-    {
-        BillingPeriod period = PastPeriod();
-        ServiceItem transport = Transport(1500m);
-        DateTime joined = period.From.AddDays(40);
-        int student = StudentInRoom(SetUpRoom(), joined, services: [transport.ServiceId]);
-        int months = MonthsInclusive(joined, period.To);
-
-        Invoice invoice = InvoiceService.Preview(student, period);
-
-        InvoiceItem line = invoice.Items.Single(i => i.Description.StartsWith("Transport"));
-        Assert.Equal(months, line.Quantity);
-        Assert.Equal(1500m, line.Rate);
-        Assert.Equal(months * 1500m, line.Amount);
-        Assert.Equal(60_000m + months * 1500m, invoice.TotalAmount);
-    }
-
-    [Fact]
-    public void Preview_TransportStoppedMidPeriod_CountsOnlyTheMonthsUsed()
-    {
-        BillingPeriod period = PastPeriod();
-        ServiceItem transport = Transport(1000m);
-        int student = StudentInRoom(SetUpRoom(), period.From, services: [transport.ServiceId]);
-        Db.Execute("UPDATE [StudentService] SET [EndDate] = ?", Db.Param("@EndDate", period.From.AddMonths(1).AddDays(3)));
-
-        InvoiceItem line = InvoiceService.Preview(student, period).Items.Single(i => i.Description.StartsWith("Transport"));
-
-        Assert.Equal(2, line.Quantity);
-        Assert.Equal(2000m, line.Amount);
-    }
-
-    [Fact]
-    public void Preview_Rules()
-    {
-        BillingPeriod period = PastPeriod();
-        Room room = SetUpRoom(setRent: false);
-        int student = StudentInRoom(room, period.From);
-
-        Assert.Contains("yearly rent", Assert.Throws<ValidationException>(() => InvoiceService.Preview(student, period)).Message);
-
-        RoomService.UpdateRent(SharingTypeId(2), YearlyDoubleRent);
-        var quarter = new BillingPeriod(period.From, period.From.AddMonths(3).AddDays(-1));
-        Assert.Contains("not a billing period", Assert.Throws<ValidationException>(() => InvoiceService.Preview(student, quarter)).Message);
-
-        BillingPeriod earlier = BillingPeriods.For(period.From.AddDays(-1), BillingFrequency.HalfYearly);
-        Assert.Contains("not in a room", Assert.Throws<ValidationException>(() => InvoiceService.Preview(student, earlier)).Message);
-
-        InvoiceService.Create(student, period);
-        Assert.Contains("already has an invoice", Assert.Throws<ValidationException>(() => InvoiceService.Preview(student, period)).Message);
+        AllocationService.CheckIn(student, AddRoom("102").RoomId, YearStart);
+        Assert.Equal(1, Count("Invoice"));
+        Assert.Equal(40_000m, InvoiceService.GetForYear(student, AcademicYear.Current)!.TotalAmount);
     }
 
     [Fact]
     public void Create_NumbersInvoicesPerAcademicYear()
     {
-        BillingPeriod period = PastPeriod();
-        Room room = SetUpRoom();
-        int first = StudentInRoom(room, period.From, "First");
-        int second = StudentInRoom(room, period.From, "Second");
-        string year = InvoiceService.AcademicYearLabel(period.From);
+        int year = AcademicYear.Current;
+        List<string> numbers = Enumerable.Range(1, 3)
+            .Select(i => InvoiceService.Create(AddStudentWithParents($"Student {i}"), year, new YearFee(10_000m * i, 0m)).InvoiceNumber)
+            .ToList();
+        Invoice nextYear = InvoiceService.Create(AddStudentWithParents("Next"), year + 1, new YearFee(60_000m, 0m));
 
-        Invoice a = InvoiceService.Create(first, period);
-        Invoice b = InvoiceService.Create(second, period);
+        Assert.Equal([Prefix(year) + "0001", Prefix(year) + "0002", Prefix(year) + "0003"], numbers);
+        Assert.Equal(Prefix(year + 1) + "0001", nextYear.InvoiceNumber);
+    }
 
-        Assert.Equal($"SBH/{year}/0001", a.InvoiceNumber);
-        Assert.Equal($"SBH/{year}/0002", b.InvoiceNumber);
-        Assert.Equal(3, a.Items.Count);
-        Assert.Equal(60_000m, a.TotalAmount);
+    [Fact]
+    public void Create_Rules()
+    {
+        int student = AddStudentWithParents();
+        InvoiceService.Create(student, AcademicYear.Current, new YearFee(50_000m, 0m));
+
+        Assert.Contains("already has a fee",
+            Assert.Throws<ValidationException>(() => InvoiceService.Create(student, AcademicYear.Current, new YearFee(1m, 0m))).Message);
+        Assert.Contains("this academic year or the next",
+            Assert.Throws<ValidationException>(() => InvoiceService.Create(student, AcademicYear.Current + 2, new YearFee(1m, 0m))).Message);
+        Assert.Contains("future",
+            Assert.Throws<ValidationException>(() =>
+                InvoiceService.Create(student, AcademicYear.Current + 1, new YearFee(1m, 0m), DateTime.Today.AddDays(1))).Message);
+        Assert.Contains("select the student",
+            Assert.Throws<ValidationException>(() => InvoiceService.Create(999_999, AcademicYear.Current, new YearFee(1m, 0m))).Message);
+    }
+
+    [Fact]
+    public void Payments_InAnyInstalments_BalanceIsTotalMinusEverythingPaid()
+    {
+        // The client's example: rent 50,000 and transport 12,000; 10,000 paid at admission and 5,000 later.
+        Invoice invoice = CheckInWithFee(AddStudentWithParents(), AddRoom(), 50_000m, 12_000m);
+
+        Pay(invoice.InvoiceId, 10_000m, YearStart);
+        Pay(invoice.InvoiceId, 5_000m, YearStart.AddDays(15) > DateTime.Today ? DateTime.Today : YearStart.AddDays(15));
+        Invoice partly = InvoiceService.GetInvoice(invoice.InvoiceId)!;
+
+        Assert.Equal(15_000m, partly.PaidAmount);
+        Assert.Equal(47_000m, partly.PendingAmount);
+        Assert.Equal(InvoiceStatus.PartlyPaid, partly.Status);
+
+        Pay(invoice.InvoiceId, 47_000m);
+        Invoice paid = InvoiceService.GetInvoice(invoice.InvoiceId)!;
+        Assert.Equal(0m, paid.PendingAmount);
+        Assert.Equal(InvoiceStatus.Paid, paid.Status);
+    }
+
+    [Fact]
+    public void UpdateFee_ChangesRentAndTransport_ButNotBelowWhatIsPaid()
+    {
+        Invoice invoice = CheckInWithFee(AddStudentWithParents(), AddRoom(), 50_000m, 12_000m);
+        Pay(invoice.InvoiceId, 15_000m);
+
+        Invoice changed = InvoiceService.UpdateFee(invoice.InvoiceId, new YearFee(40_000m, 0m, "Transport stopped"));
+        Assert.Equal(40_000m, changed.TotalAmount);
+        Assert.Equal(25_000m, changed.PendingAmount);
+        Assert.False(changed.HasTransport);
+        Assert.Equal("Transport stopped", changed.Remarks);
+
+        var ex = Assert.Throws<ValidationException>(() => InvoiceService.UpdateFee(invoice.InvoiceId, new YearFee(10_000m, 0m)));
+        Assert.Contains("cannot be less", ex.Message);
+        Assert.Equal(40_000m, InvoiceService.GetInvoice(invoice.InvoiceId)!.TotalAmount);
+    }
+
+    [Fact]
+    public void NewYearFees_ListStudentsInARoomWithoutAFee_WithLastYearForReference()
+    {
+        Room room = AddRoom(beds: 3);
+        int year = AcademicYear.Current;
+        int aman = AddStudentWithParents("Aman");
+        int ravi = AddStudentWithParents("Ravi");
+        CheckInWithFee(aman, room, 50_000m, 12_000m);
+        CheckInWithFee(ravi, room, 45_000m);
+        AddStudentWithParents("Not In A Room");
+
+        List<NewYearFeeCandidate> candidates = InvoiceService.GetNewYearCandidates(HostelId, year + 1);
+        Assert.Equal(["Aman", "Ravi"], candidates.Select(c => c.Student.StudentName));
+        Assert.Equal(62_000m, candidates[0].LastYear!.TotalAmount);
+        Assert.Equal("101, bed 1", candidates[0].RoomText);
+        Assert.Empty(InvoiceService.GetNewYearCandidates(HostelId, year));
+
+        List<Invoice> created = InvoiceService.CreateForYear(year + 1, new Dictionary<int, YearFee> { [aman] = new(55_000m, 13_000m) });
+
+        Assert.Equal(Prefix(year + 1) + "0001", Assert.Single(created).InvoiceNumber);
+        Assert.Equal(68_000m, InvoiceService.GetForYear(aman, year + 1)!.TotalAmount);
+        Assert.Equal(["Ravi"], InvoiceService.GetNewYearCandidates(HostelId, year + 1).Select(c => c.Student.StudentName));
+    }
+
+    [Fact]
+    public void NewYearFees_OneWrongFee_SavesNothing()
+    {
+        Room room = AddRoom(beds: 2);
+        int aman = AddStudentWithParents("Aman");
+        int ravi = AddStudentWithParents("Ravi");
+        CheckInWithFee(aman, room, 50_000m);
+        CheckInWithFee(ravi, room, 45_000m);
+
+        var ex = Assert.Throws<ValidationException>(() => InvoiceService.CreateForYear(AcademicYear.Current + 1,
+            new Dictionary<int, YearFee> { [aman] = new(55_000m, 0m), [ravi] = new(0m, 0m) }));
+
+        Assert.StartsWith("Ravi:", ex.Message);
+        Assert.Equal(2, Count("Invoice"));
+        Assert.Contains("at least one student",
+            Assert.Throws<ValidationException>(() => InvoiceService.CreateForYear(AcademicYear.Current + 1, new Dictionary<int, YearFee>())).Message);
+    }
+
+    [Fact]
+    public void Delete_InvoiceWithoutPayments_RemovesIt_ButNotOneWithPayments()
+    {
+        Invoice unpaid = InvoiceService.Create(AddStudentWithParents("Aman"), AcademicYear.Current, new YearFee(50_000m, 0m));
+        Invoice paid = InvoiceService.Create(AddStudentWithParents("Ravi"), AcademicYear.Current, new YearFee(50_000m, 0m));
+        Pay(paid.InvoiceId, 1_000m);
+
+        InvoiceService.Delete(unpaid.InvoiceId);
+        var ex = Assert.Throws<ValidationException>(() => InvoiceService.Delete(paid.InvoiceId));
+
+        Assert.Null(InvoiceService.GetInvoice(unpaid.InvoiceId));
+        Assert.Contains("Edit Fee", ex.Message);
+    }
+
+    [Fact]
+    public void Pdf_ListsEveryPaymentAndIsWrittenToTheInvoicesFolder()
+    {
+        Invoice invoice = CheckInWithFee(AddStudentWithParents(), AddRoom(), 50_000m, 12_000m);
+        Pay(invoice.InvoiceId, 10_000m, YearStart);
+        Pay(invoice.InvoiceId, 5_000m);
+
+        InvoicePrintData data = InvoiceService.GetPrintData(invoice.InvoiceId);
+        string path = InvoicePdfWriter.SaveToInvoicesFolder(data);
+
+        Assert.Equal(2, data.Payments.Count);
+        Assert.Equal(10_000m, data.Payments[0].Amount);
+        Assert.Equal("Room 101, bed 1", data.RoomText);
+        Assert.Equal(47_000m, data.Invoice.PendingAmount);
+        Assert.True(new FileInfo(path).Length > 1000);
+        Assert.Equal(Utilities.AppPaths.InvoicesFolder, Path.GetDirectoryName(path));
     }
 
     [Theory]
-    [InlineData("2026-07-01", "2026-27")]
-    [InlineData("2027-06-30", "2026-27")]
-    [InlineData("2099-12-01", "2099-00")]
-    public void AcademicYearLabel_StartsInJuly(string date, string expected) =>
-        Assert.Equal(expected, InvoiceService.AcademicYearLabel(DateTime.Parse(date)));
-
-    [Fact]
-    public void Invoices_ShowPaidPendingAndStatusFromPayments()
+    [InlineData("2026-06-30", 2025, "2025-26")]
+    [InlineData("2026-07-01", 2026, "2026-27")]
+    [InlineData("2027-03-15", 2026, "2026-27")]
+    [InlineData("2099-12-31", 2099, "2099-00")]
+    public void AcademicYear_RunsFromJulyToJune(string date, int year, string label)
     {
-        BillingPeriod period = PastPeriod();
-        int student = StudentInRoom(SetUpRoom(), period.From);
-        Invoice invoice = InvoiceService.Create(student, period);
-        Assert.Equal(InvoiceStatus.Unpaid, InvoiceService.GetInvoices(HostelId).Single().Status);
+        DateTime day = DateTime.Parse(date, System.Globalization.CultureInfo.InvariantCulture);
 
-        PaymentService.Record(new Payment { InvoiceId = invoice.InvoiceId, PaymentDate = DateTime.Today, Amount = 20_000m });
-
-        Invoice listed = InvoiceService.GetInvoices(HostelId).Single();
-        Assert.Equal(20_000m, listed.PaidAmount);
-        Assert.Equal(40_000m, listed.PendingAmount);
-        Assert.Equal(InvoiceStatus.PartlyPaid, listed.Status);
-        Assert.Contains("cannot be deleted", Assert.Throws<ValidationException>(() => InvoiceService.Delete(invoice.InvoiceId)).Message);
-    }
-
-    [Fact]
-    public void Delete_InvoiceWithoutPayments_RemovesItAndItsItems()
-    {
-        BillingPeriod period = PastPeriod();
-        int student = StudentInRoom(SetUpRoom(), period.From);
-        Invoice invoice = InvoiceService.Create(student, period);
-
-        InvoiceService.Delete(invoice.InvoiceId);
-
-        Assert.Equal(0, Count("Invoice"));
-        Assert.Equal(0, Count("InvoiceItem"));
-    }
-
-    [Fact]
-    public void Pdf_IsWrittenToTheInvoicesFolder()
-    {
-        BillingPeriod period = PastPeriod();
-        ServiceItem transport = Transport(1500m);
-        int student = StudentInRoom(SetUpRoom(), period.From, services: [transport.ServiceId]);
-        Invoice invoice = InvoiceService.Create(student, period);
-
-        string path = InvoicePdfWriter.SaveToInvoicesFolder(InvoiceService.GetPrintData(invoice.InvoiceId));
-
-        Assert.Equal(Path.Combine(DataFolder, "Invoices", InvoicePdfWriter.FileName(invoice)), path);
-        byte[] bytes = File.ReadAllBytes(path);
-        Assert.True(bytes.Length > 1000);
-        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(bytes, 0, 4));
+        Assert.Equal(year, AcademicYear.Of(day));
+        Assert.Equal(label, AcademicYear.Label(year));
+        Assert.Equal(new DateTime(year, 7, 1), AcademicYear.Start(year));
+        Assert.Equal(new DateTime(year + 1, 6, 30), AcademicYear.End(year));
+        Assert.Equal(label, InvoiceService.AcademicYearLabel(day));
     }
 }

@@ -7,8 +7,11 @@ public sealed record TableDefinition(string Name, params string[] Statements);
 /// The Access database schema. Tables are listed so that a table is always created
 /// after the tables it references. See docs/DatabaseSchema.md for the design notes.
 ///
-/// Several hostels: colleges, sharing types (rent) and rooms belong to a hostel; a student
+/// Several hostels: colleges, sharing types and rooms belong to a hostel; a student
 /// belongs to a college and through it to the college's hostel.
+///
+/// Fees are agreed per student (client decision, version 1.2): every academic year a student has one
+/// invoice with the room rent and the transport amount for that year, decided by the admin.
 ///
 /// Calculated values are not stored: room occupancy comes from RoomAllocation,
 /// and invoice paid/pending amounts and status come from Payment.
@@ -19,28 +22,17 @@ public static class DatabaseSchema
     /// Increase by one whenever a table or column changes, so databases with an older
     /// layout are detected at startup. Stored in the SchemaInfo table.
     /// </summary>
-    public const int Version = 12;
+    public const int Version = 13;
 
     /// <summary>
-    /// The sharing types added to every new hostel. Capacity always equals the sharing type
-    /// (client decision); rent is set per sharing type and hostel on the Rooms screen.
+    /// The sharing types added to every new hostel. A sharing type only decides how many students
+    /// fit in a room (client decision): capacity equals the sharing type, and it carries no rent.
     /// </summary>
     public static IReadOnlyList<(string Name, int Capacity)> DefaultSharingTypes { get; } =
     [
         ("Single", 1),
         ("Double", 2),
         ("Triple", 3),
-    ];
-
-    /// <summary>
-    /// The services added to every new hostel (client decision): Wi-Fi and laundry are included
-    /// in the room rent; transport is charged extra per month to the students who use it.
-    /// </summary>
-    public static IReadOnlyList<(string Name, bool IncludedInRent)> DefaultServices { get; } =
-    [
-        ("Wi-Fi", true),
-        ("Laundry", true),
-        ("Transport", false),
     ];
 
     public static IReadOnlyList<TableDefinition> Tables { get; } =
@@ -57,8 +49,7 @@ public static class DatabaseSchema
                 [HostelName]     TEXT(150) NOT NULL,
                 [Address]        TEXT(255),
                 [Phone]          TEXT(20),
-                [Email]            TEXT(150),
-                [BillingFrequency] TEXT(20) NOT NULL,
+                [Email]          TEXT(150),
                 [CreatedDate]    DATETIME NOT NULL,
                 [UpdatedDate]    DATETIME,
                 CONSTRAINT [UQ_Hostel_HostelName] UNIQUE ([HostelName])
@@ -83,7 +74,6 @@ public static class DatabaseSchema
                 [HostelId]      INTEGER NOT NULL,
                 [SharingName]   TEXT(20) NOT NULL,
                 [Capacity]      INTEGER NOT NULL,
-                [Rent]          CURRENCY NOT NULL,
                 CONSTRAINT [UQ_SharingType_HostelName] UNIQUE ([HostelId], [SharingName]),
                 CONSTRAINT [FK_SharingType_Hostel] FOREIGN KEY ([HostelId]) REFERENCES [Hostel] ([HostelId])
             )
@@ -117,6 +107,12 @@ public static class DatabaseSchema
                 [ClassName]     TEXT(50),
                 [Mobile]        TEXT(20) NOT NULL,
                 [Email]         TEXT(150),
+                [FatherName]    TEXT(150) NOT NULL,
+                [FatherMobile]  TEXT(20) NOT NULL,
+                [FatherEmail]   TEXT(150),
+                [MotherName]    TEXT(150),
+                [MotherMobile]  TEXT(20),
+                [MotherEmail]   TEXT(150),
                 [PhotoPath]       TEXT(255),
                 [AadhaarNumber]   TEXT(12),
                 [AadhaarCardPath] TEXT(255),
@@ -128,20 +124,6 @@ public static class DatabaseSchema
             """,
             "CREATE INDEX [IX_Student_StudentName] ON [Student] ([StudentName])",
             "CREATE INDEX [IX_Student_Mobile] ON [Student] ([Mobile])"),
-
-        new("Parent", """
-            CREATE TABLE [Parent] (
-                [ParentId]         COUNTER CONSTRAINT [PK_Parent] PRIMARY KEY,
-                [StudentId]        INTEGER NOT NULL,
-                [ParentName]       TEXT(150) NOT NULL,
-                [Relationship]     TEXT(50),
-                [Mobile]           TEXT(20) NOT NULL,
-                [Email]            TEXT(150) NOT NULL,
-                [Address]          TEXT(255),
-                [IsPrimaryContact] BIT NOT NULL,
-                CONSTRAINT [FK_Parent_Student] FOREIGN KEY ([StudentId]) REFERENCES [Student] ([StudentId])
-            )
-            """),
 
         new("RoomAllocation", """
             CREATE TABLE [RoomAllocation] (
@@ -159,57 +141,22 @@ public static class DatabaseSchema
             """,
             "CREATE INDEX [IX_RoomAllocation_Status] ON [RoomAllocation] ([Status])"),
 
-        new("Service", """
-            CREATE TABLE [Service] (
-                [ServiceId]        COUNTER CONSTRAINT [PK_Service] PRIMARY KEY,
-                [HostelId]         INTEGER NOT NULL,
-                [ServiceName]      TEXT(100) NOT NULL,
-                [IsIncludedInRent] BIT NOT NULL,
-                [MonthlyRate]      CURRENCY NOT NULL,
-                [IsActive]         BIT NOT NULL,
-                CONSTRAINT [UQ_Service_HostelName] UNIQUE ([HostelId], [ServiceName]),
-                CONSTRAINT [FK_Service_Hostel] FOREIGN KEY ([HostelId]) REFERENCES [Hostel] ([HostelId])
-            )
-            """),
-
-        new("StudentService", """
-            CREATE TABLE [StudentService] (
-                [StudentServiceId] COUNTER CONSTRAINT [PK_StudentService] PRIMARY KEY,
-                [StudentId]        INTEGER NOT NULL,
-                [ServiceId]        INTEGER NOT NULL,
-                [StartDate]        DATETIME NOT NULL,
-                [EndDate]          DATETIME,
-                CONSTRAINT [FK_StudentService_Student] FOREIGN KEY ([StudentId]) REFERENCES [Student] ([StudentId]),
-                CONSTRAINT [FK_StudentService_Service] FOREIGN KEY ([ServiceId]) REFERENCES [Service] ([ServiceId])
-            )
-            """),
-
         new("Invoice", """
             CREATE TABLE [Invoice] (
                 [InvoiceId]     COUNTER CONSTRAINT [PK_Invoice] PRIMARY KEY,
                 [InvoiceNumber] TEXT(30) NOT NULL,
                 [StudentId]     INTEGER NOT NULL,
                 [InvoiceDate]   DATETIME NOT NULL,
-                [BillingFrom]   DATETIME NOT NULL,
-                [BillingTo]     DATETIME NOT NULL,
-                [TotalAmount]   CURRENCY NOT NULL,
+                [AcademicYear]  INTEGER NOT NULL,
+                [RoomRent]      CURRENCY NOT NULL,
+                [TransportAmount] CURRENCY NOT NULL,
+                [Remarks]       TEXT(255),
                 CONSTRAINT [UQ_Invoice_InvoiceNumber] UNIQUE ([InvoiceNumber]),
+                CONSTRAINT [UQ_Invoice_StudentYear] UNIQUE ([StudentId], [AcademicYear]),
                 CONSTRAINT [FK_Invoice_Student] FOREIGN KEY ([StudentId]) REFERENCES [Student] ([StudentId])
             )
             """,
             "CREATE INDEX [IX_Invoice_InvoiceDate] ON [Invoice] ([InvoiceDate])"),
-
-        new("InvoiceItem", """
-            CREATE TABLE [InvoiceItem] (
-                [InvoiceItemId] COUNTER CONSTRAINT [PK_InvoiceItem] PRIMARY KEY,
-                [InvoiceId]     INTEGER NOT NULL,
-                [Description]   TEXT(150) NOT NULL,
-                [Quantity]      INTEGER NOT NULL,
-                [Rate]          CURRENCY NOT NULL,
-                [Amount]        CURRENCY NOT NULL,
-                CONSTRAINT [FK_InvoiceItem_Invoice] FOREIGN KEY ([InvoiceId]) REFERENCES [Invoice] ([InvoiceId])
-            )
-            """),
 
         new("Payment", """
             CREATE TABLE [Payment] (

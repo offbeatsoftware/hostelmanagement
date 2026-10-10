@@ -27,7 +27,6 @@ public sealed class RoomServiceTests : TestDatabase
 
         Assert.Equal(["Single", "Double", "Triple"], types.Select(t => t.SharingName));
         Assert.Equal([1, 2, 3], types.Select(t => t.Capacity));
-        Assert.All(types, t => Assert.Equal(0m, t.Rent));
     }
 
     [Fact]
@@ -37,20 +36,6 @@ public sealed class RoomServiceTests : TestDatabase
         Data.DatabaseInitializer.Initialize();
 
         Assert.Equal(3, Count("SharingType"));
-    }
-
-    [Fact]
-    public void Rent_IsSeparateForEachHostel()
-    {
-        int otherHostel = AddHostel("Other Hostel");
-        AddRoom("101", capacity: 2);
-        AddRoom("101", capacity: 2, hostelId: otherHostel);
-
-        RoomService.UpdateRent(SharingTypeId(2), 4500m);
-        RoomService.UpdateRent(SharingTypeId(2, otherHostel), 6000m);
-
-        Assert.Equal(4500m, Find("101").Rent);
-        Assert.Equal(6000m, RoomService.GetRooms(otherHostel).Single().Rent);
     }
 
     [Fact]
@@ -92,31 +77,6 @@ public sealed class RoomServiceTests : TestDatabase
         }));
 
         Assert.Contains("hostel", ex.Message);
-    }
-
-    [Fact]
-    public void UpdateRent_AppliesToEveryRoomOfThatSharingType()
-    {
-        AddRoom("101", capacity: 2);
-        AddRoom("102", capacity: 2);
-        AddRoom("103", capacity: 3);
-
-        RoomService.UpdateRent(SharingTypeId(2), 4500m);
-        RoomService.UpdateRent(SharingTypeId(3), 3800.50m);
-
-        Assert.Equal(4500m, Find("101").Rent);
-        Assert.Equal(4500m, Find("102").Rent);
-        Assert.Equal(3800.50m, Find("103").Rent);
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-100)]
-    [InlineData(1_000_001)]
-    [InlineData(100.555)]
-    public void UpdateRent_InvalidAmount_IsRejected(decimal rent)
-    {
-        Assert.Throws<ValidationException>(() => RoomService.UpdateRent(SharingTypeId(1), rent));
     }
 
     [Fact]

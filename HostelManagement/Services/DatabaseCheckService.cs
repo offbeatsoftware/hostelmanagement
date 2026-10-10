@@ -75,10 +75,9 @@ public static class DatabaseCheckService
         string testName = $"DATABASE CHECK {Guid.NewGuid():N}"[..30];
 
         int id = Db.Insert(connection, transaction,
-            "INSERT INTO [Hostel] ([HostelName], [Phone], [BillingFrequency], [CreatedDate]) VALUES (?, ?, ?, ?)",
+            "INSERT INTO [Hostel] ([HostelName], [Phone], [CreatedDate]) VALUES (?, ?, ?)",
             Db.Param("@HostelName", testName),
             Db.Param("@Phone", "1111111111"),
-            Db.Param("@BillingFrequency", "HalfYearly"),
             Db.Param("@CreatedDate", DateTime.Now));
         steps.Add(new("Insert test record", id > 0, $"Inserted test record with id {id}."));
 

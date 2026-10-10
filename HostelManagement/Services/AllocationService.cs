@@ -9,6 +9,8 @@ namespace HostelManagement.Services;
 /// a student can only be in one room at a time, of their own hostel and gender, with a free bed;
 /// a transfer leaves the old room and enters the new one on the same date;
 /// check-out also sets the student's status to Left.
+/// At check-in the admin also enters the student's fee (room rent and transport) for the academic year of the
+/// check-in date, unless the student already has one; a transfer or check-out does not change the fee.
 /// </summary>
 public static class AllocationService
 {
@@ -50,8 +52,12 @@ public static class AllocationService
         return Enumerable.Range(1, room.Capacity).Where(bed => !taken.Contains(bed)).ToList();
     }
 
-    /// <summary>Allocates a student to a room and bed (the lowest free bed when none is given).</summary>
-    public static RoomAllocation CheckIn(int studentId, int roomId, DateTime date, string? remarks = null, int? bedNumber = null)
+    /// <summary>
+    /// Allocates a student to a room and bed (the lowest free bed when none is given) and, when a fee is
+    /// given, creates the student's invoice for the academic year of the check-in date.
+    /// </summary>
+    public static RoomAllocation CheckIn(int studentId, int roomId, DateTime date, string? remarks = null, int? bedNumber = null,
+        YearFee? fee = null)
     {
         date = date.Date;
         Student student = GetStudentForAllocation(studentId);
@@ -68,16 +74,34 @@ public static class AllocationService
         CheckNotInFuture(date, "check-in");
         string cleanRemarks = CleanRemarks(remarks);
         CheckRoomFor(student, roomId);
+        int academicYear = AcademicYear.Of(date);
+        if (fee is not null)
+        {
+            InvoiceService.ValidateFee(fee);
+            if (InvoiceRepository.GetForYear(studentId, academicYear) is Invoice existing)
+            {
+                throw new ValidationException(
+                    $"{student.StudentName} already has a fee for {existing.YearText} (invoice {existing.InvoiceNumber}). " +
+                    "Use Edit Fee on the Invoices screen to change it.");
+            }
+        }
 
         int allocationId = Db.InTransaction((connection, transaction) =>
-            AllocationRepository.Insert(connection, transaction, new RoomAllocation
+        {
+            int id = AllocationRepository.Insert(connection, transaction, new RoomAllocation
             {
                 StudentId = studentId,
                 RoomId = roomId,
                 CheckInDate = date,
                 Remarks = cleanRemarks,
                 BedNumber = ChooseBed(connection, transaction, roomId, bedNumber),
-            }));
+            });
+            if (fee is not null)
+            {
+                InvoiceService.Insert(connection, transaction, student, academicYear, fee, date);
+            }
+            return id;
+        });
 
         AppLogger.Info($"Checked in student {studentId} to room {roomId} (allocation {allocationId}).");
         return AllocationRepository.GetCurrentForStudent(studentId)!;

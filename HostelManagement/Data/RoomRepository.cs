@@ -5,10 +5,10 @@ namespace HostelManagement.Data;
 
 public static class RoomRepository
 {
-    // Capacity and rent come from the sharing type; occupancy is counted from current allocations.
+    // Capacity comes from the sharing type; occupancy is counted from current allocations.
     private const string SelectRooms =
         "SELECT r.[RoomId], r.[HostelId], r.[RoomNumber], r.[Floor], r.[SharingTypeId], r.[Gender], r.[IsActive], r.[Remarks], " +
-        "s.[SharingName], s.[Capacity], s.[Rent], " +
+        "s.[SharingName], s.[Capacity], " +
         "(SELECT COUNT(*) FROM [RoomAllocation] AS a WHERE a.[RoomId] = r.[RoomId] AND a.[Status] = ?) AS [Occupied] " +
         "FROM [Room] AS r INNER JOIN [SharingType] AS s ON r.[SharingTypeId] = s.[SharingTypeId]";
 
@@ -75,7 +75,6 @@ public static class RoomRepository
         Remarks = record.GetText("Remarks"),
         SharingName = record.GetText("SharingName"),
         Capacity = record.GetInt("Capacity"),
-        Rent = record.GetMoney("Rent"),
         Occupied = record.GetInt("Occupied"),
     };
 }

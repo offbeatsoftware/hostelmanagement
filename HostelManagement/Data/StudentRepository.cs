@@ -9,7 +9,7 @@ public static class StudentRepository
     private const string SelectStudents =
         "SELECT s.*, c.[CollegeName] FROM [Student] AS s INNER JOIN [College] AS c ON s.[CollegeId] = c.[CollegeId]";
 
-    /// <summary>Students of a hostel (through their college), without parent details.</summary>
+    /// <summary>Students of a hostel (through their college).</summary>
     public static List<Student> GetForHostel(int hostelId) =>
         Db.Query(SelectStudents + " WHERE c.[HostelId] = ?", Map, Db.Param("@HostelId", hostelId));
 
@@ -19,14 +19,16 @@ public static class StudentRepository
     public static int Insert(OleDbConnection connection, OleDbTransaction transaction, Student student) =>
         Db.Insert(connection, transaction,
             "INSERT INTO [Student] ([StudentName], [DateOfBirth], [Gender], [Address], [CollegeId], [Course], " +
-            "[ClassName], [Mobile], [Email], [AadhaarNumber], [AdmissionDate], [Status], [Remarks]) " +
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "[ClassName], [Mobile], [Email], [FatherName], [FatherMobile], [FatherEmail], [MotherName], [MotherMobile], " +
+            "[MotherEmail], [AadhaarNumber], [AdmissionDate], [Status], [Remarks]) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             Parameters(student));
 
     public static void Update(OleDbConnection connection, OleDbTransaction transaction, Student student) =>
         Db.Execute(connection, transaction,
             "UPDATE [Student] SET [StudentName] = ?, [DateOfBirth] = ?, [Gender] = ?, [Address] = ?, [CollegeId] = ?, " +
-            "[Course] = ?, [ClassName] = ?, [Mobile] = ?, [Email] = ?, [AadhaarNumber] = ?, [AdmissionDate] = ?, " +
+            "[Course] = ?, [ClassName] = ?, [Mobile] = ?, [Email] = ?, [FatherName] = ?, [FatherMobile] = ?, " +
+            "[FatherEmail] = ?, [MotherName] = ?, [MotherMobile] = ?, [MotherEmail] = ?, [AadhaarNumber] = ?, [AdmissionDate] = ?, " +
             "[Status] = ?, [Remarks] = ? WHERE [StudentId] = ?",
             [.. Parameters(student), Db.Param("@StudentId", student.StudentId)]);
 
@@ -47,7 +49,7 @@ public static class StudentRepository
             Db.Param("@AadhaarNumber", aadhaarNumber),
             Db.Param("@StudentId", exceptStudentId))) > 0;
 
-    /// <summary>Room allocations, invoices, payments and emails that keep a student's record in use.</summary>
+    /// <summary>Room allocations, invoices, payments, emails and attendance that keep a student's record in use.</summary>
     public static int CountHistory(int studentId)
     {
         int total = 0;
@@ -70,6 +72,12 @@ public static class StudentRepository
         Db.OptionalText("@ClassName", student.ClassName),
         Db.Param("@Mobile", student.Mobile),
         Db.OptionalText("@Email", student.Email),
+        Db.Param("@FatherName", student.FatherName),
+        Db.Param("@FatherMobile", student.FatherMobile),
+        Db.OptionalText("@FatherEmail", student.FatherEmail),
+        Db.OptionalText("@MotherName", student.MotherName),
+        Db.OptionalText("@MotherMobile", student.MotherMobile),
+        Db.OptionalText("@MotherEmail", student.MotherEmail),
         Db.OptionalText("@AadhaarNumber", student.AadhaarNumber),
         Db.Param("@AdmissionDate", student.AdmissionDate),
         Db.Param("@Status", student.Status),
@@ -88,6 +96,12 @@ public static class StudentRepository
         ClassName = record.GetText("ClassName"),
         Mobile = record.GetText("Mobile"),
         Email = record.GetText("Email"),
+        FatherName = record.GetText("FatherName"),
+        FatherMobile = record.GetText("FatherMobile"),
+        FatherEmail = record.GetText("FatherEmail"),
+        MotherName = record.GetText("MotherName"),
+        MotherMobile = record.GetText("MotherMobile"),
+        MotherEmail = record.GetText("MotherEmail"),
         PhotoPath = record.GetText("PhotoPath"),
         AadhaarNumber = record.GetText("AadhaarNumber"),
         AadhaarCardPath = record.GetText("AadhaarCardPath"),

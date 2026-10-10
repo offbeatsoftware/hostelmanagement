@@ -70,8 +70,8 @@ public abstract class TestDatabase : IDisposable
         CollegeService.Save(new College { HostelId = hostelId, CollegeName = name }).CollegeId;
 
     protected int AddStudent(string name = "Test Student", int? collegeId = null) =>
-        Db.Insert("INSERT INTO [Student] ([StudentName], [CollegeId], [Mobile], [AdmissionDate], [Status]) " +
-            "VALUES (?, ?, '9876543210', #01/15/2026#, ?)",
+        Db.Insert("INSERT INTO [Student] ([StudentName], [CollegeId], [Mobile], [FatherName], [FatherMobile], [AdmissionDate], [Status]) " +
+            "VALUES (?, ?, '9876543210', 'Test Father', '9811111111', #01/15/2026#, ?)",
             Db.Param("@StudentName", name),
             Db.Param("@CollegeId", collegeId ?? CollegeId),
             Db.Param("@Status", "Active"));
@@ -82,7 +82,52 @@ public abstract class TestDatabase : IDisposable
             Db.Param("@HostelId", hostelId ?? HostelId),
             Db.Param("@Capacity", capacity)));
 
-    /// <summary>Records a student in a room directly (Room Allocation is built in a later phase).</summary>
+    /// <summary>A room of <see cref="HostelId"/> with 1, 2 or 3 beds.</summary>
+    protected Room AddRoom(string number = "101", int beds = 2, string gender = RoomGender.Male) =>
+        RoomService.Save(new Room { HostelId = HostelId, RoomNumber = number, SharingTypeId = SharingTypeId(beds), Gender = gender });
+
+    /// <summary>A student saved through the service, with father (and optionally mother) details.</summary>
+    protected int AddStudentWithParents(string name = "Aman", string gender = RoomGender.Male, DateTime? admission = null,
+        string fatherEmail = "rakesh@example.com", string motherEmail = "", int? collegeId = null) =>
+        StudentService.Save(new Student
+        {
+            StudentName = name,
+            Gender = gender,
+            Mobile = "9876543210",
+            CollegeId = collegeId ?? CollegeId,
+            AdmissionDate = admission ?? AcademicYear.Start(AcademicYear.Current),
+            FatherName = "Rakesh " + name,
+            FatherMobile = "9812345678",
+            FatherEmail = fatherEmail,
+            MotherName = "Sunita " + name,
+            MotherMobile = "9812345679",
+            MotherEmail = motherEmail,
+        }).StudentId;
+
+    /// <summary>The first day of this academic year: a check-in date that is never in the future.</summary>
+    protected static DateTime YearStart => AcademicYear.Start(AcademicYear.Current);
+
+    /// <summary>Checks a student in with a yearly fee and returns the invoice it created.</summary>
+    protected static Invoice CheckInWithFee(int studentId, Room room, decimal rent, decimal transport = 0, DateTime? date = null)
+    {
+        DateTime checkIn = date ?? YearStart;
+        AllocationService.CheckIn(studentId, room.RoomId, checkIn, fee: new YearFee(rent, transport));
+        return InvoiceService.GetForYear(studentId, AcademicYear.Of(checkIn))!;
+    }
+
+    /// <summary>Records a cash payment against an invoice.</summary>
+    protected static Payment Pay(int invoiceId, decimal amount, DateTime? date = null, string method = PaymentMethod.Cash,
+        string reference = "") =>
+        PaymentService.Record(new Payment
+        {
+            InvoiceId = invoiceId,
+            Amount = amount,
+            PaymentDate = date ?? DateTime.Today,
+            PaymentMethod = method,
+            Reference = reference,
+        });
+
+    /// <summary>Records a student in a room directly, without a fee.</summary>
     protected void AddAllocation(int roomId, string status = AllocationStatus.Current)
     {
         int studentId = AddStudent($"Student {Guid.NewGuid():N}"[..20]);

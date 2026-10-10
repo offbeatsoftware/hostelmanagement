@@ -12,7 +12,7 @@ public sealed class RoomEditForm : Form
     private readonly TextBox _numberBox;
     private readonly TextBox _floorBox;
     private readonly ComboBox _sharingBox;
-    private readonly Label _capacityRentLabel;
+    private readonly Label _capacityLabel;
     private readonly ComboBox _genderBox;
     private readonly CheckBox _activeBox;
     private readonly TextBox _remarksBox;
@@ -51,14 +51,14 @@ public sealed class RoomEditForm : Form
         };
         FormFields.AddRow(fields, "Sharing type", _sharingBox, required: true);
 
-        _capacityRentLabel = new Label
+        _capacityLabel = new Label
         {
             AutoSize = true,
             Font = UiTheme.BodyFont,
             ForeColor = UiTheme.TextMuted,
             Margin = new Padding(0, 4, 0, 4),
         };
-        FormFields.AddRow(fields, string.Empty, _capacityRentLabel);
+        FormFields.AddRow(fields, string.Empty, _capacityLabel);
 
         _genderBox = new ComboBox
         {
@@ -89,7 +89,7 @@ public sealed class RoomEditForm : Form
         _floorBox.Text = room?.Floor ?? string.Empty;
         _activeBox.Checked = room?.IsActive ?? true;
         _remarksBox.Text = room?.Remarks ?? string.Empty;
-        _sharingBox.SelectedIndexChanged += (_, _) => ShowCapacityAndRent();
+        _sharingBox.SelectedIndexChanged += (_, _) => ShowCapacity();
 
         // The drop-down is filled by data binding once the form is created, so select the room's type on Load.
         Load += (_, _) =>
@@ -98,7 +98,7 @@ public sealed class RoomEditForm : Form
             {
                 _sharingBox.SelectedValue = room.SharingTypeId;
             }
-            ShowCapacityAndRent();
+            ShowCapacity();
         };
 
         _messageLabel = FormFields.CreateMessageLabel();
@@ -125,10 +125,10 @@ public sealed class RoomEditForm : Form
     /// <summary>The saved room, available after DialogResult.OK.</summary>
     public Room? SavedRoom { get; private set; }
 
-    private void ShowCapacityAndRent()
+    private void ShowCapacity()
     {
-        _capacityRentLabel.Text = _sharingBox.SelectedItem is SharingType type
-            ? $"Capacity {type.Capacity}, rent {Money.Format(type.Rent)} per student per year"
+        _capacityLabel.Text = _sharingBox.SelectedItem is SharingType type
+            ? $"{type.Capacity} {(type.Capacity == 1 ? "bed" : "beds")}. The rent is agreed per student at check-in."
             : string.Empty;
     }
 

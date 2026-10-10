@@ -19,7 +19,7 @@ public static class RoomGender
     };
 }
 
-/// <summary>A room. Capacity and rent come from its sharing type; occupancy from current allocations.</summary>
+/// <summary>A room. Capacity comes from its sharing type; occupancy from current allocations.</summary>
 public sealed class Room
 {
     public int RoomId { get; set; }
@@ -37,7 +37,6 @@ public sealed class Room
     // Read only values filled in when rooms are loaded.
     public string SharingName { get; set; } = string.Empty;
     public int Capacity { get; set; }
-    public decimal Rent { get; set; }
 
     /// <summary>Students currently allocated to the room.</summary>
     public int Occupied { get; set; }

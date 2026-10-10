@@ -7,7 +7,8 @@ namespace HostelManagement.Services;
 /// <summary>
 /// Night attendance (client decisions): marked once a day by the admin for the students in a room that night;
 /// everyone starts as present and the admin marks who is absent. Earlier dates can be opened and corrected,
-/// future dates cannot be marked. The parents of absent students are emailed when the admin clicks the button.
+/// future dates cannot be marked. The mother (or the father, when the mother has no email) of each absent student is emailed when the admin
+/// clicks the button.
 /// </summary>
 public static class AttendanceService
 {
@@ -16,10 +17,6 @@ public static class AttendanceService
     {
         date = date.Date;
         Dictionary<int, Student> students = StudentService.GetStudents(hostelId).ToDictionary(s => s.StudentId);
-        Dictionary<int, Parent> parents = ParentRepository.GetForHostel(hostelId)
-            .Where(p => p.IsPrimaryContact)
-            .GroupBy(p => p.StudentId)
-            .ToDictionary(g => g.Key, g => g.First());
         Dictionary<int, AttendanceRepository.Saved> saved = AttendanceRepository.GetForDate(hostelId, date)
             .ToDictionary(a => a.StudentId);
 
@@ -34,18 +31,20 @@ public static class AttendanceService
             .Where(a => students.ContainsKey(a.StudentId))
             .Select(a =>
             {
-                Parent? parent = parents.GetValueOrDefault(a.StudentId);
+                Student student = students[a.StudentId];
+                // Attendance emails go to the mother, or to the father when the mother has no email (client decision).
+                EmailContact? contact = student.AttendanceContact;
                 AttendanceRepository.Saved? record = saved.GetValueOrDefault(a.StudentId);
                 return new AttendanceEntry
                 {
                     AttendanceId = record?.AttendanceId,
                     StudentId = a.StudentId,
-                    StudentName = students[a.StudentId].StudentName,
+                    StudentName = student.StudentName,
                     RoomNumber = a.RoomNumber,
                     BedNumber = a.BedNumber,
-                    ParentName = parent?.ParentName ?? string.Empty,
-                    ParentEmail = parent?.Email ?? string.Empty,
-                    ParentMobile = parent?.Mobile ?? string.Empty,
+                    ParentName = contact?.Name ?? string.Empty,
+                    ParentEmail = contact?.Email ?? string.Empty,
+                    ParentMobile = contact?.Relation == "Father" || student.MotherMobile.Length == 0 ? student.FatherMobile : student.MotherMobile,
                     IsPresent = record?.IsPresent ?? true,
                     Remarks = record?.Remarks ?? string.Empty,
                     ParentEmailedDate = record?.ParentEmailedDate,

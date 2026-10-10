@@ -22,11 +22,12 @@ public sealed class DashboardData
 
     public decimal InvoicedThisYear { get; init; }
     public decimal ReceivedThisMonth { get; init; }
+    public decimal ReceivedThisYear { get; init; }
     public decimal PendingAmount { get; init; }
-    public decimal OverdueAmount { get; init; }
-    public int OverdueStudents { get; init; }
+    public int PendingStudents { get; init; }
 
-    public List<StudentDue> MostOverdue { get; init; } = [];
+    /// <summary>The students with the highest pending fees.</summary>
+    public List<StudentDue> HighestPending { get; init; } = [];
     public List<Payment> LatestPayments { get; init; } = [];
     public List<RoomAllocation> RecentCheckIns { get; init; } = [];
 

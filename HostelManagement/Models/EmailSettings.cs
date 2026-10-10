@@ -10,7 +10,7 @@ public static class EmailType
 
     public static string DisplayName(string type) => type switch
     {
-        DueReminder => "Reminder",
+        DueReminder => "Fee reminder",
         _ => type,
     };
 }
@@ -26,7 +26,7 @@ public static class EmailStatus
 public sealed record EmailTemplate(string Subject, string Body);
 
 /// <summary>
-/// The Gmail account that sends invoices, receipts and reminders (client decision, Phase 11) and the
+/// The Gmail account that sends invoices, receipts, fee reminders and attendance emails (client decision) and the
 /// editable email texts. One account is used for all hostels.
 /// </summary>
 public sealed class EmailSettings
@@ -57,10 +57,13 @@ public sealed class EmailSettings
         """
         Dear {ParentName},
 
-        Please find attached invoice {InvoiceNumber} for {StudentName} for {Period}.
+        Please find attached invoice {InvoiceNumber} for the hostel fee of {StudentName} for the academic year {AcademicYear}.
 
-        Amount: {Amount}
-        Due date: {DueDate}
+        Room rent: {RoomRent}
+        Transport: {Transport}
+        Total fee: {Amount}
+        Paid so far: {PaidAmount}
+        Pending: {Pending}
 
         Thank you,
         {HostelName}
@@ -72,10 +75,11 @@ public sealed class EmailSettings
         """
         Dear {ParentName},
 
-        Thank you for your payment of {PaidAmount} on {PaymentDate} towards invoice {InvoiceNumber} for {StudentName}.
+        Thank you for your payment of {PaidAmount} on {PaymentDate} towards the hostel fee of {StudentName} ({AcademicYear}).
         The receipt is attached.
 
-        Balance pending on this invoice: {Pending}
+        Total fee: {TotalAmount}
+        Balance pending: {Pending}
 
         Thank you,
         {HostelName}
@@ -97,16 +101,19 @@ public sealed class EmailSettings
         """);
 
     public static EmailTemplate DefaultReminder { get; } = new(
-        "Payment reminder for {StudentName}, {HostelName}",
+        "Fee reminder for {StudentName}, {HostelName}",
         """
         Dear {ParentName},
 
-        This is a gentle reminder that the following amount for {StudentName} is overdue:
+        This is a reminder about the hostel fee of {StudentName}.
 
-        {InvoiceList}
+        {FeeDetails}
 
-        Total pending: {Pending}
+        Total fee: {TotalAmount}
+        Paid so far: {PaidAmount}
+        Pending amount: {Pending}
 
+        Kindly pay the pending amount at the earliest. The invoice with all payments is attached.
         Please ignore this message if you have already paid.
 
         Thank you,

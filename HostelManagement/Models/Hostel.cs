@@ -1,6 +1,6 @@
 namespace HostelManagement.Models;
 
-/// <summary>A hostel. Colleges, rooms and rent belong to a hostel.</summary>
+/// <summary>A hostel. Colleges and rooms belong to a hostel.</summary>
 public sealed class Hostel
 {
     public int HostelId { get; set; }
@@ -8,11 +8,6 @@ public sealed class Hostel
     public string Address { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-
-    /// <summary><see cref="Models.BillingFrequency.HalfYearly"/> or <see cref="Models.BillingFrequency.Quarterly"/>.</summary>
-    public string BillingFrequency { get; set; } = Models.BillingFrequency.HalfYearly;
-
-    public string BillingText => Models.BillingFrequency.DisplayName(BillingFrequency);
     public DateTime CreatedDate { get; set; }
     public DateTime? UpdatedDate { get; set; }
 

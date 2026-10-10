@@ -20,9 +20,10 @@ public static partial class EmailSettingsService
     /// <summary>The {Fields} that can be used in each kind of email.</summary>
     public static IReadOnlyDictionary<string, IReadOnlyList<string>> Fields { get; } = new Dictionary<string, IReadOnlyList<string>>
     {
-        [EmailType.Invoice] = [.. CommonFields, "InvoiceNumber", "Period", "Amount", "DueDate", "Pending"],
-        [EmailType.Receipt] = [.. CommonFields, "InvoiceNumber", "ReceiptNumber", "PaidAmount", "PaymentDate", "PaymentMethod", "Pending"],
-        [EmailType.DueReminder] = [.. CommonFields, "InvoiceList", "Pending", "Overdue"],
+        [EmailType.Invoice] = [.. CommonFields, "InvoiceNumber", "AcademicYear", "RoomRent", "Transport", "Amount", "PaidAmount", "Pending"],
+        [EmailType.Receipt] = [.. CommonFields, "InvoiceNumber", "AcademicYear", "ReceiptNumber", "PaidAmount", "PaymentDate",
+            "PaymentMethod", "TotalAmount", "Pending"],
+        [EmailType.DueReminder] = [.. CommonFields, "FeeDetails", "TotalAmount", "PaidAmount", "Pending"],
         [EmailType.Absence] = [.. CommonFields, "AttendanceDate", "RoomNumber", "Remarks"],
     };
 
@@ -75,6 +76,18 @@ public static partial class EmailSettingsService
         AppLogger.Info("Email settings saved.");
     }
 
+    /// <summary>Saves only the fee reminder text (from the Fee Reminders screen) as the new default.</summary>
+    public static void SaveReminderText(EmailTemplate template)
+    {
+        ValidateTemplate(EmailType.DueReminder, "fee reminder", template);
+        AppSettingRepository.SaveAll(new Dictionary<string, string>
+        {
+            ["Email.Reminder.Subject"] = template.Subject.Trim(),
+            ["Email.Reminder.Body"] = template.Body.Trim(),
+        });
+        AppLogger.Info("Fee reminder text saved.");
+    }
+
     /// <summary>Replaces each {Field} with its value.</summary>
     public static string Fill(string template, IReadOnlyDictionary<string, string> values) =>
         FieldPattern().Replace(template, m => values.TryGetValue(m.Groups[1].Value, out string? value) ? value : m.Value);
@@ -107,27 +120,33 @@ public static partial class EmailSettingsService
                  {
                      (EmailType.Invoice, "invoice", settings.Invoice),
                      (EmailType.Receipt, "receipt", settings.Receipt),
-                     (EmailType.DueReminder, "reminder", settings.Reminder),
-                     (EmailType.Absence, "absence", settings.Absence),
+                     (EmailType.DueReminder, "fee reminder", settings.Reminder),
+                     (EmailType.Absence, "attendance", settings.Absence),
                  })
         {
-            if (template.Subject.Trim().Length == 0 || template.Body.Trim().Length == 0)
-            {
-                throw new ValidationException($"Please enter the subject and message of the {name} email.");
-            }
-            Validators.CheckLength(template.Subject.Trim(), 255, $"The {name} email subject");
+            ValidateTemplate(type, name, template);
+        }
+    }
 
-            List<string> unknown = FieldPattern().Matches(template.Subject + template.Body)
-                .Select(m => m.Groups[1].Value)
-                .Where(field => !Fields[type].Contains(field))
-                .Distinct()
-                .ToList();
-            if (unknown.Count > 0)
-            {
-                throw new ValidationException(
-                    $"The {name} email uses {string.Join(", ", unknown.Select(f => "{" + f + "}"))}, which is not available. " +
-                    $"Available: {string.Join(", ", Fields[type].Select(f => "{" + f + "}"))}.");
-            }
+    /// <summary>The subject and message are required and may only use the fields available for the kind of email.</summary>
+    public static void ValidateTemplate(string type, string name, EmailTemplate template)
+    {
+        if (template.Subject.Trim().Length == 0 || template.Body.Trim().Length == 0)
+        {
+            throw new ValidationException($"Please enter the subject and message of the {name} email.");
+        }
+        Validators.CheckLength(template.Subject.Trim(), 255, $"The {name} email subject");
+
+        List<string> unknown = FieldPattern().Matches(template.Subject + template.Body)
+            .Select(m => m.Groups[1].Value)
+            .Where(field => !Fields[type].Contains(field))
+            .Distinct()
+            .ToList();
+        if (unknown.Count > 0)
+        {
+            throw new ValidationException(
+                $"The {name} email uses {string.Join(", ", unknown.Select(f => "{" + f + "}"))}, which is not available. " +
+                $"Available: {string.Join(", ", Fields[type].Select(f => "{" + f + "}"))}.");
         }
     }
 

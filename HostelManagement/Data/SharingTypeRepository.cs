@@ -14,22 +14,16 @@ public static class SharingTypeRepository
         Db.Query("SELECT * FROM [SharingType] WHERE [SharingTypeId] = ?", Map,
             Db.Param("@SharingTypeId", sharingTypeId)).FirstOrDefault();
 
-    public static int UpdateRent(int sharingTypeId, decimal rent) =>
-        Db.Execute("UPDATE [SharingType] SET [Rent] = ? WHERE [SharingTypeId] = ?",
-            Db.Param("@Rent", rent),
-            Db.Param("@SharingTypeId", sharingTypeId));
-
-    /// <summary>Adds Single, Double and Triple sharing (rent 0) for a new hostel.</summary>
+    /// <summary>Adds Single, Double and Triple sharing for a new hostel.</summary>
     public static void InsertDefaults(OleDbConnection connection, OleDbTransaction transaction, int hostelId)
     {
         foreach ((string name, int capacity) in DatabaseSchema.DefaultSharingTypes)
         {
             Db.Execute(connection, transaction,
-                "INSERT INTO [SharingType] ([HostelId], [SharingName], [Capacity], [Rent]) VALUES (?, ?, ?, ?)",
+                "INSERT INTO [SharingType] ([HostelId], [SharingName], [Capacity]) VALUES (?, ?, ?)",
                 Db.Param("@HostelId", hostelId),
                 Db.Param("@SharingName", name),
-                Db.Param("@Capacity", capacity),
-                Db.Param("@Rent", 0m));
+                Db.Param("@Capacity", capacity));
         }
     }
 
@@ -43,6 +37,5 @@ public static class SharingTypeRepository
         HostelId = record.GetInt("HostelId"),
         SharingName = record.GetText("SharingName"),
         Capacity = record.GetInt("Capacity"),
-        Rent = record.GetMoney("Rent"),
     };
 }

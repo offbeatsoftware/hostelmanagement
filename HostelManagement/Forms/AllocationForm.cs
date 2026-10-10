@@ -12,8 +12,9 @@ public enum AllocationAction
 }
 
 /// <summary>
-/// Check-in (choose student and room), transfer (choose the new room) or check-out of one student.
-/// Rooms offered are the hostel's active rooms for the student's gender with a free bed.
+/// Check-in (choose student, room and bed, and enter the student's room rent and transport for the academic
+/// year), transfer (choose the new room) or check-out of one student. Rooms offered are the hostel's active
+/// rooms for the student's gender with a free bed.
 /// DialogResult.OK means it was saved.
 /// </summary>
 public sealed class AllocationForm : Form
@@ -26,7 +27,11 @@ public sealed class AllocationForm : Form
     private readonly ComboBox? _bedBox;
     private readonly DateTimePicker _datePicker;
     private readonly TextBox _remarksBox;
+    private readonly TextBox? _rentBox;
+    private readonly TextBox? _transportBox;
+    private readonly Label? _feeLabel;
     private readonly Label _messageLabel;
+    private Invoice? _existingFee;
 
     /// <param name="students">Students without a room (check-in only).</param>
     /// <param name="current">The student's current allocation (transfer and check-out).</param>
@@ -51,7 +56,7 @@ public sealed class AllocationForm : Form
         AutoScaleMode = AutoScaleMode.Font;
         Font = UiTheme.BodyFont;
         BackColor = Color.White;
-        ClientSize = new Size(580, 365);
+        ClientSize = new Size(580, action == AllocationAction.CheckIn ? 515 : 365);
 
         TableLayoutPanel fields = FormFields.CreateTable(labelWidth: 130, inputWidth: 400);
 
@@ -101,24 +106,42 @@ public sealed class AllocationForm : Form
         };
         FormFields.AddRow(fields, dateCaption, _datePicker, required: true);
         _remarksBox = FormFields.AddTextBox(fields, "Remarks", 255, multiline: true);
+
+        if (action == AllocationAction.CheckIn)
+        {
+            // The fee agreed with this student for the academic year (client decision, version 1.2).
+            _rentBox = FormFields.AddTextBox(fields, "Room rent / year", 15, required: true);
+            _transportBox = FormFields.AddTextBox(fields, "Transport / year", 15);
+            _rentBox.Width = _transportBox.Width = 160;
+            _rentBox.Dock = _transportBox.Dock = DockStyle.None;
+            _rentBox.TextAlign = _transportBox.TextAlign = HorizontalAlignment.Right;
+            _transportBox.PlaceholderText = "0 if no transport";
+            _feeLabel = CreateInfoLabel(string.Empty);
+            FormFields.AddRow(fields, "Total fee", _feeLabel);
+            _rentBox.TextChanged += (_, _) => ShowFeeTotal();
+            _transportBox.TextChanged += (_, _) => ShowFeeTotal();
+            _datePicker.ValueChanged += (_, _) => ShowExistingFee();
+        }
         fields.Location = new Point(20, 20);
+        int bottom = action == AllocationAction.CheckIn ? 105 : 0;
 
         var note = new Label
         {
             AutoSize = true,
             ForeColor = UiTheme.TextMuted,
-            Location = new Point(20, 250),
+            Location = new Point(20, 250 + bottom),
             MaximumSize = new Size(540, 0),
             Text = action switch
             {
                 AllocationAction.Transfer => "The student leaves the current room and enters the new room on this date.",
                 AllocationAction.CheckOut => "The student's status will be set to Left.",
-                _ => "Only active rooms for the student's gender with a free bed are listed.",
+                _ => "Only active rooms for the student's gender with a free bed are listed. The fee is for the academic " +
+                     "year of the check-in date (July to June); the student can pay it in any number of payments.",
             },
         };
 
         _messageLabel = FormFields.CreateMessageLabel();
-        _messageLabel.Location = new Point(20, 280);
+        _messageLabel.Location = new Point(20, 280 + bottom + (action == AllocationAction.CheckIn ? 18 : 0));
         _messageLabel.MaximumSize = new Size(540, 0);
 
         var saveButton = new Button
@@ -129,7 +152,7 @@ public sealed class AllocationForm : Form
                 AllocationAction.Transfer => "Transfer",
                 _ => "Check-out",
             },
-            Location = new Point(330, 315),
+            Location = new Point(330, 315 + bottom + (action == AllocationAction.CheckIn ? 46 : 0)),
         };
         if (action == AllocationAction.CheckOut)
         {
@@ -141,7 +164,7 @@ public sealed class AllocationForm : Form
         }
         saveButton.Click += (_, _) => Save();
 
-        var cancelButton = new Button { Text = "Cancel", Location = new Point(450, 315) };
+        var cancelButton = new Button { Text = "Cancel", Location = new Point(450, 315 + bottom + (action == AllocationAction.CheckIn ? 46 : 0)) };
         UiTheme.StyleSecondaryButton(cancelButton);
         cancelButton.DialogResult = DialogResult.Cancel;
 
@@ -159,14 +182,83 @@ public sealed class AllocationForm : Form
             // The student list is filled by data binding once the form exists.
             if (_studentBox is not null)
             {
-                _studentBox.SelectedIndexChanged += (_, _) => LoadRooms();
+                _studentBox.SelectedIndexChanged += (_, _) =>
+                {
+                    LoadRooms();
+                    ShowExistingFee();
+                };
             }
             if (_roomBox is not null)
             {
                 _roomBox.SelectedIndexChanged += (_, _) => LoadBeds();
             }
             LoadRooms();
+            ShowExistingFee();
         };
+    }
+
+    /// <summary>A student who already has a fee for the year (for example after leaving and coming back) keeps it.</summary>
+    private void ShowExistingFee()
+    {
+        if (_rentBox is null || _transportBox is null)
+        {
+            return;
+        }
+        try
+        {
+            _existingFee = SelectedStudentId == 0
+                ? null
+                : InvoiceService.GetForYear(SelectedStudentId, AcademicYear.Of(_datePicker.Value));
+            _rentBox.Enabled = _transportBox.Enabled = _existingFee is null;
+            if (_existingFee is not null)
+            {
+                _rentBox.Text = _existingFee.RoomRent.ToString("N2", Money.Culture);
+                _transportBox.Text = _existingFee.TransportAmount.ToString("N2", Money.Culture);
+            }
+            ShowFeeTotal();
+        }
+        catch (Exception ex)
+        {
+            ErrorHandler.Handle(ex, "The student's fee could not be loaded.");
+        }
+    }
+
+    private void ShowFeeTotal()
+    {
+        if (_feeLabel is null)
+        {
+            return;
+        }
+        if (_existingFee is not null)
+        {
+            _feeLabel.Text = $"{Money.Format(_existingFee.TotalAmount)} (already set for {_existingFee.YearText}, " +
+                             $"invoice {_existingFee.InvoiceNumber})";
+            return;
+        }
+        bool rentOk = Money.TryParse(_rentBox!.Text, out decimal rent);
+        bool transportOk = Money.TryParse(_transportBox!.Text, out decimal transport) || _transportBox.Text.Trim().Length == 0;
+        _feeLabel.Text = rentOk && transportOk
+            ? $"{Money.Format(rent + (transportOk ? transport : 0))} for {AcademicYear.Label(AcademicYear.Of(_datePicker.Value))}"
+            : string.Empty;
+    }
+
+    /// <summary>The fee typed in, or null (with a message) when it is not valid.</summary>
+    private YearFee? ReadFee()
+    {
+        if (!Money.TryParse(_rentBox!.Text, out decimal rent) || rent <= 0)
+        {
+            FormFields.ShowError(_messageLabel, "Please enter the room rent for the year agreed with the student.");
+            _rentBox.Focus();
+            return null;
+        }
+        decimal transport = 0;
+        if (_transportBox!.Text.Trim().Length > 0 && !Money.TryParse(_transportBox.Text, out transport))
+        {
+            FormFields.ShowError(_messageLabel, "Please enter the transport amount for the year, or leave it empty.");
+            _transportBox.Focus();
+            return null;
+        }
+        return new YearFee(rent, transport);
     }
 
     private static ComboBox CreateCombo(string displayMember, string valueMember) => new()
@@ -277,7 +369,16 @@ public sealed class AllocationForm : Form
             switch (_action)
             {
                 case AllocationAction.CheckIn:
-                    SavedAllocation = AllocationService.CheckIn(studentId, roomId, date, _remarksBox.Text, _bedBox?.SelectedItem as int?);
+                    YearFee? fee = null;
+                    if (_existingFee is null)
+                    {
+                        fee = ReadFee();
+                        if (fee is null)
+                        {
+                            return;
+                        }
+                    }
+                    SavedAllocation = AllocationService.CheckIn(studentId, roomId, date, _remarksBox.Text, _bedBox?.SelectedItem as int?, fee);
                     break;
 
                 case AllocationAction.Transfer:

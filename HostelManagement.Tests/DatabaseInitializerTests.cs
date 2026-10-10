@@ -43,7 +43,7 @@ public sealed class DatabaseInitializerTests : TestDatabase
         {
             Assert.Contains(table.Name, tables);
         }
-        Assert.Equal(17, DatabaseSchema.Tables.Count);
+        Assert.Equal(13, DatabaseSchema.Tables.Count);
     }
 
     [Fact]
@@ -94,13 +94,31 @@ public sealed class DatabaseInitializerTests : TestDatabase
     }
 
     [Fact]
-    public void Initialize_OlderVersionWithChangedAdminPassword_IsNotReplaced()
+    public void Initialize_EmptyOlderVersion_IsReplaced_KeepingTheLoginAndSettings_ButNotTheOldFeeTexts()
     {
         Services.AuthService.IsValidLogin("admin", "admin");
         Services.AuthService.ChangePassword("admin", "Balaji@2026", "Balaji@2026");
+        Services.AuthService.SaveContact("owner@gmail.com", "98290 12345");
+        AppSettingRepository.SaveAll(new Dictionary<string, string>
+        {
+            ["Email.SenderEmail"] = "hostel@gmail.com",
+            ["Email.Absence.Subject"] = "Absent: {StudentName}",
+            ["Email.Reminder.Subject"] = "Overdue {Overdue}",
+        });
         Db.Execute("UPDATE [SchemaInfo] SET [Version] = ?", Db.Param("@Version", DatabaseSchema.Version - 1));
+        Db.Execute("ALTER TABLE [Student] DROP COLUMN [MotherEmail]");
 
-        Assert.Throws<DatabaseException>(DatabaseInitializer.Initialize);
+        DatabaseInitializer.Initialize();
+
+        Assert.Equal(DatabaseSchema.Version, Convert.ToInt32(Db.Scalar("SELECT MAX([Version]) FROM [SchemaInfo]")));
+        Assert.Equal(0, Convert.ToInt32(Db.Scalar("SELECT COUNT([MotherEmail]) FROM [Student]")));
+        Assert.True(Services.AuthService.IsValidLogin("admin", "Balaji@2026"));
+        Assert.False(Services.AuthService.IsValidLogin("admin", "admin"));
+        Assert.Equal("owner@gmail.com", Services.AuthService.GetAdminEmail());
+        Models.EmailSettings settings = Services.EmailSettingsService.Get();
+        Assert.Equal("hostel@gmail.com", settings.SenderEmail);
+        Assert.Equal("Absent: {StudentName}", settings.Absence.Subject);
+        Assert.Equal(Models.EmailSettings.DefaultReminder, settings.Reminder);
     }
 
     [Fact]

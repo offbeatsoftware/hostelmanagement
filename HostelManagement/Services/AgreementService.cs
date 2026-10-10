@@ -11,10 +11,10 @@ namespace HostelManagement.Services;
 public sealed record AgreementDocument(string StudentName, string ParentName, string FilledText);
 
 /// <summary>
-/// Residency agreement (client decision): the client's agreement text with the student's name, parent,
+/// Residency agreement (client decision): the client's agreement text with the student's name, father,
 /// address, room, bed and annual fee filled in. The text is editable (stored in AppSetting); a new installation
-/// starts with the client's sample. Annual fee = the room's yearly rent plus 12 months of the extra services the
-/// student uses (transport).
+/// starts with the client's sample. Annual fee = the room rent plus the transport agreed with the student for the
+/// academic year (the student's invoice for that year).
 /// </summary>
 public static partial class AgreementService
 {
@@ -69,11 +69,11 @@ public static partial class AgreementService
         Room room = RoomRepository.Get(allocation.RoomId)
             ?? throw new ValidationException("The student's room no longer exists.");
         Hostel? hostel = HostelService.GetHostel(room.HostelId);
-        Parent? parent = StudentService.GetPrimaryParent(studentId);
         College? college = CollegeRepository.Get(student.CollegeId);
 
-        decimal transport = StudentService.GetCurrentServices(studentId).Sum(s => s.MonthlyRate) * 12;
-        decimal annualFee = room.Rent + transport;
+        // The fee of the academic year of the agreement, or the student's latest fee.
+        Invoice? fee = InvoiceRepository.GetForYear(studentId, AcademicYear.Of(agreementDate))
+            ?? InvoiceRepository.GetForStudent(studentId).FirstOrDefault();
 
         var values = new Dictionary<string, string>
         {
@@ -85,10 +85,10 @@ public static partial class AgreementService
                 RoomGender.Female => "D/o",
                 _ => "D/o, S/o",
             },
-            ["ParentName"] = parent?.ParentName ?? string.Empty,
+            ["ParentName"] = student.FatherName,
             ["Address"] = student.Address.ReplaceLineEndings(", "),
             ["StudentMobile"] = student.Mobile,
-            ["ParentMobile"] = parent?.Mobile ?? string.Empty,
+            ["ParentMobile"] = student.FatherMobile,
             ["CollegeName"] = college?.CollegeName ?? string.Empty,
             ["HostelName"] = hostel?.HostelName ?? string.Empty,
             ["HostelType"] = room.Gender == RoomGender.Female ? "Girls" : "Boys",
@@ -96,9 +96,9 @@ public static partial class AgreementService
             ["BedNumber"] = allocation.BedNumber?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
             ["BedsInRoom"] = room.Capacity switch { 1 => "one", 2 => "two", 3 => "three", 4 => "four", _ => room.Capacity.ToString(CultureInfo.InvariantCulture) },
             ["CheckInDate"] = Date(allocation.CheckInDate),
-            ["AnnualFee"] = $"{Whole(annualFee)}/- ({PdfText.AmountInWords(annualFee)})",
-            ["AnnualRent"] = $"{Whole(room.Rent)}/-",
-            ["TransportFee"] = $"{Whole(transport)}/-",
+            ["AnnualFee"] = fee is null ? string.Empty : $"{Whole(fee.TotalAmount)}/- ({PdfText.AmountInWords(fee.TotalAmount)})",
+            ["AnnualRent"] = fee is null ? string.Empty : $"{Whole(fee.RoomRent)}/-",
+            ["TransportFee"] = fee is null ? string.Empty : $"{Whole(fee.TransportAmount)}/-",
         };
 
         string filled = FieldPattern().Replace(GetTemplate(), m =>
@@ -106,7 +106,7 @@ public static partial class AgreementService
                 // A missing value leaves a dotted line to fill in by hand, as on the printed form.
                 ? $"{ValueStart}{(value.Trim().Length > 0 ? value.Trim() : "................................")}{ValueEnd}"
                 : m.Value);
-        return new AgreementDocument(student.StudentName, parent?.ParentName ?? string.Empty, filled);
+        return new AgreementDocument(student.StudentName, student.FatherName, filled);
     }
 
     /// <summary>A file name such as Agreement_Aman-Sharma_2026-10-06.pdf.</summary>

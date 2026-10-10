@@ -73,8 +73,8 @@ public sealed class EmailSettingsView : UserControl
         // ---- Email texts ----
         tabs.TabPages.Add(CreateTemplatePage("Invoice email", EmailType.Invoice, EmailSettings.DefaultInvoice));
         tabs.TabPages.Add(CreateTemplatePage("Receipt email", EmailType.Receipt, EmailSettings.DefaultReceipt));
-        tabs.TabPages.Add(CreateTemplatePage("Reminder email", EmailType.DueReminder, EmailSettings.DefaultReminder));
-        tabs.TabPages.Add(CreateTemplatePage("Absence email", EmailType.Absence, EmailSettings.DefaultAbsence));
+        tabs.TabPages.Add(CreateTemplatePage("Fee reminder email", EmailType.DueReminder, EmailSettings.DefaultReminder));
+        tabs.TabPages.Add(CreateTemplatePage("Attendance email", EmailType.Absence, EmailSettings.DefaultAbsence));
 
         // ---- History ----
         _historyGrid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
@@ -99,7 +99,7 @@ public sealed class EmailSettingsView : UserControl
         refreshButton.Click += (_, _) => LoadHistory();
         var historyNote = FormFields.CreateMessageLabel();
         historyNote.ForeColor = UiTheme.TextMuted;
-        historyNote.Text = "The latest 500 emails of all hostels. Reminders list one row per invoice.";
+        historyNote.Text = "The latest 500 emails of all hostels. Fee reminders list one row per invoice.";
         FlowLayoutPanel historyToolbar = FormFields.CreateButtonRow(refreshButton, historyNote);
         historyToolbar.Dock = DockStyle.Top;
         var historyPage = new TabPage("Email history") { BackColor = Color.White, Padding = new Padding(8) };

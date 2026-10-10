@@ -12,8 +12,8 @@ public sealed class MainFormTests : TestDatabase
     {
         string[] expected =
         [
-            "Dashboard", "Hostels", "Colleges", "Rooms", "Room Allocation", "Services", "Students",
-            "Parents / Guardians", "Attendance", "Invoices", "Payments", "Pending Dues", "Reports",
+            "Dashboard", "Hostels", "Colleges", "Rooms", "Room Allocation", "Students",
+            "Attendance", "Invoices", "Payments", "Fee Reminders", "Reports",
             "Admin Account", "Email Settings", "Backup / Restore", "Application Settings",
         ];
 
@@ -113,16 +113,15 @@ public sealed class MainFormTests : TestDatabase
     }
 
     [Fact]
-    public void StudentsAndParentsScreens_ShowTheHostelsData()
+    public void StudentsAndInvoicesScreens_ShowTheHostelsData()
     {
-        StudentService.Save(
-            new Student { StudentName = "Aman", Mobile = "9876543210", CollegeId = CollegeId, AdmissionDate = DateTime.Today },
-            new Parent { ParentName = "Rakesh", Mobile = "9812345678", Email = "rakesh@example.com" });
+        int aman = AddStudentWithParents("Aman");
+        CheckInWithFee(aman, AddRoom(), 50_000m, 12_000m);
         Hostel hostel = HostelService.GetHostel(HostelId)!;
 
         RunOnStaThread(() =>
         {
-            foreach (UserControl view in new UserControl[] { new Forms.Views.StudentsView(hostel), new Forms.Views.ParentsView(hostel) })
+            foreach (UserControl view in new UserControl[] { new Forms.Views.StudentsView(hostel), new Forms.Views.InvoicesView(hostel) })
             {
                 using var host = new Form { Width = 1200, Height = 700 };
                 host.Controls.Add(view);

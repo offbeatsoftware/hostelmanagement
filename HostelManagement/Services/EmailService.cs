@@ -52,9 +52,10 @@ public sealed class SmtpEmailSender : IEmailSender
 }
 
 /// <summary>
-/// Emails (client decisions, Phase 11): invoices go to the primary parent only, with the invoice PDF;
-/// receipts are emailed when the admin clicks the button, with the receipt PDF; reminders go to the parents
-/// of students with overdue invoices, one student at a time or all at once, with the overdue invoice PDFs.
+/// Emails (client decisions): invoices, receipts and fee reminders go to the father, or to the mother when the
+/// father has no email; attendance emails go to the mother, or to the father when the mother has no email.
+/// The admin gets a copy of every email. Invoices and receipts are emailed when the admin clicks the button, with
+/// the PDF; fee reminders are sent whenever the admin chooses (never automatically), with the invoice PDFs.
 /// Emails are prepared (database and PDFs) and logged on the calling thread; only <see cref="Send"/> talks
 /// to Gmail, so the screens can send in the background without touching the database there.
 /// </summary>
@@ -66,17 +67,19 @@ public static class EmailService
     {
         EmailSettings settings = GetConfiguredSettings();
         InvoicePrintData data = InvoiceService.GetPrintData(invoiceId);
-        Parent parent = RequireParentEmail(data.Student, data.Parent);
+        EmailContact contact = RequireFeeContact(data.Student);
         Invoice invoice = data.Invoice;
 
-        var values = CommonValues(data.Student, parent, data.Hostel);
+        var values = CommonValues(data.Student, contact, data.Hostel);
         values["InvoiceNumber"] = invoice.InvoiceNumber;
-        values["Period"] = $"{invoice.BillingFrom:dd MMM yyyy} to {invoice.BillingTo:dd MMM yyyy}";
+        values["AcademicYear"] = invoice.YearText;
+        values["RoomRent"] = PdfText.Rupees(invoice.RoomRent);
+        values["Transport"] = PdfText.Rupees(invoice.TransportAmount);
         values["Amount"] = PdfText.Rupees(invoice.TotalAmount);
-        values["DueDate"] = Date(invoice.DueDate);
+        values["PaidAmount"] = PdfText.Rupees(invoice.PaidAmount);
         values["Pending"] = PdfText.Rupees(invoice.PendingAmount);
 
-        return Build(EmailType.Invoice, settings.Invoice, values, data.Student, parent, [invoice.InvoiceId],
+        return Build(EmailType.Invoice, settings.Invoice, values, data.Student, contact, [invoice.InvoiceId],
             [InvoicePdfWriter.SaveToInvoicesFolder(data)]);
     }
 
@@ -84,58 +87,80 @@ public static class EmailService
     {
         EmailSettings settings = GetConfiguredSettings();
         ReceiptPrintData data = PaymentService.GetReceiptData(paymentId);
-        Parent parent = RequireParentEmail(data.Student, data.Parent);
+        EmailContact contact = RequireFeeContact(data.Student);
         Payment payment = data.Payment;
 
-        var values = CommonValues(data.Student, parent, data.Hostel);
+        var values = CommonValues(data.Student, contact, data.Hostel);
         values["InvoiceNumber"] = data.Invoice.InvoiceNumber;
+        values["AcademicYear"] = data.Invoice.YearText;
         values["ReceiptNumber"] = payment.ReceiptNumber;
         values["PaidAmount"] = PdfText.Rupees(payment.Amount);
         values["PaymentDate"] = Date(payment.PaymentDate);
         values["PaymentMethod"] = payment.PaymentMethod;
+        values["TotalAmount"] = PdfText.Rupees(data.Invoice.TotalAmount);
         values["Pending"] = PdfText.Rupees(data.Invoice.PendingAmount);
 
-        return Build(EmailType.Receipt, settings.Receipt, values, data.Student, parent, [data.Invoice.InvoiceId],
+        return Build(EmailType.Receipt, settings.Receipt, values, data.Student, contact, [data.Invoice.InvoiceId],
             [ReceiptPdfWriter.SaveToReceiptsFolder(data)]);
     }
 
-    /// <summary>A reminder about the student's overdue invoices, with their PDFs attached.</summary>
-    public static OutgoingEmail PrepareReminder(StudentDue due)
+    /// <summary>
+    /// A fee reminder with the student's total, paid and pending amounts and the invoice PDFs. The admin may
+    /// change the text for this sending (<paramref name="template"/>); otherwise the saved text is used.
+    /// </summary>
+    public static OutgoingEmail PrepareReminder(StudentDue due, EmailTemplate? template = null)
     {
         EmailSettings settings = GetConfiguredSettings();
-        List<Invoice> overdue = due.Invoices.Where(i => i.DaysOverdue(due.AsOf) > 0).ToList();
-        if (overdue.Count == 0)
-        {
-            throw new ValidationException($"{due.StudentName} has no overdue invoices, so no reminder is needed.");
-        }
+        (Student student, EmailContact contact, Dictionary<string, string> values, List<InvoicePrintData> invoices) =
+            ReminderValues(due);
 
-        List<InvoicePrintData> invoices = overdue.Select(i => InvoiceService.GetPrintData(i.InvoiceId)).ToList();
-        Student student = invoices[0].Student;
-        Parent parent = RequireParentEmail(student, invoices[0].Parent);
-
-        var values = CommonValues(student, parent, invoices[0].Hostel);
-        values["InvoiceList"] = string.Join(Environment.NewLine, overdue.Select(i =>
-            $"{i.InvoiceNumber} ({i.PeriodText}): {PdfText.Rupees(i.PendingAmount)} pending, due {Date(i.DueDate)}"));
-        values["Pending"] = PdfText.Rupees(due.PendingAmount);
-        values["Overdue"] = PdfText.Rupees(due.OverdueAmount);
-
-        return Build(EmailType.DueReminder, settings.Reminder, values, student, parent, overdue.Select(i => i.InvoiceId).ToList(),
+        return Build(EmailType.DueReminder, template ?? settings.Reminder, values, student, contact,
+            due.Invoices.Select(i => i.InvoiceId).ToList(),
             invoices.Select(InvoicePdfWriter.SaveToInvoicesFolder).ToList());
     }
 
+    /// <summary>The fee reminder as it will be sent to one student's parent, without creating the PDFs (for the preview).</summary>
+    public static (string To, string Subject, string Body) PreviewReminder(StudentDue due, EmailTemplate template)
+    {
+        (Student student, EmailContact contact, Dictionary<string, string> values, _) = ReminderValues(due);
+        OutgoingEmail email = Build(EmailType.DueReminder, template, values, student, contact, [], []);
+        string copy = email.CopyToEmail.Length > 0 ? $"   (copy to {email.CopyToEmail})" : "";
+        return ($"{contact.Relation}: {contact.Name} <{contact.Email}>{copy}", email.Subject, email.Body);
+    }
+
+    private static (Student, EmailContact, Dictionary<string, string>, List<InvoicePrintData>) ReminderValues(StudentDue due)
+    {
+        if (due.PendingAmount <= 0)
+        {
+            throw new ValidationException($"{due.StudentName} has no pending fee, so no reminder is needed.");
+        }
+
+        List<InvoicePrintData> invoices = due.Invoices.Select(i => InvoiceService.GetPrintData(i.InvoiceId)).ToList();
+        Student student = invoices[0].Student;
+        EmailContact contact = RequireFeeContact(student);
+
+        Dictionary<string, string> values = CommonValues(student, contact, invoices[0].Hostel);
+        values["FeeDetails"] = string.Join(Environment.NewLine, due.Invoices.Select(FeeLine));
+        values["TotalAmount"] = PdfText.Rupees(due.TotalAmount);
+        values["PaidAmount"] = PdfText.Rupees(due.PaidAmount);
+        values["Pending"] = PdfText.Rupees(due.PendingAmount);
+        return (student, contact, values, invoices);
+    }
+
     /// <summary>
-    /// Reminders for every student of the hostel with overdue invoices. Students that cannot be emailed
-    /// (for example without a parent email) are returned as problems instead of stopping the others.
+    /// Fee reminders for the chosen students. Students that cannot be emailed (for example without a father or
+    /// mother email) are returned as problems instead of stopping the others.
     /// </summary>
-    public static (List<OutgoingEmail> Emails, List<string> Problems) PrepareReminders(int hostelId, DateTime asOf)
+    public static (List<OutgoingEmail> Emails, List<string> Problems) PrepareReminders(IEnumerable<StudentDue> dues,
+        EmailTemplate? template = null)
     {
         var emails = new List<OutgoingEmail>();
         var problems = new List<string>();
-        foreach (StudentDue due in PendingDuesService.GetDues(hostelId, asOf).Where(d => d.IsOverdue))
+        foreach (StudentDue due in dues)
         {
             try
             {
-                emails.Add(PrepareReminder(due));
+                emails.Add(PrepareReminder(due, template));
             }
             catch (ValidationException ex)
             {
@@ -144,6 +169,10 @@ public static class EmailService
         }
         return (emails, problems);
     }
+
+    /// <summary>Checks a reminder text the admin changed before sending: subject and message, and only known fields.</summary>
+    public static void ValidateReminderText(EmailTemplate template) =>
+        EmailSettingsService.ValidateTemplate(EmailType.DueReminder, "fee reminder", template);
 
     /// <summary>
     /// Absence emails for the absent students of a saved attendance date (by default only those whose parent was
@@ -164,18 +193,17 @@ public static class EmailService
                 continue;
             }
             Student? student = StudentService.GetStudent(entry.StudentId);
-            Parent? parent = StudentService.GetPrimaryParent(entry.StudentId);
-            if (student is null || parent is not { Email.Length: > 0 })
+            if (student?.AttendanceContact is not EmailContact contact)
             {
-                problems.Add($"{entry.StudentName}: no primary parent with an email address.");
+                problems.Add($"{entry.StudentName}: neither the mother nor the father has an email address.");
                 continue;
             }
 
-            var values = CommonValues(student, parent, hostel);
+            var values = CommonValues(student, contact, hostel);
             values["AttendanceDate"] = Date(sheet.Date);
             values["RoomNumber"] = entry.RoomNumber;
             values["Remarks"] = entry.Remarks;
-            OutgoingEmail email = Build(EmailType.Absence, settings.Absence, values, student, parent, [], []);
+            OutgoingEmail email = Build(EmailType.Absence, settings.Absence, values, student, contact, [], []);
             emails.Add(new OutgoingEmail
             {
                 EmailType = email.EmailType,
@@ -254,7 +282,7 @@ public static class EmailService
             RecipientEmail = recipient.Length > 0 ? recipient : settings.SenderEmail,
             RecipientName = recipient.Length > 0 ? string.Empty : settings.SenderName,
             Subject = $"Test email from the {AppInfo.ProductName}",
-            Body = $"This test email shows that {AppInfo.BusinessName} can send invoices, receipts and reminders from {settings.SenderEmail}.",
+            Body = $"This test email shows that {AppInfo.BusinessName} can send invoices, receipts, fee reminders and attendance emails from {settings.SenderEmail}.",
         });
     }
 
@@ -272,18 +300,28 @@ public static class EmailService
         return settings;
     }
 
-    private static Parent RequireParentEmail(Student student, Parent? parent) =>
-        parent is { Email.Length: > 0 }
-            ? parent
-            : throw new ValidationException($"{student.StudentName} has no primary parent with an email address.");
+    private static EmailContact RequireFeeContact(Student student) =>
+        student.FeeContact
+            ?? throw new ValidationException(
+                $"Neither the father nor the mother of {student.StudentName} has an email address. Add one on the Students screen.");
 
-    private static Dictionary<string, string> CommonValues(Student student, Parent parent, Hostel hostel)
+    /// <summary>"2026-27 (invoice SBH/2026-27/0001): total Rs. 62,000, paid Rs. 15,000, pending Rs. 47,000".</summary>
+    private static string FeeLine(Invoice invoice)
+    {
+        string parts = invoice.HasTransport
+            ? $"room rent {PdfText.Rupees(invoice.RoomRent)} + transport {PdfText.Rupees(invoice.TransportAmount)} = {PdfText.Rupees(invoice.TotalAmount)}"
+            : $"room rent {PdfText.Rupees(invoice.TotalAmount)}";
+        return $"{invoice.YearText} (invoice {invoice.InvoiceNumber}): {parts}, paid {PdfText.Rupees(invoice.PaidAmount)}, " +
+               $"pending {PdfText.Rupees(invoice.PendingAmount)}";
+    }
+
+    private static Dictionary<string, string> CommonValues(Student student, EmailContact contact, Hostel hostel)
     {
         AdminUser? admin = AdminUserRepository.GetFirst();
         return new Dictionary<string, string>
         {
             ["StudentName"] = student.StudentName,
-            ["ParentName"] = parent.ParentName,
+            ["ParentName"] = contact.Name,
             ["HostelName"] = hostel.HostelName,
             ["HostelPhone"] = hostel.Phone,
             ["AdminEmail"] = admin?.Email ?? string.Empty,
@@ -299,15 +337,15 @@ public static class EmailService
     }
 
     private static OutgoingEmail Build(string type, EmailTemplate template, Dictionary<string, string> values, Student student,
-        Parent parent, List<int> invoiceIds, List<string> attachments) => new()
+        EmailContact contact, List<int> invoiceIds, List<string> attachments) => new()
     {
         EmailType = type,
         StudentId = student.StudentId,
         StudentName = student.StudentName,
         InvoiceIds = invoiceIds,
-        RecipientEmail = parent.Email,
-        RecipientName = parent.ParentName,
-        CopyToEmail = CopyTo(parent.Email),
+        RecipientEmail = contact.Email,
+        RecipientName = contact.Name,
+        CopyToEmail = CopyTo(contact.Email),
         Subject = EmailSettingsService.Fill(template.Subject, values).ReplaceLineEndings(" ").Trim(),
         Body = EmailSettingsService.Fill(template.Body, values).Trim(),
         AttachmentPaths = attachments,

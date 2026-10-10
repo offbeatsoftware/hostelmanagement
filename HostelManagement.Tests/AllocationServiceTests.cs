@@ -17,8 +17,9 @@ public sealed class AllocationServiceTests : TestDatabase
                 Mobile = "9876543210",
                 CollegeId = collegeId ?? CollegeId,
                 AdmissionDate = Admission,
-            },
-            new Parent { ParentName = "Parent", Mobile = "9812345678", Email = "parent@example.com" }).StudentId;
+                FatherName = "Father",
+                FatherMobile = "9812345678",
+            }).StudentId;
 
     private Room NewRoom(string number, int capacity = 2, string gender = RoomGender.Male, bool active = true,
         int? hostelId = null) =>
@@ -131,7 +132,7 @@ public sealed class AllocationServiceTests : TestDatabase
         int aman = NewStudent("Aman");
         Student student = StudentService.GetStudent(aman)!;
         student.Status = StudentStatus.Left;
-        StudentService.Save(student, StudentService.GetPrimaryParent(aman)!);
+        StudentService.Save(student);
 
         var ex = Assert.Throws<ValidationException>(() => AllocationService.CheckIn(aman, NewRoom("101").RoomId, DateTime.Today));
 
@@ -266,18 +267,30 @@ public sealed class AllocationServiceTests : TestDatabase
     }
 
     [Fact]
+    public void Transfer_And_CheckOut_KeepTheFee()
+    {
+        int aman = NewStudent("Aman");
+        AllocationService.CheckIn(aman, NewRoom("101").RoomId, Admission, fee: new YearFee(50_000m, 12_000m));
+        AllocationService.Transfer(aman, NewRoom("102").RoomId, DateTime.Today);
+        AllocationService.CheckOut(aman, DateTime.Today);
+
+        Invoice fee = Assert.Single(InvoiceService.GetInvoicesForStudent(aman));
+        Assert.Equal(62_000m, fee.TotalAmount);
+        Assert.Equal(AcademicYear.Of(Admission), fee.AcademicYear);
+    }
+
+    [Fact]
     public void Student_InRoom_CannotBeSetToLeftOrChangeGenderOnStudentScreen()
     {
         int aman = NewStudent("Aman");
         AllocationService.CheckIn(aman, NewRoom("101").RoomId, DateTime.Today);
-        Parent parent = StudentService.GetPrimaryParent(aman)!;
 
         Student leaving = StudentService.GetStudent(aman)!;
         leaving.Status = StudentStatus.Left;
-        Assert.Contains("Use Check-out", Assert.Throws<ValidationException>(() => StudentService.Save(leaving, parent)).Message);
+        Assert.Contains("Use Check-out", Assert.Throws<ValidationException>(() => StudentService.Save(leaving)).Message);
 
         Student changing = StudentService.GetStudent(aman)!;
         changing.Gender = RoomGender.Female;
-        Assert.Contains("gender cannot be changed", Assert.Throws<ValidationException>(() => StudentService.Save(changing, parent)).Message);
+        Assert.Contains("gender cannot be changed", Assert.Throws<ValidationException>(() => StudentService.Save(changing)).Message);
     }
 }

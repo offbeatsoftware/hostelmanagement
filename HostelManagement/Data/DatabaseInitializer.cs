@@ -53,10 +53,14 @@ public static class DatabaseInitializer
         }
         else if (IsOutdatedAndEmpty())
         {
-            // For example the empty database of an older installer: nothing is lost by starting afresh.
+            // For example the database of an older installer with no hostel data: nothing is lost by starting
+            // afresh, apart from the login and settings, which are carried over.
+            (List<SavedLogin> admins, Dictionary<string, string> settings) = ReadLoginAndSettings();
             ReleasePooledConnections();
             File.Delete(AppPaths.DatabaseFile);
             CreateDatabaseFile(provider);
+            CreateMissingTables();
+            RestoreLoginAndSettings(admins, settings);
             AppLogger.Info($"Replaced an empty database from an earlier version with a new one ({AppPaths.DatabaseFile}).");
         }
 
@@ -209,7 +213,7 @@ public static class DatabaseInitializer
 
     /// <summary>
     /// True for a database of an earlier layout that holds no hostel data yet: no rows in any table, apart from
-    /// the schema version and the default admin login with its first password.
+    /// the schema version, the admin login and the settings (which are carried over to the new database).
     /// </summary>
     private static bool IsOutdatedAndEmpty()
     {
@@ -230,17 +234,9 @@ public static class DatabaseInitializer
                 }
             }
 
-            foreach (string table in existing.Where(t => t is not "SchemaInfo" and not "AdminUser"))
+            foreach (string table in existing.Where(t => t is not "SchemaInfo" and not "AdminUser" and not "AppSetting"))
             {
                 if (Convert.ToInt32(Db.Scalar(connection, null, $"SELECT COUNT(*) FROM [{table}]")) > 0)
-                {
-                    return false;
-                }
-            }
-            if (existing.Contains("AdminUser"))
-            {
-                List<string> hashes = Db.Query(connection, null, "SELECT [PasswordHash] FROM [AdminUser]", r => r.GetText("PasswordHash"));
-                if (hashes.Count > 1 || hashes.Any(h => !PasswordHasher.Verify(Models.AdminUser.DefaultPassword, h)))
                 {
                     return false;
                 }
@@ -251,6 +247,52 @@ public static class DatabaseInitializer
         {
             AppLogger.Error("Could not check whether the database is an empty database of an earlier version.", ex);
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Email texts whose fields changed between versions; they are not carried over, so the new default texts
+    /// are used. Everything else (Gmail account, attendance email, agreement text, backup settings) is kept.
+    /// </summary>
+    private static readonly string[] SettingsNotCarriedOver = ["Email.Invoice.", "Email.Receipt.", "Email.Reminder."];
+
+    private sealed record SavedLogin(string UserName, string PasswordHash, string Email, string Phone, DateTime CreatedDate,
+        DateTime? UpdatedDate);
+
+    private static (List<SavedLogin> Admins, Dictionary<string, string> Settings) ReadLoginAndSettings()
+    {
+        using OleDbConnection connection = Db.OpenConnection();
+        HashSet<string> existing = GetExistingTableNames(connection);
+        List<SavedLogin> admins = existing.Contains("AdminUser")
+            ? Db.Query(connection, null, "SELECT * FROM [AdminUser]", r => new SavedLogin(
+                r.GetText("UserName"), r.GetText("PasswordHash"), r.GetText("Email"), r.GetText("Phone"),
+                r.GetDate("CreatedDate"), r.GetNullableDate("UpdatedDate")))
+            : [];
+        Dictionary<string, string> settings = existing.Contains("AppSetting")
+            ? Db.Query(connection, null, "SELECT [SettingKey], [SettingValue] FROM [AppSetting]",
+                    r => (Key: r.GetText("SettingKey"), Value: r.GetText("SettingValue")))
+                .Where(s => !SettingsNotCarriedOver.Any(prefix => s.Key.StartsWith(prefix, StringComparison.Ordinal)))
+                .ToDictionary(s => s.Key, s => s.Value)
+            : [];
+        return (admins, settings);
+    }
+
+    private static void RestoreLoginAndSettings(List<SavedLogin> admins, Dictionary<string, string> settings)
+    {
+        foreach (SavedLogin admin in admins)
+        {
+            Db.Execute(
+                "INSERT INTO [AdminUser] ([UserName], [PasswordHash], [Email], [Phone], [CreatedDate], [UpdatedDate]) VALUES (?, ?, ?, ?, ?, ?)",
+                Db.Param("@UserName", admin.UserName),
+                Db.Param("@PasswordHash", admin.PasswordHash),
+                Db.OptionalText("@Email", admin.Email),
+                Db.OptionalText("@Phone", admin.Phone),
+                Db.Param("@CreatedDate", admin.CreatedDate),
+                Db.Param("@UpdatedDate", admin.UpdatedDate));
+        }
+        if (settings.Count > 0)
+        {
+            AppSettingRepository.SaveAll(settings);
         }
     }
 

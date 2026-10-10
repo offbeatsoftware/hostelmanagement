@@ -76,7 +76,7 @@ public static class ReceiptPdfWriter
                      (s.StudentName, bold),
                      (s.CollegeName, body),
                      (Join("Mobile: ", s.Mobile), body),
-                     (Join("Parent / guardian: ", data.Parent?.ParentName ?? ""), body),
+                     (Join("Father: ", data.Student.FatherName), body),
                  }.Where(l => l.Item1.Length > 0))
         {
             g.DrawString(text, font, XBrushes.Black, Margin, y + 9);
@@ -106,8 +106,8 @@ public static class ReceiptPdfWriter
         g.DrawString(Fit(g, AmountInWords(payment.Amount), bold, width - 20), bold, XBrushes.Black, Margin + 10, y + 36);
         y += 58;
 
-        string towards = $"Towards invoice {invoice.InvoiceNumber} dated {invoice.InvoiceDate:dd MMM yyyy} " +
-                         $"for {invoice.BillingFrom:dd MMM yyyy} to {invoice.BillingTo:dd MMM yyyy}.";
+        string towards = $"Towards the hostel fee for the academic year {invoice.YearText} (invoice {invoice.InvoiceNumber}, " +
+                         $"total fee {Rupees(invoice.TotalAmount)}).";
         g.DrawString(Fit(g, towards, body, width), body, XBrushes.Black, Margin, y + 9);
         y += 16;
         if (payment.Remarks.Length > 0)

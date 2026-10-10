@@ -20,18 +20,16 @@ public sealed class StudentServiceTests : TestDatabase
         AdmissionDate = new DateTime(2026, 7, 1),
         AadhaarNumber = aadhaar,
         Status = StudentStatus.Active,
+        FatherName = "Rakesh Sharma",
+        FatherMobile = "9812345678",
+        FatherEmail = "rakesh@example.com",
+        MotherName = "Sunita Sharma",
+        MotherMobile = "9812345679",
+        MotherEmail = "sunita@example.com",
     };
 
-    private static Parent NewParent(string name = "Rakesh Sharma") => new()
-    {
-        ParentName = name,
-        Relationship = "Father",
-        Mobile = "9812345678",
-        Email = "rakesh@example.com",
-    };
-
-    private Student Add(Student? student = null, Parent? parent = null, StudentFileChanges? files = null) =>
-        StudentService.Save(student ?? NewStudent(), parent ?? NewParent(), files);
+    private Student Add(Student? student = null, StudentFileChanges? files = null) =>
+        StudentService.Save(student ?? NewStudent(), files);
 
     private string CreatePng(string name = "photo.png")
     {
@@ -49,7 +47,7 @@ public sealed class StudentServiceTests : TestDatabase
     }
 
     [Fact]
-    public void Save_AddsStudentWithPrimaryParent()
+    public void Save_AddsStudentWithFatherAndMother()
     {
         Student saved = Add(NewStudent(" Aman Sharma ", "2345 6789 0124"));
 
@@ -59,13 +57,16 @@ public sealed class StudentServiceTests : TestDatabase
         Assert.Equal("XXXX XXXX 0124", saved.AadhaarMasked);
         Assert.Equal("Test College", saved.CollegeName);
 
-        Parent parent = StudentService.GetPrimaryParent(saved.StudentId)!;
-        Assert.Equal("Rakesh Sharma", parent.ParentName);
-        Assert.True(parent.IsPrimaryContact);
+        Assert.Equal("Rakesh Sharma", saved.FatherName);
+        Assert.Equal("9812345678", saved.FatherMobile);
+        Assert.Equal("rakesh@example.com", saved.FatherEmail);
+        Assert.Equal("Sunita Sharma", saved.MotherName);
+        Assert.Equal("9812345679", saved.MotherMobile);
+        Assert.Equal("sunita@example.com", saved.MotherEmail);
     }
 
     [Fact]
-    public void GetStudents_ShowsOnlyTheHostelsStudentsWithParentDetails()
+    public void GetStudents_ShowsOnlyTheHostelsStudentsWithFatherDetails()
     {
         int otherCollege = AddCollege(AddHostel("Other Hostel"), "Other College");
         Add(NewStudent("Zoya"));
@@ -77,27 +78,53 @@ public sealed class StudentServiceTests : TestDatabase
         Assert.Equal(["Aman", "Zoya"], students.Select(s => s.StudentName));
         Assert.All(students, s =>
         {
-            Assert.Equal("Rakesh Sharma", s.ParentName);
-            Assert.Equal("9812345678", s.ParentMobile);
+            Assert.Equal("Rakesh Sharma", s.FatherName);
+            Assert.Equal("9812345678", s.FatherMobile);
         });
     }
 
     [Fact]
-    public void Save_EditUpdatesStudentAndParent()
+    public void Save_EditUpdatesStudentFatherAndMother()
     {
         Student student = Add();
-        Parent parent = StudentService.GetPrimaryParent(student.StudentId)!;
 
         student.StudentName = "Aman K Sharma";
         student.Status = StudentStatus.Left;
-        parent.Email = "new@example.com";
-        StudentService.Save(student, parent);
+        student.FatherEmail = "new@example.com";
+        student.MotherEmail = "";
+        StudentService.Save(student);
 
         Student saved = StudentService.GetStudent(student.StudentId)!;
         Assert.Equal("Aman K Sharma", saved.StudentName);
         Assert.Equal(StudentStatus.Left, saved.Status);
-        Assert.Equal("new@example.com", StudentService.GetPrimaryParent(student.StudentId)!.Email);
-        Assert.Equal(1, Count("Parent"));
+        Assert.Equal("new@example.com", saved.FatherEmail);
+        Assert.Equal(string.Empty, saved.MotherEmail);
+    }
+
+    [Fact]
+    public void EmailContacts_FeesGoToTheFatherAndAttendanceToTheMother_WithTheOtherAsFallback()
+    {
+        Student both = Add();
+        Assert.Equal(("rakesh@example.com", "Father"), (both.FeeContact!.Email, both.FeeContact.Relation));
+        Assert.Equal(("sunita@example.com", "Mother"), (both.AttendanceContact!.Email, both.AttendanceContact.Relation));
+
+        Student fatherOnly = NewStudent("Father Only");
+        fatherOnly.MotherEmail = "";
+        fatherOnly = Add(fatherOnly);
+        Assert.Equal("rakesh@example.com", fatherOnly.FeeContact!.Email);
+        Assert.Equal("rakesh@example.com", fatherOnly.AttendanceContact!.Email);
+
+        Student motherOnly = NewStudent("Mother Only");
+        motherOnly.FatherEmail = "";
+        motherOnly = Add(motherOnly);
+        Assert.Equal(("sunita@example.com", "Sunita Sharma"), (motherOnly.FeeContact!.Email, motherOnly.FeeContact.Name));
+        Assert.Equal("sunita@example.com", motherOnly.AttendanceContact!.Email);
+
+        Student none = NewStudent("No Email");
+        none.FatherEmail = none.MotherEmail = "";
+        none = Add(none);
+        Assert.Null(none.FeeContact);
+        Assert.Null(none.AttendanceContact);
     }
 
     [Theory]
@@ -125,18 +152,39 @@ public sealed class StudentServiceTests : TestDatabase
     }
 
     [Theory]
-    [InlineData("", "9812345678", "a@b.com", "parent or guardian's name")]
-    [InlineData("Rakesh", "", "a@b.com", "parent or guardian's mobile")]
-    [InlineData("Rakesh", "9812345678", "", "parent or guardian's email")]
-    [InlineData("Rakesh", "9812345678", "not-an-email", "valid email")]
-    public void Save_ParentNameMobileAndEmailAreRequired(string name, string mobile, string email, string expected)
+    [InlineData("", "9812345678", "", "", "", "father's name")]
+    [InlineData("Rakesh", "", "", "", "", "father's mobile")]
+    [InlineData("Rakesh", "98ab", "", "", "", "valid mobile number for the father")]
+    [InlineData("Rakesh", "9812345678", "not-an-email", "", "", "valid email address for the father")]
+    [InlineData("Rakesh", "9812345678", "", "12ab", "", "valid mobile number for the mother")]
+    [InlineData("Rakesh", "9812345678", "", "", "not-an-email", "valid email address for the mother")]
+    public void Save_FatherNameAndMobileAreRequired_EmailsAndMotherAreOptionalButChecked(string fatherName, string fatherMobile,
+        string fatherEmail, string motherMobile, string motherEmail, string expected)
     {
-        var parent = new Parent { ParentName = name, Mobile = mobile, Email = email };
+        Student student = NewStudent();
+        student.FatherName = fatherName;
+        student.FatherMobile = fatherMobile;
+        student.FatherEmail = fatherEmail;
+        student.MotherName = "";
+        student.MotherMobile = motherMobile;
+        student.MotherEmail = motherEmail;
 
-        var ex = Assert.Throws<ValidationException>(() => Add(parent: parent));
+        var ex = Assert.Throws<ValidationException>(() => Add(student));
 
         Assert.Contains(expected, ex.Message);
         Assert.Equal(0, Count("Student"));
+    }
+
+    [Fact]
+    public void Save_OnlyFatherNameAndMobile_IsEnough()
+    {
+        Student student = NewStudent();
+        student.FatherEmail = student.MotherName = student.MotherMobile = student.MotherEmail = "";
+
+        Student saved = Add(student);
+
+        Assert.Equal("Rakesh Sharma", saved.FatherName);
+        Assert.Null(saved.FeeContact);
     }
 
     [Theory]
@@ -185,7 +233,7 @@ public sealed class StudentServiceTests : TestDatabase
 
         student.CollegeId = otherCollege;
         var ex = Assert.Throws<ValidationException>(() =>
-            StudentService.Save(student, StudentService.GetPrimaryParent(student.StudentId)!));
+            StudentService.Save(student));
 
         Assert.Contains("another hostel", ex.Message);
     }
@@ -209,12 +257,11 @@ public sealed class StudentServiceTests : TestDatabase
     public void Save_ReplacingOrRemovingFiles_DeletesTheOldFiles()
     {
         Student student = Add(files: new StudentFileChanges(CreatePng("one.png"), NewAadhaarCardFile: CreatePdf()));
-        Parent parent = StudentService.GetPrimaryParent(student.StudentId)!;
         string oldPhoto = student.PhotoPath;
         string oldCard = student.AadhaarCardPath;
 
         Thread.Sleep(5);
-        Student updated = StudentService.Save(student, parent,
+        Student updated = StudentService.Save(student,
             new StudentFileChanges(CreatePng("two.png"), RemoveAadhaarCard: true));
 
         Assert.NotEqual(oldPhoto, updated.PhotoPath);
@@ -272,14 +319,13 @@ public sealed class StudentServiceTests : TestDatabase
     }
 
     [Fact]
-    public void Delete_NewStudent_RemovesStudentParentsAndFiles()
+    public void Delete_NewStudent_RemovesStudentAndFiles()
     {
         Student student = Add(files: new StudentFileChanges(CreatePng()));
 
         StudentService.Delete(student.StudentId);
 
         Assert.Equal(0, Count("Student"));
-        Assert.Equal(0, Count("Parent"));
         Assert.False(StudentFileService.Exists(student.PhotoPath));
     }
 

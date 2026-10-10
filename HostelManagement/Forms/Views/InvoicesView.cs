@@ -6,15 +6,21 @@ using HostelManagement.Utilities;
 
 namespace HostelManagement.Forms.Views;
 
-/// <summary>Invoices of the selected hostel: create, record a payment, view/print as PDF, save PDF and delete.</summary>
+/// <summary>
+/// Yearly invoices of the selected hostel (one per student per academic year, created at check-in or with
+/// New Year Fees): edit the fee, record a payment, view/print as PDF, save PDF, email and delete.
+/// </summary>
 public sealed class InvoicesView : UserControl
 {
     private const string AllStatuses = "All invoices";
+    private const string AllYears = "All years";
 
     private readonly Hostel _hostel;
     private readonly TextBox _searchBox;
     private readonly ComboBox _statusFilter;
+    private readonly ComboBox _yearFilter;
     private readonly DataGridView _grid;
+    private readonly Button _editFeeButton;
     private readonly Button _payButton;
     private readonly Button _viewButton;
     private readonly Button _saveButton;
@@ -40,13 +46,23 @@ public sealed class InvoicesView : UserControl
         _searchBox.TextChanged += (_, _) => ShowInvoices();
 
         _statusFilter = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 130, Margin = new Padding(0, 4, 16, 0) };
-        _statusFilter.Items.AddRange([AllStatuses, InvoiceStatus.Unpaid, InvoiceStatus.PartlyPaid, InvoiceStatus.Overdue, InvoiceStatus.Paid]);
+        _statusFilter.Items.AddRange([AllStatuses, InvoiceStatus.Unpaid, InvoiceStatus.PartlyPaid, InvoiceStatus.Paid]);
         _statusFilter.SelectedIndex = 0;
         _statusFilter.SelectedIndexChanged += (_, _) => ShowInvoices();
 
-        var createButton = new Button { Text = "Create" };
-        UiTheme.StylePrimaryButton(createButton);
-        createButton.Click += (_, _) => CreateInvoice();
+        _yearFilter = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 110, Margin = new Padding(0, 4, 16, 0) };
+        _yearFilter.Items.Add(AllYears);
+        _yearFilter.SelectedIndex = 0;
+        _yearFilter.SelectedIndexChanged += (_, _) => ShowInvoices();
+
+        var newYearButton = new Button { Text = "New Year Fees" };
+        UiTheme.StylePrimaryButton(newYearButton);
+        newYearButton.Width = 140;
+        newYearButton.Click += (_, _) => CreateNewYearFees();
+
+        _editFeeButton = new Button { Text = "Edit Fee" };
+        UiTheme.StyleSecondaryButton(_editFeeButton);
+        _editFeeButton.Click += (_, _) => EditSelectedFee();
 
         _payButton = new Button { Text = "Record Payment" };
         UiTheme.StyleSecondaryButton(_payButton);
@@ -73,21 +89,24 @@ public sealed class InvoicesView : UserControl
         _summaryLabel = FormFields.CreateMessageLabel();
         _summaryLabel.ForeColor = UiTheme.TextMuted;
 
+        FlowLayoutPanel filterRow = FormFields.CreateButtonRow(_searchBox, _statusFilter, _yearFilter, _summaryLabel);
+        filterRow.Dock = DockStyle.Top;
         FlowLayoutPanel toolbar = FormFields.CreateButtonRow(
-            _searchBox, _statusFilter, createButton, _payButton, _viewButton, _saveButton, _emailButton, _deleteButton, _summaryLabel);
+            newYearButton, _editFeeButton, _payButton, _viewButton, _saveButton, _emailButton, _deleteButton);
         toolbar.Dock = DockStyle.Top;
 
         _grid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
         UiTheme.StyleGrid(_grid);
         FormFields.AddGridColumn(_grid, nameof(Invoice.InvoiceNumber), "Invoice no.", 13);
-        FormFields.AddGridColumn(_grid, nameof(Invoice.InvoiceDate), "Date", 9, format: "dd MMM yyyy");
-        FormFields.AddGridColumn(_grid, nameof(Invoice.StudentName), "Student", 18);
-        FormFields.AddGridColumn(_grid, nameof(Invoice.PeriodText), "Billing period", 15);
-        FormFields.AddGridColumn(_grid, nameof(Invoice.DueDate), "Due date", 9, format: "dd MMM yyyy");
-        FormFields.AddGridColumn(_grid, nameof(Invoice.TotalAmount), "Total", 11, format: "C2", alignRight: true);
-        FormFields.AddGridColumn(_grid, nameof(Invoice.PaidAmount), "Paid", 11, format: "C2", alignRight: true);
-        FormFields.AddGridColumn(_grid, nameof(Invoice.PendingAmount), "Pending", 11, format: "C2", alignRight: true);
-        FormFields.AddGridColumn(_grid, nameof(Invoice.Status), "Status", 9);
+        FormFields.AddGridColumn(_grid, nameof(Invoice.YearText), "Year", 7);
+        FormFields.AddGridColumn(_grid, nameof(Invoice.StudentName), "Student", 17);
+        FormFields.AddGridColumn(_grid, nameof(Invoice.RoomRent), "Room rent", 10, format: "C2", alignRight: true);
+        FormFields.AddGridColumn(_grid, nameof(Invoice.TransportAmount), "Transport", 9, format: "C2", alignRight: true);
+        FormFields.AddGridColumn(_grid, nameof(Invoice.TotalAmount), "Total fee", 10, format: "C2", alignRight: true);
+        FormFields.AddGridColumn(_grid, nameof(Invoice.PaidAmount), "Paid", 10, format: "C2", alignRight: true);
+        FormFields.AddGridColumn(_grid, nameof(Invoice.PendingAmount), "Pending", 10, format: "C2", alignRight: true);
+        FormFields.AddGridColumn(_grid, nameof(Invoice.Status), "Status", 8);
+        FormFields.AddGridColumn(_grid, nameof(Invoice.InvoiceDate), "Date", 8, format: "dd MMM yyyy");
         _grid.CellDoubleClick += (_, e) =>
         {
             if (e.RowIndex >= 0)
@@ -100,6 +119,7 @@ public sealed class InvoicesView : UserControl
         var body = new Panel { Dock = DockStyle.Fill };
         body.Controls.Add(_grid);
         body.Controls.Add(toolbar);
+        body.Controls.Add(filterRow);
         Panel card = FormFields.CreateCard($"Invoices of {hostel.HostelName}", body);
         card.Dock = DockStyle.Fill;
         Controls.Add(card);
@@ -114,12 +134,25 @@ public sealed class InvoicesView : UserControl
         try
         {
             _invoices = InvoiceService.GetInvoices(_hostel.HostelId);
+            FillYearFilter();
             ShowInvoices(selectInvoiceId);
         }
         catch (Exception ex)
         {
             ErrorHandler.Handle(ex, "The invoices could not be loaded.");
         }
+    }
+
+    /// <summary>The academic years that have invoices, newest first, keeping the current choice.</summary>
+    private void FillYearFilter()
+    {
+        object? current = _yearFilter.SelectedItem;
+        _yearFilter.BeginUpdate();
+        _yearFilter.Items.Clear();
+        _yearFilter.Items.Add(AllYears);
+        _yearFilter.Items.AddRange(_invoices.Select(i => i.YearText).Distinct().OrderDescending().Cast<object>().ToArray());
+        _yearFilter.SelectedItem = current is not null && _yearFilter.Items.Contains(current) ? current : AllYears;
+        _yearFilter.EndUpdate();
     }
 
     private void ShowInvoices(int? selectInvoiceId = null)
@@ -134,9 +167,11 @@ public sealed class InvoicesView : UserControl
         }
         if (_statusFilter.SelectedItem is string status && status != AllStatuses)
         {
-            invoices = status == InvoiceStatus.Overdue
-                ? invoices.Where(i => i.IsOverdue)
-                : invoices.Where(i => i.Status == status);
+            invoices = invoices.Where(i => i.Status == status);
+        }
+        if (_yearFilter.SelectedItem is string year && year != AllYears)
+        {
+            invoices = invoices.Where(i => i.YearText == year);
         }
 
         List<Invoice> shown = invoices.ToList();
@@ -150,13 +185,15 @@ public sealed class InvoicesView : UserControl
             }
         }
 
-        _summaryLabel.Text = $"{shown.Count} invoices, pending {Money.Format(shown.Sum(i => i.PendingAmount))}";
+        _summaryLabel.Text = $"{shown.Count} invoices, total {Money.Format(shown.Sum(i => i.TotalAmount))}, " +
+                             $"paid {Money.Format(shown.Sum(i => i.PaidAmount))}, pending {Money.Format(shown.Sum(i => i.PendingAmount))}";
         UpdateButtons();
     }
 
     private void UpdateButtons()
     {
         bool hasSelection = SelectedInvoice is not null;
+        _editFeeButton.Enabled = hasSelection;
         _payButton.Enabled = SelectedInvoice is { PendingAmount: > 0 };
         _viewButton.Enabled = hasSelection;
         _saveButton.Enabled = hasSelection;
@@ -164,27 +201,43 @@ public sealed class InvoicesView : UserControl
         _deleteButton.Enabled = hasSelection;
     }
 
-    private void CreateInvoice()
+    /// <summary>Enters the fees of a new academic year for the students staying on.</summary>
+    private void CreateNewYearFees()
     {
         try
         {
-            List<Student> students = StudentService.GetStudents(_hostel.HostelId);
-            if (students.Count == 0)
-            {
-                Dialogs.Info("There are no students in this hostel yet.");
-                return;
-            }
-
-            using var dialog = new InvoiceCreateForm(_hostel, students);
+            using var dialog = new NewYearFeesForm(_hostel);
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 _searchBox.Clear();
-                LoadInvoices(dialog.CreatedInvoice?.InvoiceId);
+                LoadInvoices(dialog.CreatedInvoices.FirstOrDefault()?.InvoiceId);
             }
         }
         catch (Exception ex)
         {
-            ErrorHandler.Handle(ex, "The invoice could not be created.");
+            ErrorHandler.Handle(ex, "The new year fees could not be created.");
+        }
+    }
+
+    /// <summary>Changes the room rent or transport agreed for the selected invoice's year.</summary>
+    private void EditSelectedFee()
+    {
+        if (SelectedInvoice is not Invoice invoice)
+        {
+            return;
+        }
+
+        try
+        {
+            using var dialog = new FeeEditForm(invoice);
+            if (dialog.ShowDialog(this) == DialogResult.OK)
+            {
+                LoadInvoices(invoice.InvoiceId);
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorHandler.Handle(ex, "The fee could not be changed.");
         }
     }
 
@@ -256,7 +309,7 @@ public sealed class InvoicesView : UserControl
         }
     }
 
-    /// <summary>Emails the invoice PDF to the student's primary parent.</summary>
+    /// <summary>Emails the invoice PDF to the father (or the mother when the father has no email).</summary>
     private async Task EmailSelectedInvoice()
     {
         if (SelectedInvoice is not Invoice invoice)
