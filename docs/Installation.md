@@ -3,7 +3,8 @@ HOSTEL MANAGEMENT SYSTEM: INSTALLATION GUIDE
 
 What the hostel PC needs
 ------------------------
-- Windows 10 or Windows 11, 64 bit.
+- Windows 10 (version 1809 or later) or Windows 11, 64 bit.
+- Optional: a webcam (built in or USB) for Take Photo on the student form.
 - The Microsoft Access Database Engine, 64 bit. Microsoft Access itself is NOT needed.
   If the setup program reports that the engine is missing, download
   "Microsoft Access Database Engine 2016 Redistributable" from

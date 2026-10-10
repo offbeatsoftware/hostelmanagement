@@ -22,7 +22,7 @@ Hostel 1──* Room
   students to two hostels, it is added under each hostel.
 - A student belongs to a college and through it to the college's hostel (no separate hostel column, so the
   two can never disagree).
-- Rooms and their rent (per sharing type) belong to a hostel. Room numbers and college names only need to be
+- Rooms belong to a hostel; the rent is agreed per student (Invoice), not per room. Room numbers and college names only need to be
   unique within a hostel.
 
 ## Design principles
@@ -38,7 +38,7 @@ Hostel 1──* Room
 
 ## Schema version
 
-The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **12**).
+The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **13**).
 At startup the application refuses a database with an older or newer version and explains what to do,
 instead of failing later with confusing errors. Increase the version whenever a table or column changes.
 
@@ -56,6 +56,7 @@ instead of failing later with confusing errors. Increase the version whenever a 
 | 10 | AdminUser table (admin login with hashed password, email and phone) |
 | 11 | RoomAllocation.BedNumber (bed in the room, for the residency agreement) |
 | 12 | Attendance table (night attendance, absence emails to parents) |
+| 13 | Version 1.2 (client feedback): fee per student and academic year on Invoice (RoomRent, TransportAmount, AcademicYear, one per student and year); Student father and mother columns; removed Hostel.BillingFrequency, SharingType.Rent and the Parent, Service, StudentService and InvoiceItem tables |
 
 ## Tables
 
@@ -74,16 +75,13 @@ Any number of hostels.
 | Address | Text(255) | |
 | Phone | Text(20) | |
 | Email | Text(150) | |
-| BillingFrequency | Text(20) | Required: HalfYearly (twice a year) / Quarterly (4 times a year) |
 | CreatedDate | Date/Time | Required |
 | UpdatedDate | Date/Time | |
 
 A hostel can only be deleted when it has no colleges and no rooms.
 
-**Billing (client decisions, Phase 7):** rent is entered per **year** and billed in equal installments, twice
-or four times a year (chosen per hostel). Billing periods follow the academic year starting in **July**:
-Jul to Dec and Jan to Jun, or Jul to Sep, Oct to Dec, Jan to Mar and Apr to Jun. Extra services are charged
-per **month**.
+**Fees (client decisions, version 1.2):** the room rent and transport are agreed with each student for the
+academic year (July to June) and stored on the student's invoice for that year (see Invoice).
 
 ### College
 Colleges whose students stay in a hostel.
@@ -99,8 +97,8 @@ Colleges whose students stay in a hostel.
 A college cannot be deleted while students are linked to it.
 
 ### SharingType
-Single, Double and Triple sharing, added automatically for every new hostel with rent 0.
-Capacity always equals the sharing type and rent is per sharing type and hostel (client decisions).
+Single, Double and Triple sharing, added automatically for every new hostel. The sharing type only decides how
+many students fit in a room: capacity equals the sharing type (client decisions). It has no rent.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -108,7 +106,6 @@ Capacity always equals the sharing type and rent is per sharing type and hostel 
 | HostelId | Number | Required, → Hostel |
 | SharingName | Text(20) | Required, **unique within the hostel**: Single / Double / Triple |
 | Capacity | Number | Required: 1 / 2 / 3 |
-| Rent | Currency | Required; **yearly** rent per student, set by the admin on the Rooms screen |
 
 ### Room
 | Column | Type | Notes |
@@ -117,7 +114,7 @@ Capacity always equals the sharing type and rent is per sharing type and hostel 
 | HostelId | Number | Required, → Hostel |
 | RoomNumber | Text(20) | Required, **unique within the hostel** (also ignoring upper/lower case) |
 | Floor | Text(20) | Text so values like "Ground" are allowed |
-| SharingTypeId | Number | Required, → SharingType of the same hostel (gives the room's capacity and rent) |
+| SharingTypeId | Number | Required, → SharingType of the same hostel (gives the room's capacity) |
 | Gender | Text(10) | Required: Male / Female, shown as Boys / Girls; only students of that gender can be allocated |
 | IsActive | Yes/No | Active / inactive |
 | Remarks | Text(255) | |
@@ -139,6 +136,12 @@ instead). Students can only be allocated to an active room with a free bed.
 | ClassName | Text(50) | The specification's "Class" (renamed: `Class` is a risky name in Access SQL) |
 | Mobile | Text(20) | Required, indexed for search |
 | Email | Text(150) | |
+| FatherName | Text(150) | Required |
+| FatherMobile | Text(20) | Required |
+| FatherEmail | Text(150) | Invoices, receipts and fee reminders go here (to MotherEmail when empty) |
+| MotherName | Text(150) | |
+| MotherMobile | Text(20) | |
+| MotherEmail | Text(150) | Attendance emails go here (to FatherEmail when empty) |
 | PhotoPath | Text(255) | Relative to the application folder, e.g. `Photos\Students\S12_photo_20261005103000123.jpg` |
 | AadhaarNumber | Text(12) | Full 12 digit number (client decision), checked with the Verhoeff check digit, unique; shown masked (`XXXX XXXX 1234`) in lists |
 | AadhaarCardPath | Text(255) | Scanned Aadhaar card (PDF/JPG/PNG), e.g. `Documents\Students\S12_aadhaar_....pdf` |
@@ -149,23 +152,6 @@ instead). Students can only be allocated to an active room with a free bed.
 Files are copied into the application's folders under generated names (never the original file name),
 max 5 MB; photos must be readable images and PDFs must be real PDFs. A student with room, invoice, payment or
 email history cannot be deleted (set the status to Left instead).
-
-### Parent
-Parents/guardians; a student has at least one, and exactly one primary contact.
-
-| Column | Type | Notes |
-|---|---|---|
-| ParentId | AutoNumber | Primary key |
-| StudentId | Number | Required, → Student |
-| ParentName | Text(150) | Required |
-| Relationship | Text(50) | |
-| Mobile | Text(20) | Required |
-| Email | Text(150) | Required |
-| Address | Text(255) | |
-| IsPrimaryContact | Yes/No | Exactly one per student: receives invoice and reminder emails |
-
-The primary parent is entered together with the student; more guardians are added on the Parents / Guardians
-screen. A student's only parent cannot be deleted; deleting the primary contact makes another parent primary.
 
 ### RoomAllocation
 A student's stay in a room. The history is never deleted.
@@ -194,67 +180,32 @@ free bed is offered and can be changed; two current students can never share a b
 smaller than a bed in use. The residency agreement (editable text, stored in `AppSetting` as `Agreement.Text`)
 prints the room and bed.
 
-### Service
-Services of a hostel. Every new hostel gets Wi-Fi and Laundry (included in the rent) and Transport
-(extra, monthly rate to be set).
-
-| Column | Type | Notes |
-|---|---|---|
-| ServiceId | AutoNumber | Primary key |
-| HostelId | Number | Required, → Hostel |
-| ServiceName | Text(100) | Required, **unique within the hostel** |
-| IsIncludedInRent | Yes/No | Included in the rent (no charge) or charged extra |
-| MonthlyRate | Currency | Required; monthly charge per student for extra services, 0 when included |
-| IsActive | Yes/No | |
-
-A service in use cannot be made inactive or included in rent; a service any student has used cannot be deleted.
-
-### StudentService
-Extra services (such as transport) a student uses, for billing.
-
-| Column | Type | Notes |
-|---|---|---|
-| StudentServiceId | AutoNumber | Primary key |
-| StudentId | Number | Required, → Student |
-| ServiceId | Number | Required, → Service (an active extra service of the student's hostel) |
-| StartDate | Date/Time | Required; the admission date for a new student, otherwise the day it was ticked |
-| EndDate | Date/Time | Empty while in use; the day it was unticked |
-
 ### Invoice
+A student's fee for one academic year.
+
 | Column | Type | Notes |
 |---|---|---|
 | InvoiceId | AutoNumber | Primary key |
 | InvoiceNumber | Text(30) | Required, **unique** |
 | StudentId | Number | Required, → Student |
-| InvoiceDate | Date/Time | Required, indexed |
-| BillingFrom | Date/Time | Required |
-| BillingTo | Date/Time | Required |
-| TotalAmount | Currency | Required; equals the sum of the invoice items, saved together with them |
+| InvoiceDate | Date/Time | Required, indexed (the check-in date, or the day the fee was entered) |
+| AcademicYear | Number | Required: the year the academic year starts in (2026 = July 2026 to June 2027); **unique with StudentId** |
+| RoomRent | Currency | Required, more than 0: the room rent agreed with the student for the year |
+| TransportAmount | Currency | Required, 0 when the student does not use transport |
+| Remarks | Text(255) | |
 
-Rules (Phase 8):
-- One invoice per student per billing period of the hostel (twice or four times a year; the academic year starts in July).
-- Only a student who was in a room during the period can be invoiced.
-- Rent line = the room's yearly rent / 2 or / 4. A student who joins in the middle of a period pays the full installment.
-- Paid services (Transport) are charged per month used in the period; a part month counts as a full month.
-  Services included in the rent are listed at no charge. No GST, deposits or discounts.
+Rules (client decisions, version 1.2):
+- The fee is agreed per student, not per room type: two students in the same Double room can pay different amounts.
+- The invoice is created at check-in for the academic year of the check-in date, with the room rent and transport
+  the admin enters. The full amount is due even when the student joins mid-year. Every new academic year the admin
+  enters a new fee (New Year Fees). A transfer or check-out does not change the fee.
+- Total = RoomRent + TransportAmount (calculated). The student pays any amount any number of times; paid and pending
+  come from Payment. The admin can change the amounts (Edit Fee) but not below what is already paid.
+- There are no due dates or overdue amounts: the admin sends fee reminders whenever he wants.
 - Invoice number `SBH/2026-27/0001`: one running sequence per academic year, shared by all hostels so that every
-  number is unique.
+  number is unique. No GST, deposits or discounts.
 - An invoice can be deleted only while it has no payments and no emails.
-- Payment is due 15 days after the invoice date (calculated, not stored). An unpaid or partly paid invoice after
-  that date is **overdue**; no late fee is charged. Pending dues include students who have left (Phase 10).
-- Invoice PDFs are saved in the `Invoices` folder next to the application.
-
-### InvoiceItem
-Invoice lines (rent and each service).
-
-| Column | Type | Notes |
-|---|---|---|
-| InvoiceItemId | AutoNumber | Primary key |
-| InvoiceId | Number | Required, → Invoice |
-| Description | Text(150) | Required |
-| Quantity | Number | Required |
-| Rate | Currency | Required |
-| Amount | Currency | Required (Quantity × Rate at the time of invoicing) |
+- Invoice PDFs (with every payment, total paid and pending) are saved in the `Invoices` folder.
 
 ### Payment
 | Column | Type | Notes |
@@ -331,27 +282,29 @@ Application settings as key and value pairs (Phase 11).
 | SettingKey | Text(50) | Primary key, for example `Email.SenderEmail`, `Email.Invoice.Subject` |
 | SettingValue | Memo | The value. `Email.AppPassword` is encrypted with Windows (DPAPI) for the signed in Windows user, so after moving the database to another computer or Windows user it must be entered again |
 
-Email rules (Phase 11): one Gmail account for all hostels; invoices and receipts are emailed to the primary
-parent only when the admin clicks the button; reminders list only overdue invoices and attach their PDFs, for
-one student or for all overdue students at once. Every email is written to `EmailHistory`
-(`EmailType` Invoice / Receipt / DueReminder, `Status` Sent / Failed), one row per invoice it was about.
+Email rules: one Gmail account for all hostels; emails are sent only when the admin clicks a button, with a
+copy to the admin. Invoices, receipts and fee reminders go to the father (the mother when the father has no
+email), attendance emails to the mother (the father when the mother has no email). Fee reminders show the
+total, paid and pending amounts and attach the invoice PDFs, for the students the admin ticks. Every email is
+written to `EmailHistory` (`EmailType` Invoice / Receipt / DueReminder / Absence, `Status` Sent / Failed), one
+row per invoice it was about.
 
 ## Changes from the suggested design in the specification
 
 | Change | Reason |
 |---|---|
-| Invoice: removed `RentAmount`, `ServiceAmount` | Already held as invoice items. |
+| Invoice: `RentAmount` became `RoomRent`, `ServiceAmount` became `TransportAmount`; added `AcademicYear` | Version 1.2: one fee per student and academic year, agreed at check-in. |
 | Invoice: removed `PaidAmount`, `PendingAmount`, `Status` | Calculated from payments (Pending = Total − Payments), so they can never disagree. |
 | RoomAllocation: removed `SharingType` | Already held on the room. |
-| Several hostels: `HostelId` on College, SharingType and Room | Client decision: multiple hostels, each with its own colleges, rooms and rent. |
+| Several hostels: `HostelId` on College, SharingType and Room | Client decision: multiple hostels, each with its own colleges and rooms. |
 | Hostel: removed `CollegeName`, `CollegeAddress`; added College table | Students come from several colleges (client decision, Phase 3). |
 | Student: `CollegeName` became `CollegeId` | Each student is linked to a college from the list. |
 | Added `SchemaInfo` | Detects databases with an outdated layout. |
-| Room: `Capacity`, `SharingType`, `Rent` replaced by `SharingTypeId`; added SharingType table | Capacity equals the sharing type and rent is per sharing type (client decisions, Phase 4). |
+| Room: `Capacity`, `SharingType`, `Rent` replaced by `SharingTypeId`; added SharingType table | Capacity equals the sharing type; the rent is agreed per student (version 1.2). |
 | Room: `Status` became `IsActive` | The only stated statuses are active/inactive; occupancy is calculated. |
 | Student: `Class` became `ClassName` | Avoids an Access reserved word problem. |
 | Student: `AadhaarReference` became `AadhaarNumber` + `AadhaarCardPath` | Client decision: store the full number and a scan of the card. |
-| Parent: added `IsPrimaryContact` | Invoice and reminder emails need one recipient when a student has several parents. |
+| Parent table replaced by father and mother columns on Student | Version 1.2: the client records father and mother separately; fees go to the father, attendance to the mother. |
 | EmailHistory: added `InvoiceId` | Shows which invoice an email was about. |
 
 ## Changing the schema
@@ -359,6 +312,7 @@ one student or for all overdue students at once. Every email is written to `Emai
 1. Change `Data/DatabaseSchema.cs` and increase `DatabaseSchema.Version`.
 2. Push: the **Create database template** workflow rebuilds `HostelManagement/Database/HostelManagement.accdb`
    on Windows and commits it.
-3. While there is no real data, existing databases are replaced: close the application, delete
-   `Database\HostelManagement.accdb` next to the application and build/start it again (it says so itself).
+3. An existing database of an earlier version that has no hostel data yet is replaced automatically at start,
+   keeping the admin login and settings (Gmail account, attendance email text, agreement text, backup folder).
+   A database with data must be deleted by hand while there is no real data (the application says so).
    After go-live, schema changes will be applied with upgrade steps that keep the data.
