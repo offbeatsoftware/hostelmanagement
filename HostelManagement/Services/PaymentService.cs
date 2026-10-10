@@ -9,7 +9,8 @@ namespace HostelManagement.Services;
 public sealed record ReceiptPrintData(Payment Payment, Invoice Invoice, Hostel Hostel, Student Student);
 
 /// <summary>
-/// Payments (client decisions): every payment is made against a student's yearly invoice; the student pays
+/// Payments (client decisions): a payment entered wrongly can be corrected or deleted, and every correction is
+/// kept in the change history. Every payment is made against a student's yearly invoice; the student pays
 /// any amount any number of times, but never more than the amount still pending (no advance or extra payments); methods are cash,
 /// UPI, bank transfer and cheque, and every method except cash needs a reference. Each payment gets a
 /// receipt number such as SBH/R/2026-27/0001, one sequence per academic year of the payment date.
@@ -71,14 +72,137 @@ public static class PaymentService
         return PaymentRepository.Get(paymentId)!;
     }
 
-    /// <summary>Deletes a payment entered by mistake; the invoice's pending amount goes up again.</summary>
-    public static void Delete(int paymentId)
+    /// <summary>
+    /// Corrects a payment entered wrongly (client decision): date, amount, method, reference and remarks. The
+    /// receipt number stays the same, the amount can never be more than the fee still allows, and the change is
+    /// recorded in the payment's change history.
+    /// </summary>
+    public static Payment Update(Payment edited, string? reason = null)
+    {
+        Payment existing = PaymentRepository.Get(edited.PaymentId)
+            ?? throw new ValidationException("This payment no longer exists.");
+        var payment = new Payment
+        {
+            PaymentId = existing.PaymentId,
+            ReceiptNumber = existing.ReceiptNumber,
+            StudentId = existing.StudentId,
+            InvoiceId = existing.InvoiceId,
+            PaymentDate = edited.PaymentDate.Date,
+            Amount = edited.Amount,
+            PaymentMethod = Validators.Clean(edited.PaymentMethod),
+            Reference = Validators.Clean(edited.Reference),
+            Remarks = Validators.Clean(edited.Remarks),
+        };
+        Validate(payment);
+        string cleanReason = CleanReason(reason);
+
+        string details = DescribeChanges(existing, payment);
+        if (details.Length == 0)
+        {
+            throw new ValidationException("Nothing was changed.");
+        }
+
+        Invoice invoice = InvoiceService.GetInvoice(existing.InvoiceId)
+            ?? throw new ValidationException("The payment's invoice no longer exists.");
+        Db.InTransaction((connection, transaction) =>
+        {
+            // The other payments plus this one may not exceed the fee (read inside the transaction).
+            decimal otherPayments = PaymentRepository.GetPaidAmount(connection, transaction, invoice.InvoiceId) - existing.Amount;
+            decimal allowed = invoice.TotalAmount - otherPayments;
+            if (payment.Amount > allowed)
+            {
+                throw new ValidationException(
+                    $"The amount cannot be more than {Money.Format(allowed)}, the fee still open without this payment. " +
+                    "Advance or extra payments are not accepted.");
+            }
+
+            PaymentRepository.Update(connection, transaction, payment);
+            PaymentChangeRepository.Insert(connection, transaction, new PaymentChange
+            {
+                PaymentId = payment.PaymentId,
+                ReceiptNumber = payment.ReceiptNumber,
+                StudentId = payment.StudentId,
+                ChangeType = PaymentChangeType.Edited,
+                ChangedDate = DateTime.Now,
+                Details = details,
+                Reason = cleanReason,
+            });
+        });
+
+        AppLogger.Info($"Edited payment {payment.ReceiptNumber}: {details}");
+        return PaymentRepository.Get(payment.PaymentId)!;
+    }
+
+    /// <summary>
+    /// Deletes a payment entered by mistake; the invoice's pending amount goes up again. The deletion is recorded
+    /// in the change history with the payment's details.
+    /// </summary>
+    public static void Delete(int paymentId, string? reason = null)
     {
         Payment payment = PaymentRepository.Get(paymentId)
             ?? throw new ValidationException("This payment no longer exists.");
-        PaymentRepository.Delete(paymentId);
+        string cleanReason = CleanReason(reason);
+
+        Db.InTransaction((connection, transaction) =>
+        {
+            PaymentRepository.Delete(connection, transaction, paymentId);
+            PaymentChangeRepository.Insert(connection, transaction, new PaymentChange
+            {
+                PaymentId = payment.PaymentId,
+                ReceiptNumber = payment.ReceiptNumber,
+                StudentId = payment.StudentId,
+                ChangeType = PaymentChangeType.Deleted,
+                ChangedDate = DateTime.Now,
+                Details = $"Deleted {Money.Format(payment.Amount)} paid on {Date(payment.PaymentDate)} by {payment.PaymentMethod}" +
+                          (payment.Reference.Length > 0 ? $" (ref. {payment.Reference})" : "") +
+                          $", invoice {payment.InvoiceNumber}",
+                Reason = cleanReason,
+            });
+        });
         AppLogger.Info($"Deleted payment {payment.ReceiptNumber} of {payment.Amount} against invoice {payment.InvoiceNumber}.");
     }
+
+    /// <summary>Every correction and deletion of the hostel's payments, newest first.</summary>
+    public static List<PaymentChange> GetChanges(int hostelId) => PaymentChangeRepository.GetForHostel(hostelId);
+
+    /// <summary>The corrections of one payment, oldest first.</summary>
+    public static List<PaymentChange> GetChangesForPayment(int paymentId) => PaymentChangeRepository.GetForPayment(paymentId);
+
+    /// <summary>"Amount Rs. 10,000.00 to Rs. 12,000.00; Paid by Cash to UPI", or empty when nothing changed.</summary>
+    private static string DescribeChanges(Payment before, Payment after)
+    {
+        var parts = new List<string>();
+        if (before.PaymentDate.Date != after.PaymentDate.Date)
+        {
+            parts.Add($"Date {Date(before.PaymentDate)} to {Date(after.PaymentDate)}");
+        }
+        if (before.Amount != after.Amount)
+        {
+            parts.Add($"Amount {Money.Format(before.Amount)} to {Money.Format(after.Amount)}");
+        }
+        if (before.PaymentMethod != after.PaymentMethod)
+        {
+            parts.Add($"Paid by {before.PaymentMethod} to {after.PaymentMethod}");
+        }
+        if (before.Reference != after.Reference)
+        {
+            parts.Add($"Reference '{before.Reference}' to '{after.Reference}'");
+        }
+        if (before.Remarks != after.Remarks)
+        {
+            parts.Add("Remarks changed");
+        }
+        return string.Join("; ", parts);
+    }
+
+    private static string CleanReason(string? reason)
+    {
+        string clean = Validators.Clean(reason);
+        Validators.CheckLength(clean, 255, "Reason");
+        return clean;
+    }
+
+    private static string Date(DateTime date) => date.ToString("dd MMM yyyy", CultureInfo.InvariantCulture);
 
     /// <summary>Hostel, student and invoice details for printing the receipt.</summary>
     public static ReceiptPrintData GetReceiptData(int paymentId)

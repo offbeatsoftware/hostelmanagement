@@ -6,7 +6,10 @@ using HostelManagement.Utilities;
 
 namespace HostelManagement.Forms.Views;
 
-/// <summary>Payments of the selected hostel: record, view/print and save receipts, delete a payment entered by mistake.</summary>
+/// <summary>
+/// Payments of the selected hostel: record, view/print, save and email receipts, correct or delete a payment entered
+/// by mistake (every correction is kept in the change history).
+/// </summary>
 public sealed class PaymentsView : UserControl
 {
     private const string AllMethods = "All methods";
@@ -18,6 +21,7 @@ public sealed class PaymentsView : UserControl
     private readonly Button _viewButton;
     private readonly Button _saveButton;
     private readonly Button _emailButton;
+    private readonly Button _editButton;
     private readonly Button _deleteButton;
     private readonly Label _summaryLabel;
 
@@ -62,15 +66,26 @@ public sealed class PaymentsView : UserControl
         _emailButton.Width = 130;
         _emailButton.Click += async (_, _) => await EmailSelectedReceipt();
 
+        _editButton = new Button { Text = "Edit" };
+        UiTheme.StyleSecondaryButton(_editButton);
+        _editButton.Click += (_, _) => EditSelectedPayment();
+
         _deleteButton = new Button { Text = "Delete" };
         UiTheme.StyleDangerButton(_deleteButton);
         _deleteButton.Click += (_, _) => DeleteSelectedPayment();
 
+        var historyButton = new Button { Text = "Change History" };
+        UiTheme.StyleSecondaryButton(historyButton);
+        historyButton.Width = 140;
+        historyButton.Click += (_, _) => ShowChangeHistory();
+
         _summaryLabel = FormFields.CreateMessageLabel();
         _summaryLabel.ForeColor = UiTheme.TextMuted;
 
+        FlowLayoutPanel filterRow = FormFields.CreateButtonRow(_searchBox, _methodFilter, _summaryLabel);
+        filterRow.Dock = DockStyle.Top;
         FlowLayoutPanel toolbar = FormFields.CreateButtonRow(
-            _searchBox, _methodFilter, recordButton, _viewButton, _saveButton, _emailButton, _deleteButton, _summaryLabel);
+            recordButton, _editButton, _deleteButton, _viewButton, _saveButton, _emailButton, historyButton);
         toolbar.Dock = DockStyle.Top;
 
         _grid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
@@ -94,6 +109,7 @@ public sealed class PaymentsView : UserControl
         var body = new Panel { Dock = DockStyle.Fill };
         body.Controls.Add(_grid);
         body.Controls.Add(toolbar);
+        body.Controls.Add(filterRow);
         Panel card = FormFields.CreateCard($"Payments of {hostel.HostelName}", body);
         card.Dock = DockStyle.Fill;
         Controls.Add(card);
@@ -154,6 +170,7 @@ public sealed class PaymentsView : UserControl
         _viewButton.Enabled = hasSelection;
         _saveButton.Enabled = hasSelection;
         _emailButton.Enabled = hasSelection;
+        _editButton.Enabled = hasSelection;
         _deleteButton.Enabled = hasSelection;
     }
 
@@ -248,19 +265,23 @@ public sealed class PaymentsView : UserControl
         }
     }
 
-    private void DeleteSelectedPayment()
+    /// <summary>Corrects the selected payment (wrong amount, date, method or reference).</summary>
+    private void EditSelectedPayment()
     {
-        if (SelectedPayment is not Payment payment ||
-            !Dialogs.Confirm($"Delete payment {payment.ReceiptNumber} of {Money.Format(payment.Amount)} from {payment.StudentName}?\n\n" +
-                             $"The amount becomes pending again on invoice {payment.InvoiceNumber}."))
+        if (SelectedPayment is not Payment payment)
         {
             return;
         }
 
         try
         {
-            PaymentService.Delete(payment.PaymentId);
-            LoadPayments();
+            Invoice invoice = InvoiceService.GetInvoice(payment.InvoiceId)
+                ?? throw new ValidationException("The payment's invoice no longer exists.");
+            using var dialog = new PaymentEditForm(payment, invoice);
+            if (dialog.ShowDialog(this) == DialogResult.OK)
+            {
+                LoadPayments(payment.PaymentId);
+            }
         }
         catch (ValidationException ex)
         {
@@ -268,7 +289,44 @@ public sealed class PaymentsView : UserControl
         }
         catch (Exception ex)
         {
+            ErrorHandler.Handle(ex, "The payment could not be edited.");
+        }
+    }
+
+    /// <summary>Deletes the selected payment after asking for the reason; the amount becomes pending again.</summary>
+    private void DeleteSelectedPayment()
+    {
+        if (SelectedPayment is not Payment payment)
+        {
+            return;
+        }
+
+        try
+        {
+            using var dialog = new PaymentDeleteForm(payment);
+            if (dialog.ShowDialog(this) == DialogResult.OK)
+            {
+                LoadPayments();
+            }
+        }
+        catch (Exception ex)
+        {
             ErrorHandler.Handle(ex, "The payment could not be deleted.");
+        }
+    }
+
+    /// <summary>Every correction and deletion of this hostel's payments.</summary>
+    private void ShowChangeHistory()
+    {
+        try
+        {
+            using var dialog = new PaymentHistoryForm($"Payment change history: {_hostel.HostelName}",
+                PaymentService.GetChanges(_hostel.HostelId));
+            dialog.ShowDialog(this);
+        }
+        catch (Exception ex)
+        {
+            ErrorHandler.Handle(ex, "The change history could not be shown.");
         }
     }
 }

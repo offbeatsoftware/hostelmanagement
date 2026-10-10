@@ -38,9 +38,10 @@ Hostel 1──* Room
 
 ## Schema version
 
-The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **13**).
-At startup the application refuses a database with an older or newer version and explains what to do,
-instead of failing later with confusing errors. Increase the version whenever a table or column changes.
+The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **14**).
+From version 13 (application 1.2) on, an older database is **upgraded in place** at startup and keeps its data
+(`DatabaseSchema.FirstUpgradableVersion`). A database older than that, or newer than the application, is refused
+with an explanation instead of failing later with confusing errors. Increase the version whenever a table or column changes.
 
 | Version | Change |
 |---|---|
@@ -57,6 +58,7 @@ instead of failing later with confusing errors. Increase the version whenever a 
 | 11 | RoomAllocation.BedNumber (bed in the room, for the residency agreement) |
 | 12 | Attendance table (night attendance, absence emails to parents) |
 | 13 | Version 1.2 (client feedback): fee per student and academic year on Invoice (RoomRent, TransportAmount, AcademicYear, one per student and year); Student father and mother columns; removed Hostel.BillingFrequency, SharingType.Rent and the Parent, Service, StudentService and InvoiceItem tables |
+| 14 | PaymentChange table (history of corrected and deleted payments). Upgraded in place from 13, keeping the data |
 
 ## Tables
 
@@ -228,6 +230,23 @@ Rules (Phase 9):
 - Receipt number `SBH/R/2026-27/0001`: one running sequence per academic year of the payment date.
 - A payment entered by mistake can be deleted; its amount becomes pending again on the invoice.
 - Receipt PDFs (with the amount in words) are saved in the `Receipts` folder next to the application.
+
+### PaymentChange
+Every correction and deletion of a payment (client decision): wrong entries can be edited or deleted by the admin,
+and the change stays traceable.
+
+| Column | Type | Notes |
+|---|---|---|
+| PaymentChangeId | AutoNumber | Primary key |
+| PaymentId | Number | Required, indexed; no foreign key, so the row stays after the payment is deleted |
+| ReceiptNumber | Text(30) | Required |
+| StudentId | Number | Required, → Student |
+| ChangeType | Text(10) | Required: Edited / Deleted |
+| ChangedDate | Date/Time | Required |
+| Details | Text(255) | Required: old and new values, for example "Amount ₹10,000.00 to ₹12,000.00; Paid by Cash to UPI" |
+| Reason | Text(255) | The reason the admin typed |
+
+An edited payment keeps its receipt number; its amount can never be more than the fee less the other payments.
 
 ### EmailHistory
 | Column | Type | Notes |

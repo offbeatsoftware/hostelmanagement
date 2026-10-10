@@ -139,6 +139,109 @@ public sealed class PaymentServiceTests : TestDatabase
     }
 
     [Fact]
+    public void Update_CorrectsAWrongEntry_KeepsTheReceiptNumber_AndRecordsTheChange()
+    {
+        Invoice invoice = CreateInvoice();
+        Payment payment = Pay(invoice, 10_000m);
+
+        Payment corrected = PaymentService.Update(new Payment
+        {
+            PaymentId = payment.PaymentId,
+            PaymentDate = DateTime.Today.AddDays(-2),
+            Amount = 12_000m,
+            PaymentMethod = PaymentMethod.Upi,
+            Reference = "UPI778899",
+        }, "Wrong amount typed");
+
+        Assert.Equal(payment.ReceiptNumber, corrected.ReceiptNumber);
+        Assert.Equal(12_000m, corrected.Amount);
+        Assert.Equal(PaymentMethod.Upi, corrected.PaymentMethod);
+        Assert.Equal(48_000m, InvoiceService.GetInvoice(invoice.InvoiceId)!.PendingAmount);
+
+        PaymentChange change = Assert.Single(PaymentService.GetChangesForPayment(payment.PaymentId));
+        Assert.Equal(PaymentChangeType.Edited, change.ChangeType);
+        Assert.Equal("Wrong amount typed", change.Reason);
+        Assert.Contains("Amount ₹10,000.00 to ₹12,000.00", change.Details);
+        Assert.Contains("Paid by Cash to UPI", change.Details);
+        Assert.Contains("Reference '' to 'UPI778899'", change.Details);
+        Assert.Contains("Date ", change.Details);
+        Assert.Equal("Aman", change.StudentName);
+    }
+
+    [Fact]
+    public void Update_Rules()
+    {
+        Invoice invoice = CreateInvoice();
+        Payment first = Pay(invoice, 50_000m);
+        Payment second = Pay(invoice, 5_000m);
+        Payment Edit(decimal amount, string method = PaymentMethod.Cash, string reference = "", DateTime? date = null) =>
+            PaymentService.Update(new Payment
+            {
+                PaymentId = second.PaymentId, PaymentDate = date ?? second.PaymentDate, Amount = amount,
+                PaymentMethod = method, Reference = reference,
+            });
+
+        // 60,000 fee less the other payment of 50,000: at most 10,000.
+        Assert.Contains("cannot be more than ₹10,000.00", Assert.Throws<ValidationException>(() => Edit(10_000.01m)).Message);
+        Assert.Contains("Nothing was changed", Assert.Throws<ValidationException>(() => Edit(5_000m)).Message);
+        Assert.Contains("greater than zero", Assert.Throws<ValidationException>(() => Edit(0m)).Message);
+        Assert.Contains("future", Assert.Throws<ValidationException>(() => Edit(6_000m, date: DateTime.Today.AddDays(1))).Message);
+        Assert.Contains("cheque number", Assert.Throws<ValidationException>(() => Edit(6_000m, PaymentMethod.Cheque)).Message);
+        Assert.Contains("no longer exists", Assert.Throws<ValidationException>(() =>
+            PaymentService.Update(new Payment { PaymentId = 999_999, PaymentDate = DateTime.Today, Amount = 1m })).Message);
+
+        Assert.Equal(10_000m, Edit(10_000m).Amount);
+        Assert.Equal(0m, InvoiceService.GetInvoice(invoice.InvoiceId)!.PendingAmount);
+        Assert.Equal(50_000m, PaymentService.GetPaymentsForInvoice(invoice.InvoiceId).Single(p => p.PaymentId == first.PaymentId).Amount);
+        Assert.Single(PaymentService.GetChanges(HostelId));
+    }
+
+    [Fact]
+    public void Delete_IsRecordedInTheChangeHistoryWithTheReason()
+    {
+        Invoice invoice = CreateInvoice();
+        Payment payment = Pay(invoice, 7_500m, PaymentMethod.Cheque, "000321");
+
+        PaymentService.Delete(payment.PaymentId, "Entered twice");
+
+        Assert.Empty(PaymentService.GetPaymentsForInvoice(invoice.InvoiceId));
+        PaymentChange change = Assert.Single(PaymentService.GetChanges(HostelId));
+        Assert.Equal(PaymentChangeType.Deleted, change.ChangeType);
+        Assert.Equal(payment.ReceiptNumber, change.ReceiptNumber);
+        Assert.Equal("Entered twice", change.Reason);
+        Assert.Contains("Deleted ₹7,500.00", change.Details);
+        Assert.Contains("by Cheque (ref. 000321)", change.Details);
+        Assert.Throws<ValidationException>(() => StudentService.Delete(invoice.StudentId));
+    }
+
+    [Fact]
+    public void PaymentScreens_EditDeleteAndHistoryCanBeOpened()
+    {
+        Invoice invoice = CreateInvoice();
+        Payment payment = Pay(invoice, 1_000m);
+        PaymentService.Delete(Pay(invoice, 500m).PaymentId, "Test");
+        Invoice current = InvoiceService.GetInvoice(invoice.InvoiceId)!;
+        List<PaymentChange> changes = PaymentService.GetChanges(HostelId);
+
+        MainFormTests.RunOnStaThread(() =>
+        {
+            foreach (Form form in new Form[]
+                     {
+                         new PaymentEditForm(payment, current), new PaymentDeleteForm(payment),
+                         new PaymentHistoryForm("History", changes),
+                     })
+            {
+                using (form)
+                {
+                    form.Show();
+                    Application.DoEvents();
+                    form.Close();
+                }
+            }
+        });
+    }
+
+    [Fact]
     public void GetPayments_ShowsOnlyTheHostelsPayments_NewestFirst()
     {
         Invoice invoice = CreateInvoice();

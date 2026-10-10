@@ -199,6 +199,13 @@ public static class DatabaseInitializer
         }
 
         int version = Convert.ToInt32(stored);
+        if (version < DatabaseSchema.Version && version >= DatabaseSchema.FirstUpgradableVersion)
+        {
+            // Version 13 to 14 only added the PaymentChange table, created above; the data is kept.
+            Db.Execute(connection, null, "UPDATE [SchemaInfo] SET [Version] = ?", Db.Param("@Version", DatabaseSchema.Version));
+            AppLogger.Info($"Upgraded the database from version {version} to {DatabaseSchema.Version}.");
+            return;
+        }
         if (version < DatabaseSchema.Version)
         {
             throw new DatabaseException(OutdatedMessage);
@@ -228,7 +235,8 @@ public static class DatabaseInitializer
             if (existing.Contains("SchemaInfo"))
             {
                 object? stored = Db.Scalar(connection, null, "SELECT MAX([Version]) FROM [SchemaInfo]");
-                if (stored is null or DBNull || Convert.ToInt32(stored) >= DatabaseSchema.Version)
+                // From version 1.2 on, databases are upgraded in place instead of replaced.
+                if (stored is null or DBNull || Convert.ToInt32(stored) >= DatabaseSchema.FirstUpgradableVersion)
                 {
                     return false;
                 }

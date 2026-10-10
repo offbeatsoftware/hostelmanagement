@@ -33,7 +33,7 @@
 
 <div class="cover">
   <h1>Shri Balaji Hostel</h1>
-  <div class="subtitle">Hostel Management System: User Guide (version 1.2)</div>
+  <div class="subtitle">Hostel Management System: User Guide (version 1.2.1)</div>
   <img src="images/login.jpg" alt="Sign in screen">
 </div>
 
@@ -134,7 +134,13 @@
   <li>The pending amount is filled in; change it to the amount actually paid. The student can pay <b>any amount, any number of times</b>, but never more than the pending amount.</li>
   <li>Choose Cash, UPI, Bank transfer or Cheque. For everything except cash, enter the UPI transaction id, bank reference or cheque number.</li>
 </ol>
-<p>Each payment gets a receipt number such as <b>SBH/R/2026-27/0001</b>. On the <b>Payments</b> screen, <b class="ui">View / Print</b> opens the receipt (with the amount in words and the balance still pending) and <b class="ui">Email Receipt</b> sends it to the father (or the mother). A payment entered by mistake can be deleted; its amount becomes pending again.</p>
+<p>Each payment gets a receipt number such as <b>SBH/R/2026-27/0001</b>. On the <b>Payments</b> screen, <b class="ui">View / Print</b> opens the receipt (with the amount in words and the balance still pending) and <b class="ui">Email Receipt</b> sends it to the father (or the mother). </p>
+<h3>Correcting a wrong entry</h3>
+<ul>
+  <li><b class="ui">Edit</b>: select the payment and correct the date, amount, method, reference or remarks, and type the reason (for example "wrong amount typed"). The receipt number stays the same; the receipt PDF shows the corrected details. The amount can never be more than the fee less the other payments.</li>
+  <li><b class="ui">Delete</b>: for a payment entered by mistake (for example twice). Type the reason; the amount becomes pending again.</li>
+  <li><b class="ui">Change History</b>: every edit and deletion with the date and time, receipt, student, what changed (old and new values) and the reason. Deletions are shown in red.</li>
+</ul>
 
 <h2>8. Fee reminders</h2>
 <p><b>Fee Reminders</b> (under Billing) lists every student who still owes money, including students who have left, with the total fee, paid, pending, who the email goes to and when the last reminder was sent. There are no due dates: send a reminder whenever you want. Reminders are <b>never sent automatically</b>.</p>
@@ -194,7 +200,7 @@
   <tr><td>Academic year</td><td>July to June; shown as 2026-27.</td></tr>
   <tr><td>Fee</td><td>Agreed per student at check-in: room rent and transport for the year. One invoice per student per academic year; the full amount is due even when joining mid-year. A new fee every year (New Year Fees).</td></tr>
   <tr><td>Rooms</td><td>Boys or girls; the sharing type decides the number of beds only; one student per bed. Transfer and check-out on any day; they do not change the fee.</td></tr>
-  <tr><td>Payments</td><td>Any amount, any number of times, never more than pending. Balance = total fee minus everything paid. Reference required except for cash. No GST, deposit, discounts or late fee.</td></tr>
+  <tr><td>Payments</td><td>Any amount, any number of times, never more than pending. A wrong entry can be edited or deleted; every change is kept in the Change History. Balance = total fee minus everything paid. Reference required except for cash. No GST, deposit, discounts or late fee.</td></tr>
   <tr><td>Reminders</td><td>No due dates; the admin sends fee reminders whenever he wants, never automatically.</td></tr>
   <tr><td>Emails</td><td>Sent only when you click a button. Fees: father, else mother. Attendance: mother, else father. Copy to the admin.</td></tr>
   <tr><td>I-cards</td><td>Valid till 30 June of the academic year. Transport I-card only with transport in this year's fee.</td></tr>

@@ -22,7 +22,13 @@ public static class DatabaseSchema
     /// Increase by one whenever a table or column changes, so databases with an older
     /// layout are detected at startup. Stored in the SchemaInfo table.
     /// </summary>
-    public const int Version = 13;
+    public const int Version = 14;
+
+    /// <summary>
+    /// The oldest version that is upgraded in place, keeping its data (version 1.2 onwards). New tables are
+    /// added by the normal start up; a later version that changes a column must add an upgrade step for it.
+    /// </summary>
+    public const int FirstUpgradableVersion = 13;
 
     /// <summary>
     /// The sharing types added to every new hostel. A sharing type only decides how many students
@@ -176,6 +182,21 @@ public static class DatabaseSchema
             )
             """,
             "CREATE INDEX [IX_Payment_PaymentDate] ON [Payment] ([PaymentDate])"),
+
+        new("PaymentChange", """
+            CREATE TABLE [PaymentChange] (
+                [PaymentChangeId] COUNTER CONSTRAINT [PK_PaymentChange] PRIMARY KEY,
+                [PaymentId]       INTEGER NOT NULL,
+                [ReceiptNumber]   TEXT(30) NOT NULL,
+                [StudentId]       INTEGER NOT NULL,
+                [ChangeType]      TEXT(10) NOT NULL,
+                [ChangedDate]     DATETIME NOT NULL,
+                [Details]         TEXT(255) NOT NULL,
+                [Reason]          TEXT(255),
+                CONSTRAINT [FK_PaymentChange_Student] FOREIGN KEY ([StudentId]) REFERENCES [Student] ([StudentId])
+            )
+            """,
+            "CREATE INDEX [IX_PaymentChange_PaymentId] ON [PaymentChange] ([PaymentId])"),
 
         new("EmailHistory", """
             CREATE TABLE [EmailHistory] (

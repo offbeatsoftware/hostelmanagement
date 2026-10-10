@@ -43,7 +43,7 @@ public sealed class DatabaseInitializerTests : TestDatabase
         {
             Assert.Contains(table.Name, tables);
         }
-        Assert.Equal(13, DatabaseSchema.Tables.Count);
+        Assert.Equal(14, DatabaseSchema.Tables.Count);
     }
 
     [Fact]
@@ -73,7 +73,7 @@ public sealed class DatabaseInitializerTests : TestDatabase
     public void Initialize_OlderSchemaVersionWithData_IsRejected()
     {
         AddHostel("Boys Hostel");
-        Db.Execute("UPDATE [SchemaInfo] SET [Version] = ?", Db.Param("@Version", DatabaseSchema.Version - 1));
+        Db.Execute("UPDATE [SchemaInfo] SET [Version] = ?", Db.Param("@Version", DatabaseSchema.FirstUpgradableVersion - 1));
 
         var ex = Assert.Throws<DatabaseException>(DatabaseInitializer.Initialize);
 
@@ -83,7 +83,7 @@ public sealed class DatabaseInitializerTests : TestDatabase
     [Fact]
     public void Initialize_EmptyDatabaseOfAnOlderVersion_IsReplaced()
     {
-        Db.Execute("UPDATE [SchemaInfo] SET [Version] = ?", Db.Param("@Version", DatabaseSchema.Version - 1));
+        Db.Execute("UPDATE [SchemaInfo] SET [Version] = ?", Db.Param("@Version", DatabaseSchema.FirstUpgradableVersion - 1));
         Db.Execute("ALTER TABLE [RoomAllocation] DROP COLUMN [BedNumber]");
 
         DatabaseInitializer.Initialize();
@@ -105,7 +105,7 @@ public sealed class DatabaseInitializerTests : TestDatabase
             ["Email.Absence.Subject"] = "Absent: {StudentName}",
             ["Email.Reminder.Subject"] = "Overdue {Overdue}",
         });
-        Db.Execute("UPDATE [SchemaInfo] SET [Version] = ?", Db.Param("@Version", DatabaseSchema.Version - 1));
+        Db.Execute("UPDATE [SchemaInfo] SET [Version] = ?", Db.Param("@Version", DatabaseSchema.FirstUpgradableVersion - 1));
         Db.Execute("ALTER TABLE [Student] DROP COLUMN [MotherEmail]");
 
         DatabaseInitializer.Initialize();
@@ -119,6 +119,23 @@ public sealed class DatabaseInitializerTests : TestDatabase
         Assert.Equal("hostel@gmail.com", settings.SenderEmail);
         Assert.Equal("Absent: {StudentName}", settings.Absence.Subject);
         Assert.Equal(Models.EmailSettings.DefaultReminder, settings.Reminder);
+    }
+
+    [Fact]
+    public void Initialize_DatabaseOfVersion1_2_IsUpgradedInPlace_KeepingTheData()
+    {
+        AddStudent("Existing Student");
+        Services.AuthService.IsValidLogin("admin", "admin");
+        Services.AuthService.ChangePassword("admin", "Balaji@2026", "Balaji@2026");
+        Db.Execute("DROP TABLE [PaymentChange]");
+        Db.Execute("UPDATE [SchemaInfo] SET [Version] = ?", Db.Param("@Version", DatabaseSchema.FirstUpgradableVersion));
+
+        DatabaseInitializer.Initialize();
+
+        Assert.Equal(DatabaseSchema.Version, Convert.ToInt32(Db.Scalar("SELECT MAX([Version]) FROM [SchemaInfo]")));
+        Assert.Equal(1, Count("Student"));
+        Assert.Equal(0, Count("PaymentChange"));
+        Assert.True(Services.AuthService.IsValidLogin("admin", "Balaji@2026"));
     }
 
     [Fact]

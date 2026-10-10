@@ -54,8 +54,20 @@ public static class PaymentRepository
             Db.OptionalText("@Remarks", payment.Remarks),
             Db.Param("@CreatedDate", payment.CreatedDate));
 
-    public static void Delete(int paymentId) =>
-        Db.Execute("DELETE FROM [Payment] WHERE [PaymentId] = ?", Db.Param("@PaymentId", paymentId));
+    /// <summary>Changes a payment's date, amount, method, reference and remarks (the receipt number stays).</summary>
+    public static int Update(OleDbConnection connection, OleDbTransaction transaction, Payment payment) =>
+        Db.Execute(connection, transaction,
+            "UPDATE [Payment] SET [PaymentDate] = ?, [Amount] = ?, [PaymentMethod] = ?, [Reference] = ?, [Remarks] = ? " +
+            "WHERE [PaymentId] = ?",
+            Db.Param("@PaymentDate", payment.PaymentDate),
+            Db.Param("@Amount", payment.Amount),
+            Db.Param("@PaymentMethod", payment.PaymentMethod),
+            Db.OptionalText("@Reference", payment.Reference),
+            Db.OptionalText("@Remarks", payment.Remarks),
+            Db.Param("@PaymentId", payment.PaymentId));
+
+    public static int Delete(OleDbConnection connection, OleDbTransaction transaction, int paymentId) =>
+        Db.Execute(connection, transaction, "DELETE FROM [Payment] WHERE [PaymentId] = ?", Db.Param("@PaymentId", paymentId));
 
     private static Payment Map(IDataRecord record) => new()
     {
