@@ -84,7 +84,7 @@ public sealed class ReportsView : UserControl
             [AcademicYear.Label(year), AcademicYear.Label(year + 1), .. Enumerable.Range(1, 5).Select(i => AcademicYear.Label(year - i)),
              ReportService.AllOption]);
 
-        var filters = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 40, WrapContents = false, Padding = new Padding(0, 4, 0, 0) };
+        var filters = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = true, Padding = new Padding(0, 4, 0, 0) };
         AddFilter(filters, "From", _fromPicker, Payments);
         AddFilter(filters, "To", _toPicker, Payments);
         AddFilter(filters, "Year", _yearBox, InvoiceList);

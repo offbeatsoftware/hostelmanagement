@@ -164,6 +164,7 @@ public sealed class FeeRemindersView : UserControl
         emailBody.Controls.Add(_previewBox);
         emailBody.Controls.Add(_previewTitle);
         emailBody.Controls.Add(textButtons);
+        FormFields.FitHeightToText(fieldsLabel);
         emailBody.Controls.Add(fieldsLabel);
         emailBody.Controls.Add(_bodyBox);
         emailBody.Controls.Add(bodyLabel);

@@ -32,6 +32,8 @@ public sealed class DashboardView : UserControl
         {
             _tiles.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f / 6));
         }
+        // The one row fills the strip, so the tiles are as tall as the strip (not their default 100 pixels).
+        _tiles.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
         _chart = new PaymentsChart { Dock = DockStyle.Fill };
         Panel chartCard = FormFields.CreateCard(string.Empty, _chart);
@@ -58,6 +60,7 @@ public sealed class DashboardView : UserControl
         {
             lists.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33f));
         }
+        lists.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         lists.Controls.Add(ListCard("Highest pending fees", _pendingGrid, new Padding(0, 0, 6, 0)), 0, 0);
         lists.Controls.Add(ListCard("Latest payments", _paymentsGrid, new Padding(3, 0, 3, 0)), 1, 0);
         lists.Controls.Add(ListCard("Latest check-ins", _checkInsGrid, new Padding(6, 0, 0, 0)), 2, 0);

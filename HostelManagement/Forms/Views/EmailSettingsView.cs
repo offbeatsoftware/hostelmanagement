@@ -177,6 +177,7 @@ public sealed class EmailSettingsView : UserControl
         page.Controls.Add(messageLabel);
         page.Controls.Add(subject);
         page.Controls.Add(subjectLabel);
+        FormFields.FitHeightToText(fieldsLabel);
         page.Controls.Add(fieldsLabel);
         page.Controls.Add(restoreRow);
         return page;

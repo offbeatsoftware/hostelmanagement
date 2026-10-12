@@ -51,7 +51,7 @@ public static class FormFields
             Margin = new Padding(0, 8, 8, 4),
         };
         // A label must stay on one line ("Room number *" wrapped its asterisk): widen the column when needed.
-        int needed = TextRenderer.MeasureText(label.Text, label.Font).Width + label.Margin.Horizontal + 4;
+        int needed = label.PreferredWidth + label.Margin.Horizontal + 2;
         if (table.ColumnStyles[0] is { SizeType: SizeType.Absolute } column && column.Width < needed)
         {
             column.Width = needed;
@@ -153,13 +153,16 @@ public static class FormFields
         return stack;
     }
 
-    /// <summary>Horizontal row of buttons and other controls (search box, filters, messages).</summary>
+    /// <summary>
+    /// Horizontal row of buttons and other controls (search box, filters, messages). When the row is docked and
+    /// the window is too narrow, the controls continue on a second line instead of being cut off at the edge.
+    /// </summary>
     public static FlowLayoutPanel CreateButtonRow(params Control[] controls)
     {
         var row = new FlowLayoutPanel
         {
             AutoSize = true,
-            WrapContents = false,
+            WrapContents = true,
             Height = 46,
             Padding = new Padding(0, 6, 0, 6),
             Margin = Padding.Empty,
@@ -172,7 +175,46 @@ public static class FormFields
             }
             row.Controls.Add(control);
         }
+
+        // A message never runs past the edge: it wraps within the row (on a line of its own when needed).
+        List<(Label Label, int Limit)> messages = controls.OfType<Label>().Where(l => l.AutoSize)
+            .Select(l => (l, l.MaximumSize.Width)).ToList();
+        row.SizeChanged += (_, _) =>
+        {
+            int width = row.ClientSize.Width - row.Padding.Horizontal;
+            foreach ((Label label, int limit) in messages)
+            {
+                int max = width - label.Margin.Horizontal;
+                if (max < 120)
+                {
+                    continue;
+                }
+                max = limit > 0 ? Math.Min(limit, max) : max;
+                if (label.MaximumSize.Width != max)
+                {
+                    label.MaximumSize = new Size(max, 0);
+                }
+            }
+        };
         return row;
+    }
+
+    /// <summary>Keeps a docked label (help text) as tall as its wrapped text at the current width.</summary>
+    public static void FitHeightToText(Label label)
+    {
+        void Fit()
+        {
+            int width = Math.Max(label.ClientSize.Width - label.Padding.Horizontal, 1);
+            int height = TextRenderer.MeasureText(label.Text, label.Font, new Size(width, int.MaxValue),
+                TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl).Height + label.Padding.Vertical + 4;
+            if (label.Height != height)
+            {
+                label.Height = height;
+            }
+        }
+        label.Resize += (_, _) => Fit();
+        label.TextChanged += (_, _) => Fit();
+        label.FontChanged += (_, _) => Fit();
     }
 
     /// <summary>Adds a column bound to a model property. Pass a format such as "C2" for money.</summary>

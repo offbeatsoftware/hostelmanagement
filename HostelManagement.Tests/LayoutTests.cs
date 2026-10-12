@@ -139,9 +139,10 @@ internal static class LayoutChecker
         List<Control> visible = container.Controls.Cast<Control>().Where(c => c.Visible).ToList();
         foreach (Control control in visible)
         {
-            if (IsCutOff(form, control))
+            if (CutOffBy(form, control) is Control clip)
             {
-                problems.Add($"{screen}: {Describe(control)} is cut off by its panel");
+                problems.Add($"{screen}: {Describe(control)} {control.Size.Width}x{control.Size.Height} in " +
+                             $"{Describe(control.Parent!)} is cut off by {Describe(clip)} {clip.ClientSize.Width}x{clip.ClientSize.Height}");
             }
             if (TextDoesNotFit(control) is string text)
             {
@@ -184,32 +185,32 @@ internal static class LayoutChecker
     private static bool IsLeaf(Control control) =>
         control is Label or ButtonBase or TextBoxBase or ComboBox or DateTimePicker or NumericUpDown or PictureBox;
 
-    /// <summary>True when part of the control lies outside a container that cannot scroll to it.</summary>
-    private static bool IsCutOff(Form form, Control control)
+    /// <summary>The container that hides part of the control (and cannot scroll to it), else null.</summary>
+    private static Control? CutOffBy(Form form, Control control)
     {
         if (control.Width <= 0 || control.Height <= 0)
         {
-            return false;
+            return null;
         }
         Rectangle bounds = form.RectangleToClient(control.Parent!.RectangleToScreen(control.Bounds));
         for (Control? parent = control.Parent; parent is not null; parent = parent.Parent)
         {
             if (parent is ScrollableControl { AutoScroll: true } || parent is TabPage { AutoScroll: true })
             {
-                return false;
+                return null;
             }
             Rectangle visible = form.RectangleToClient(parent.RectangleToScreen(parent.ClientRectangle));
             if (bounds.Right > visible.Right + Tolerance || bounds.Bottom > visible.Bottom + Tolerance ||
                 bounds.Left < visible.Left - Tolerance || bounds.Top < visible.Top - Tolerance)
             {
-                return true;
+                return parent;
             }
             if (parent == form)
             {
                 break;
             }
         }
-        return false;
+        return null;
     }
 
     /// <summary>The text of a button, label or tick box that is wider or taller than the control, else null.</summary>
@@ -232,7 +233,8 @@ internal static class LayoutChecker
                 Size size = TextRenderer.MeasureText(text, control.Font);
                 return size.Width + 20 > control.Width ? text : null;
             }
-            case Label label when !label.AutoSize || label.MaximumSize != Size.Empty:
+            // An AutoSize label sizes itself (it can only be cut off by its panel, checked above).
+            case Label label when !label.AutoSize:
             {
                 int width = Math.Max(label.ClientSize.Width - label.Padding.Horizontal, 1);
                 Size size = TextRenderer.MeasureText(text, label.Font, new Size(width, int.MaxValue),
@@ -258,8 +260,8 @@ internal static class LayoutChecker
         {
             return false;
         }
-        Size oneLine = TextRenderer.MeasureText(label.Text, label.Font);
-        return label.Width + Tolerance < oneLine.Width + label.Padding.Horizontal;
+        // The label's own one line width, measured the way the label draws its text.
+        return label.Width + Tolerance < label.GetPreferredSize(Size.Empty).Width;
     }
 
     /// <summary>The first item of a list that is wider than the list, else null.</summary>

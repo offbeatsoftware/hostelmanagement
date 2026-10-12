@@ -236,6 +236,8 @@ public partial class MainForm : Form
         pageTitleLabel.ForeColor = UiTheme.TextPrimary;
         pageDescriptionLabel.Font = UiTheme.SubHeadingFont;
         pageDescriptionLabel.ForeColor = UiTheme.TextMuted;
+        // One line under the title; on a narrow window it ends with "..." instead of being cut in half.
+        pageDescriptionLabel.AutoEllipsis = true;
 
         contentPanel.BackColor = UiTheme.ContentBackground;
     }

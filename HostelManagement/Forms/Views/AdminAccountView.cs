@@ -19,6 +19,7 @@ public sealed class AdminAccountView : UserControl
     public AdminAccountView()
     {
         Dock = DockStyle.Fill;
+        AutoScroll = true;
         BackColor = UiTheme.ContentBackground;
 
         // ---- Contact details ----

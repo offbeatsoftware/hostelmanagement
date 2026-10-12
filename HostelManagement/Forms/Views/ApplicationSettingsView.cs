@@ -46,6 +46,7 @@ public sealed class ApplicationSettingsView : UserControl
             Font = UiTheme.BodyFont,
             ForeColor = UiTheme.TextMuted,
             Margin = new Padding(12, 9, 0, 0),
+            MaximumSize = new Size(560, 0),
             Text = "Checks that the application can open the database and add, read, update and delete a record. " +
                    "No data is changed.",
         };
@@ -53,9 +54,9 @@ public sealed class ApplicationSettingsView : UserControl
         var buttonRow = new FlowLayoutPanel
         {
             Dock = DockStyle.Top,
-            Height = 50,
-            Padding = new Padding(0, 8, 0, 0),
-            WrapContents = false,
+            AutoSize = true,
+            Padding = new Padding(0, 8, 0, 8),
+            WrapContents = true,
         };
         var guideButton = new Button { Text = "User Guide", TabIndex = 1 };
         UiTheme.StyleSecondaryButton(guideButton);
