@@ -119,7 +119,8 @@ public sealed class AllocationServiceTests : TestDatabase
     [Fact]
     public void CheckIn_StudentWithoutGender_IsRejected()
     {
-        int student = NewStudent("No Gender", gender: "");
+        // Only a student saved before version 1.3 can have no gender.
+        int student = AddStudent("No Gender");
 
         var ex = Assert.Throws<ValidationException>(() =>
             AllocationService.CheckIn(student, NewRoom("101").RoomId, DateTime.Today));

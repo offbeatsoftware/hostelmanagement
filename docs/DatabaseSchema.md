@@ -38,7 +38,7 @@ Hostel 1──* Room
 
 ## Schema version
 
-The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **15**).
+The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **16**).
 From version 13 (application 1.2) on, an older database is **upgraded in place** at startup and keeps its data
 (`DatabaseSchema.FirstUpgradableVersion`). A database older than that, or newer than the application, is refused
 with an explanation instead of failing later with confusing errors. Increase the version whenever a table or column changes.
@@ -59,7 +59,8 @@ with an explanation instead of failing later with confusing errors. Increase the
 | 12 | Attendance table (night attendance, absence emails to parents) |
 | 13 | Version 1.2 (client feedback): fee per student and academic year on Invoice (RoomRent, TransportAmount, AcademicYear, one per student and year); Student father and mother columns; removed Hostel.BillingFrequency, SharingType.Rent and the Parent, Service, StudentService and InvoiceItem tables |
 | 14 | PaymentChange table (history of corrected and deleted payments). Upgraded in place from 13, keeping the data |
-| 15 | Version 1.3: only the student's name and gender are required. Student.HostelId added (filled in from the college on upgrade); CollegeId, Mobile, FatherName and FatherMobile may be empty. Upgraded in place from 13 and 14, keeping the data |
+| 15 | Version 1.3: Student.HostelId added (filled in from the college on upgrade) |
+| 16 | Version 1.3: Student CollegeId, Mobile, FatherName and FatherMobile may be empty (rebuilt, since Access keeps a column required through ALTER COLUMN). Upgraded in place from 13, 14 and 15, keeping the data |
 
 ## Tables
 

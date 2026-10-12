@@ -70,10 +70,13 @@ public sealed class StudentServiceTests : TestDatabase
     [Fact]
     public void GetStudents_ShowsOnlyTheHostelsStudentsWithFatherDetails()
     {
-        int otherCollege = AddCollege(AddHostel("Other Hostel"), "Other College");
+        int otherHostel = AddHostel("Other Hostel");
+        int otherCollege = AddCollege(otherHostel, "Other College");
         Add(NewStudent("Zoya"));
         Add(NewStudent("Aman"));
-        Add(NewStudent("Elsewhere", collegeId: otherCollege));
+        Student elsewhere = NewStudent("Elsewhere", collegeId: otherCollege);
+        elsewhere.HostelId = otherHostel;
+        Add(elsewhere);
 
         List<Student> students = StudentService.GetStudents(HostelId);
 

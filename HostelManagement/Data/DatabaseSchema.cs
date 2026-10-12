@@ -22,7 +22,7 @@ public static class DatabaseSchema
     /// Increase by one whenever a table or column changes, so databases with an older
     /// layout are detected at startup. Stored in the SchemaInfo table.
     /// </summary>
-    public const int Version = 15;
+    public const int Version = 16;
 
     /// <summary>
     /// The oldest version that is upgraded in place, keeping its data (version 1.2 onwards). New tables are

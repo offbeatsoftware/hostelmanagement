@@ -206,6 +206,10 @@ public static class DatabaseInitializer
             {
                 UpgradeStudentsToVersion15(connection);
             }
+            if (version < 16)
+            {
+                UpgradeStudentsToVersion16(connection);
+            }
             Db.Execute(connection, null, "UPDATE [SchemaInfo] SET [Version] = ?", Db.Param("@Version", DatabaseSchema.Version));
             AppLogger.Info($"Upgraded the database from version {version} to {DatabaseSchema.Version}.");
             return;
@@ -223,33 +227,50 @@ public static class DatabaseInitializer
     }
 
     /// <summary>
-    /// Version 15 (client decision): only the student's name and gender are required. The student now keeps the
-    /// hostel itself (it came from the college, which is optional now), filled in from the college; college,
-    /// mobile and the father's name and mobile may be empty. A column that is part of an index or a relationship
-    /// cannot be changed, so those are dropped first and made again afterwards.
+    /// Version 15 (client decision, version 1.3): the student keeps the hostel itself (it came from the college,
+    /// which becomes optional), filled in from the college.
     /// </summary>
     private static void UpgradeStudentsToVersion15(OleDbConnection connection)
     {
-        string[] steps =
-        [
-            "ALTER TABLE [Student] ADD COLUMN [HostelId] INTEGER",
-            "UPDATE [Student] AS s INNER JOIN [College] AS c ON s.[CollegeId] = c.[CollegeId] SET s.[HostelId] = c.[HostelId]",
-            "ALTER TABLE [Student] ADD CONSTRAINT [FK_Student_Hostel] FOREIGN KEY ([HostelId]) REFERENCES [Hostel] ([HostelId])",
-            "CREATE INDEX [IX_Student_HostelId] ON [Student] ([HostelId])",
-            "ALTER TABLE [Student] DROP CONSTRAINT [FK_Student_College]",
-            "DROP INDEX [IX_Student_Mobile] ON [Student]",
-            "ALTER TABLE [Student] ALTER COLUMN [CollegeId] INTEGER",
-            "ALTER TABLE [Student] ALTER COLUMN [Mobile] TEXT(20)",
-            "ALTER TABLE [Student] ALTER COLUMN [FatherName] TEXT(150)",
-            "ALTER TABLE [Student] ALTER COLUMN [FatherMobile] TEXT(20)",
-            "CREATE INDEX [IX_Student_Mobile] ON [Student] ([Mobile])",
-            "ALTER TABLE [Student] ADD CONSTRAINT [FK_Student_College] FOREIGN KEY ([CollegeId]) REFERENCES [College] ([CollegeId])",
-        ];
-        foreach (string step in steps)
+        foreach (string step in new[]
+                 {
+                     "ALTER TABLE [Student] ADD COLUMN [HostelId] INTEGER",
+                     "UPDATE [Student] AS s INNER JOIN [College] AS c ON s.[CollegeId] = c.[CollegeId] SET s.[HostelId] = c.[HostelId]",
+                     "ALTER TABLE [Student] ADD CONSTRAINT [FK_Student_Hostel] FOREIGN KEY ([HostelId]) REFERENCES [Hostel] ([HostelId])",
+                     "CREATE INDEX [IX_Student_HostelId] ON [Student] ([HostelId])",
+                 })
         {
             Db.Execute(connection, null, step);
         }
-        AppLogger.Info("Students now keep their hostel; college, mobile and father's details are optional.");
+        AppLogger.Info("Students now keep their hostel.");
+    }
+
+    /// <summary>
+    /// Version 16: only the student's name and gender are required, so the college, mobile and father's name and
+    /// mobile may be empty. Access keeps a column required through ALTER COLUMN (version 15 tried that), so each
+    /// column is copied aside, dropped, added again without the requirement and filled back. The index and the
+    /// relationship on a column are dropped first and made again afterwards.
+    /// </summary>
+    private static void UpgradeStudentsToVersion16(OleDbConnection connection)
+    {
+        Db.Execute(connection, null, "ALTER TABLE [Student] DROP CONSTRAINT [FK_Student_College]");
+        Db.Execute(connection, null, "DROP INDEX [IX_Student_Mobile] ON [Student]");
+        foreach ((string column, string type) in new[]
+                 {
+                     ("CollegeId", "INTEGER"), ("Mobile", "TEXT(20)"), ("FatherName", "TEXT(150)"), ("FatherMobile", "TEXT(20)"),
+                 })
+        {
+            Db.Execute(connection, null, $"ALTER TABLE [Student] ADD COLUMN [Old{column}] {type}");
+            Db.Execute(connection, null, $"UPDATE [Student] SET [Old{column}] = [{column}]");
+            Db.Execute(connection, null, $"ALTER TABLE [Student] DROP COLUMN [{column}]");
+            Db.Execute(connection, null, $"ALTER TABLE [Student] ADD COLUMN [{column}] {type}");
+            Db.Execute(connection, null, $"UPDATE [Student] SET [{column}] = [Old{column}]");
+            Db.Execute(connection, null, $"ALTER TABLE [Student] DROP COLUMN [Old{column}]");
+        }
+        Db.Execute(connection, null, "CREATE INDEX [IX_Student_Mobile] ON [Student] ([Mobile])");
+        Db.Execute(connection, null,
+            "ALTER TABLE [Student] ADD CONSTRAINT [FK_Student_College] FOREIGN KEY ([CollegeId]) REFERENCES [College] ([CollegeId])");
+        AppLogger.Info("Student college, mobile and father's name and mobile are optional.");
     }
 
     /// <summary>

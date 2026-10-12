@@ -240,7 +240,7 @@ public sealed class InvoiceServiceTests : TestDatabase
     [InlineData("2026-06-30", 2025, "2025-2026")]
     [InlineData("2026-07-01", 2026, "2026-2027")]
     [InlineData("2027-03-15", 2026, "2026-2027")]
-    [InlineData("2099-12-31", 2099, "2099-00")]
+    [InlineData("2099-12-31", 2099, "2099-2100")]
     public void AcademicYear_RunsFromJulyToJune(string date, int year, string label)
     {
         DateTime day = DateTime.Parse(date, System.Globalization.CultureInfo.InvariantCulture);
