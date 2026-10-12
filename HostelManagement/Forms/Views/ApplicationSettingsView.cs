@@ -34,6 +34,18 @@ public sealed class ApplicationSettingsView : UserControl
         AddInfoRow(infoTable, "Database file", AppPaths.DatabaseFile);
         AddInfoRow(infoTable, "Database engine", Db.ProviderName);
         _fileSizeValue = AddInfoRow(infoTable, "File size", string.Empty);
+        // A long folder path wraps within its column (never past the edge) and stays readable in full.
+        infoTable.SizeChanged += (_, _) =>
+        {
+            int width = infoTable.ClientSize.Width - infoTable.Padding.Horizontal - 140;
+            foreach (Label value in infoTable.Controls.OfType<Label>().Where(l => infoTable.GetPositionFromControl(l).Column == 1))
+            {
+                if (width > 100 && value.MaximumSize.Width != width)
+                {
+                    value.MaximumSize = new Size(width, 0);
+                }
+            }
+        };
 
         _testButton = new Button { Text = "Test Database", TabIndex = 0 };
         UiTheme.StylePrimaryButton(_testButton);
