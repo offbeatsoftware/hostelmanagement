@@ -147,6 +147,14 @@ internal static class LayoutChecker
             {
                 problems.Add($"{screen}: {Describe(control)} cannot show its text ({text})");
             }
+            if (WrapsUnexpectedly(control))
+            {
+                problems.Add($"{screen}: {Describe(control)} breaks onto a second line (its column is too narrow)");
+            }
+            if (control is ListBox list && WidestItemDoesNotFit(list) is string item)
+            {
+                problems.Add($"{screen}: list {Describe(list)} cuts off '{item}'");
+            }
         }
 
         List<Control> leaves = visible.Where(IsLeaf).ToList();
@@ -237,6 +245,37 @@ internal static class LayoutChecker
             default:
                 return null;
         }
+    }
+
+    /// <summary>
+    /// A one line label (AutoSize, no MaximumSize, no line breaks) squeezed by a table cell wraps its text:
+    /// "Room number *" showed its asterisk on a second line.
+    /// </summary>
+    private static bool WrapsUnexpectedly(Control control)
+    {
+        if (control is not Label { AutoSize: true } label || label.MaximumSize != Size.Empty ||
+            label.Text.Length == 0 || label.Text.Contains('\n'))
+        {
+            return false;
+        }
+        Size oneLine = TextRenderer.MeasureText(label.Text, label.Font);
+        return label.Width + Tolerance < oneLine.Width + label.Padding.Horizontal;
+    }
+
+    /// <summary>The first item of a list that is wider than the list, else null.</summary>
+    private static string? WidestItemDoesNotFit(ListBox list)
+    {
+        // Owner drawn lists (the report list) draw their text 8 pixels in.
+        int indent = list.DrawMode == DrawMode.Normal ? 2 : 8;
+        foreach (object item in list.Items)
+        {
+            string text = list.GetItemText(item);
+            if (TextRenderer.MeasureText(text, list.Font).Width + indent > list.ClientSize.Width)
+            {
+                return text;
+            }
+        }
+        return null;
     }
 
     private static string Describe(Control control)

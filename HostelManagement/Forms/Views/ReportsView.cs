@@ -53,7 +53,10 @@ public sealed class ReportsView : UserControl
         _reportList.DrawItem += DrawReportItem;
         Panel listCard = FormFields.CreateCard("Report", _reportList);
         listCard.Dock = DockStyle.Left;
-        listCard.Width = 170;
+        // Wide enough for the longest report name (drawn 8 px in), plus room for a scroll bar.
+        int longest = _reportList.Items.Cast<object>()
+            .Max(item => TextRenderer.MeasureText(item.ToString(), UiTheme.BodyFont).Width);
+        listCard.Width = Math.Max(200, longest + 8 + SystemInformation.VerticalScrollBarWidth + listCard.Padding.Horizontal + 12);
 
         // ---- Filters (only those of the chosen report are shown) ----
         DateTime today = DateTime.Today;

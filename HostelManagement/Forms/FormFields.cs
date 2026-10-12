@@ -50,6 +50,12 @@ public static class FormFields
             AutoSize = true,
             Margin = new Padding(0, 8, 8, 4),
         };
+        // A label must stay on one line ("Room number *" wrapped its asterisk): widen the column when needed.
+        int needed = TextRenderer.MeasureText(label.Text, label.Font).Width + label.Margin.Horizontal + 4;
+        if (table.ColumnStyles[0] is { SizeType: SizeType.Absolute } column && column.Width < needed)
+        {
+            column.Width = needed;
+        }
         table.RowCount++;
         table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         table.Controls.Add(label, 0, table.RowCount - 1);
