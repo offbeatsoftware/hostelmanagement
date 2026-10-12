@@ -89,6 +89,7 @@ public sealed class LayoutTests : TestDatabase
                 ("Record payment", () => new PaymentForm(pending, invoice.InvoiceId)),
                 ("Edit payment", () => new PaymentEditForm(payment, invoice)),
                 ("Delete payment", () => new PaymentDeleteForm(payment)),
+                ("Payment remarks", () => new PaymentRemarksForm(payment)),
                 ("Payment history", () => new PaymentHistoryForm("Payment change history", changes)),
                 ("Take photo", () => new CameraForm()),
             };

@@ -23,6 +23,7 @@ public sealed class PaymentsView : UserControl
     private readonly Button _emailButton;
     private readonly Button _editButton;
     private readonly Button _deleteButton;
+    private readonly Button _remarksButton;
     private readonly Label _summaryLabel;
 
     private List<Payment> _payments = [];
@@ -36,8 +37,8 @@ public sealed class PaymentsView : UserControl
         _searchBox = new TextBox
         {
             Font = UiTheme.BodyFont,
-            Width = 220,
-            PlaceholderText = "Search receipt, invoice or student",
+            Width = 280,
+            PlaceholderText = "Search receipt, invoice, student or remarks",
             Margin = new Padding(0, 4, 8, 0),
         };
         _searchBox.TextChanged += (_, _) => ShowPayments();
@@ -74,6 +75,11 @@ public sealed class PaymentsView : UserControl
         UiTheme.StyleDangerButton(_deleteButton);
         _deleteButton.Click += (_, _) => DeleteSelectedPayment();
 
+        _remarksButton = new Button { Text = "View Remarks" };
+        UiTheme.StyleSecondaryButton(_remarksButton);
+        _remarksButton.Width = 130;
+        _remarksButton.Click += (_, _) => ShowSelectedRemarks();
+
         var historyButton = new Button { Text = "Change History" };
         UiTheme.StyleSecondaryButton(historyButton);
         historyButton.Width = 140;
@@ -85,7 +91,7 @@ public sealed class PaymentsView : UserControl
         FlowLayoutPanel filterRow = FormFields.CreateButtonRow(_searchBox, _methodFilter, _summaryLabel);
         filterRow.Dock = DockStyle.Top;
         FlowLayoutPanel toolbar = FormFields.CreateButtonRow(
-            recordButton, _editButton, _deleteButton, _viewButton, _saveButton, _emailButton, historyButton);
+            recordButton, _editButton, _deleteButton, _viewButton, _saveButton, _emailButton, _remarksButton, historyButton);
         toolbar.Dock = DockStyle.Top;
 
         _grid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
@@ -97,6 +103,8 @@ public sealed class PaymentsView : UserControl
         FormFields.AddGridColumn(_grid, nameof(Payment.PaymentMethod), "Paid by", 9);
         FormFields.AddGridColumn(_grid, nameof(Payment.Reference), "Reference", 13);
         FormFields.AddGridColumn(_grid, nameof(Payment.Amount), "Amount", 11, format: "C2", alignRight: true);
+        // Long remarks end with "..." in the list; View Remarks shows them in full.
+        FormFields.AddGridColumn(_grid, nameof(Payment.Remarks), "Remarks", 16);
         _grid.CellDoubleClick += (_, e) =>
         {
             if (e.RowIndex >= 0)
@@ -142,6 +150,7 @@ public sealed class PaymentsView : UserControl
                 p.ReceiptNumber.Contains(search, StringComparison.OrdinalIgnoreCase) ||
                 p.InvoiceNumber.Contains(search, StringComparison.OrdinalIgnoreCase) ||
                 p.Reference.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                p.Remarks.Contains(search, StringComparison.CurrentCultureIgnoreCase) ||
                 p.StudentName.Contains(search, StringComparison.CurrentCultureIgnoreCase));
         }
         if (_methodFilter.SelectedItem is string method && method != AllMethods)
@@ -172,6 +181,17 @@ public sealed class PaymentsView : UserControl
         _emailButton.Enabled = hasSelection;
         _editButton.Enabled = hasSelection;
         _deleteButton.Enabled = hasSelection;
+        _remarksButton.Enabled = hasSelection;
+    }
+
+    /// <summary>Shows the selected payment's full remarks in a popup.</summary>
+    private void ShowSelectedRemarks()
+    {
+        if (SelectedPayment is Payment payment)
+        {
+            using var dialog = new PaymentRemarksForm(payment);
+            dialog.ShowDialog(this);
+        }
     }
 
     private void RecordPayment()
