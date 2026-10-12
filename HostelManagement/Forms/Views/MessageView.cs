@@ -12,14 +12,14 @@ public sealed class MessageView : UserControl
 
         var text = new Label
         {
-            Dock = DockStyle.Fill,
+            AutoSize = true,
+            MaximumSize = new Size(820, 0),
+            Margin = new Padding(0, 0, 0, 6),
             Font = UiTheme.BodyFont,
             ForeColor = UiTheme.TextMuted,
             Text = message,
         };
-        Panel card = FormFields.CreateCard(heading, text);
-        card.Dock = DockStyle.Top;
-        card.Height = 110;
+        TableLayoutPanel card = FormFields.CreateAutoCard(heading, text);
         Controls.Add(card);
     }
 }

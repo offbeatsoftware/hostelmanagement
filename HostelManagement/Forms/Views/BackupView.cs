@@ -22,8 +22,9 @@ public sealed class BackupView : UserControl
 
         var intro = new Label
         {
-            Dock = DockStyle.Top,
-            Height = 58,
+            AutoSize = true,
+            MaximumSize = new Size(820, 0),
+            Margin = new Padding(0, 0, 0, 6),
             ForeColor = UiTheme.TextMuted,
             Text = "A backup is one zip file with the database and all student photos and Aadhaar cards. " +
                    "An automatic backup is made once a day when the application is closed; the last " +
@@ -42,7 +43,7 @@ public sealed class BackupView : UserControl
 
         _messageLabel = FormFields.CreateMessageLabel();
         FlowLayoutPanel backupRow = FormFields.CreateButtonRow(backupButton, openFolderButton, _messageLabel);
-        backupRow.Dock = DockStyle.Top;
+
 
         // ---- Second copy ----
         var secondLabel = new Label { Text = "Second copy in", AutoSize = true, Margin = new Padding(0, 10, 8, 0) };
@@ -60,15 +61,8 @@ public sealed class BackupView : UserControl
         UiTheme.StyleSecondaryButton(clearButton);
         clearButton.Click += (_, _) => SaveSecondFolder(string.Empty);
         FlowLayoutPanel secondRow = FormFields.CreateButtonRow(secondLabel, _secondFolderBox, chooseButton, clearButton);
-        secondRow.Dock = DockStyle.Top;
 
-        var backupBody = new Panel { Dock = DockStyle.Fill };
-        backupBody.Controls.Add(secondRow);
-        backupBody.Controls.Add(backupRow);
-        backupBody.Controls.Add(intro);
-        Panel backupCard = FormFields.CreateCard("Backup", backupBody);
-        backupCard.Dock = DockStyle.Top;
-        backupCard.Height = 200;
+        TableLayoutPanel backupCard = FormFields.CreateAutoCard("Backup", FormFields.CreateStack(intro, backupRow, secondRow));
 
         // ---- Backups and restore ----
         _grid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };

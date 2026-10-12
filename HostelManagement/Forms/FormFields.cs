@@ -98,6 +98,55 @@ public static class FormFields
         return card;
     }
 
+    /// <summary>
+    /// A card like <see cref="CreateCard"/> whose height follows its content (for cards docked at the top), so
+    /// nothing is cut off when the text is longer or the window narrower. The body should size itself
+    /// (AutoSize), for example a table from <see cref="CreateTable"/>.
+    /// </summary>
+    public static TableLayoutPanel CreateAutoCard(string title, Control body)
+    {
+        var card = new TableLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 1,
+            BackColor = Color.White,
+            BorderStyle = BorderStyle.FixedSingle,
+            Padding = new Padding(16, 8, 16, 12),
+            Dock = DockStyle.Top,
+        };
+        card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        var heading = new Label
+        {
+            AutoSize = true,
+            Font = UiTheme.BodyBoldFont,
+            ForeColor = UiTheme.TextPrimary,
+            Margin = new Padding(0, 6, 0, 10),
+            Text = title,
+        };
+        card.RowCount = 2;
+        card.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        card.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        card.Controls.Add(heading, 0, 0);
+        card.Controls.Add(body, 0, 1);
+        return card;
+    }
+
+    /// <summary>Controls stacked from top to bottom, as tall as their content.</summary>
+    public static FlowLayoutPanel CreateStack(params Control[] controls)
+    {
+        var stack = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            Margin = Padding.Empty,
+        };
+        stack.Controls.AddRange(controls);
+        return stack;
+    }
+
     /// <summary>Horizontal row of buttons and other controls (search box, filters, messages).</summary>
     public static FlowLayoutPanel CreateButtonRow(params Control[] controls)
     {

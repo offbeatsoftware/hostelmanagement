@@ -10,7 +10,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>HostelManagement</RootNamespace>
     <AssemblyName>HostelManagement</AssemblyName>
-    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <!--
+      The screens are laid out in pixels for 100% display scale. With GDI scaling Windows enlarges the whole
+      window evenly on 125% / 150% displays (text stays sharp), so nothing is cut off or overlaps.
+    -->
+    <ApplicationHighDpiMode>DpiUnawareGdiScaled</ApplicationHighDpiMode>
     <ApplicationVisualStyles>true</ApplicationVisualStyles>
     <ApplicationDefaultFont>Segoe UI, 9.75pt</ApplicationDefaultFont>
 

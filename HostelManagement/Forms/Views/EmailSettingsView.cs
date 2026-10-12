@@ -37,37 +37,40 @@ public sealed class EmailSettingsView : UserControl
         _hostBox = FormFields.AddTextBox(fields, "SMTP server", 100, required: true);
         _portBox = new NumericUpDown { Minimum = 1, Maximum = 65535, Width = 100, Margin = new Padding(0, 4, 0, 4), TabIndex = fields.Controls.Count };
         FormFields.AddRow(fields, "Port", _portBox, required: true);
-        fields.Location = new Point(16, 16);
 
         var help = new Label
         {
             AutoSize = true,
-            MaximumSize = new Size(560, 0),
+            MaximumSize = new Size(620, 0),
             ForeColor = UiTheme.TextMuted,
-            Location = new Point(16, 215),
+            Margin = new Padding(0, 10, 0, 10),
             Text = "Gmail needs an app password, not the normal password:\n" +
                    "1. Sign in to the Gmail account and turn on 2-Step Verification (Google Account > Security).\n" +
-                   "2. Open myaccount.google.com/apppasswords, create an app password named \"Hostel\".\n" +
+                   "2. Open myaccount.google.com/apppasswords, create an app password named \"Hostel Management\".\n" +
                    "3. Copy the 16 letters here and click Save, then Send Test Email.\n\n" +
                    "The password is stored encrypted for this Windows user. After moving the database to another " +
                    "computer or Windows user, enter it again.",
         };
 
-        var testToLabel = new Label { Text = "Send test to", AutoSize = true, Location = new Point(16, 381) };
+        var testToLabel = new Label { Text = "Send test to", AutoSize = true, Margin = new Padding(0, 10, 8, 0) };
         _testToBox = new TextBox
         {
-            Location = new Point(166, 377),
+            Margin = new Padding(0, 6, 8, 0),
             Width = 300,
             MaxLength = 150,
             PlaceholderText = "Empty: the Gmail address above",
         };
-        var testButton = new Button { Text = "Send Test Email", Location = new Point(476, 375) };
+        var testButton = new Button { Text = "Send Test Email" };
         UiTheme.StyleSecondaryButton(testButton);
         testButton.Width = 150;
         testButton.Click += async (_, _) => await SendTestEmail(testButton);
+        FlowLayoutPanel testRow = FormFields.CreateButtonRow(testToLabel, _testToBox, testButton);
 
+        // Stacked from top to bottom, so longer text pushes the controls below it down instead of covering them.
+        FlowLayoutPanel accountStack = FormFields.CreateStack(fields, help, testRow);
+        accountStack.Location = new Point(16, 16);
         var accountPage = new TabPage("Gmail account") { BackColor = Color.White, AutoScroll = true };
-        accountPage.Controls.AddRange([fields, help, testToLabel, _testToBox, testButton]);
+        accountPage.Controls.Add(accountStack);
         tabs.TabPages.Add(accountPage);
 
         // ---- Email texts ----

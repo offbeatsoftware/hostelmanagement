@@ -30,7 +30,7 @@ public sealed class AdminAccountView : UserControl
         var contactNote = new Label
         {
             AutoSize = true,
-            MaximumSize = new Size(500, 0),
+            MaximumSize = new Size(340, 0),
             ForeColor = UiTheme.TextMuted,
             Margin = new Padding(0, 4, 0, 8),
             Text = "A copy of every email sent to parents (invoices, receipts and reminders) goes to this email address. " +
@@ -45,9 +45,7 @@ public sealed class AdminAccountView : UserControl
         FlowLayoutPanel contactButtons = FormFields.CreateButtonRow(saveButton, _contactMessage);
         FormFields.AddRow(contact, string.Empty, contactButtons);
 
-        Panel contactCard = FormFields.CreateCard("Admin details", contact);
-        contactCard.Dock = DockStyle.Top;
-        contactCard.Height = 270;
+        TableLayoutPanel contactCard = FormFields.CreateAutoCard("Admin details", contact);
 
         // ---- Password ----
         TableLayoutPanel password = FormFields.CreateTable(labelWidth: 150, inputWidth: 260);
@@ -57,6 +55,7 @@ public sealed class AdminAccountView : UserControl
         var passwordNote = new Label
         {
             AutoSize = true,
+            MaximumSize = new Size(260, 0),
             ForeColor = UiTheme.TextMuted,
             Margin = new Padding(0, 4, 0, 8),
             Text = $"At least {AuthService.MinimumPasswordLength} characters. Passwords are case sensitive.",
@@ -71,9 +70,7 @@ public sealed class AdminAccountView : UserControl
         FlowLayoutPanel passwordButtons = FormFields.CreateButtonRow(changeButton, _passwordMessage);
         FormFields.AddRow(password, string.Empty, passwordButtons);
 
-        Panel passwordCard = FormFields.CreateCard("Change password", password);
-        passwordCard.Dock = DockStyle.Top;
-        passwordCard.Height = 250;
+        TableLayoutPanel passwordCard = FormFields.CreateAutoCard("Change password", password);
 
         var gap = new Panel { Dock = DockStyle.Top, Height = 10 };
         Controls.Add(passwordCard);
