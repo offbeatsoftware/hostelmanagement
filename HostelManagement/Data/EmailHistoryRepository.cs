@@ -18,9 +18,8 @@ public static class EmailHistoryRepository
     public static Dictionary<int, DateTime> GetLastReminderDates(int hostelId) =>
         Db.Query(
                 "SELECT h.[StudentId], MAX(h.[SentDate]) AS [LastSent] " +
-                "FROM ([EmailHistory] AS h INNER JOIN [Student] AS s ON h.[StudentId] = s.[StudentId]) " +
-                "INNER JOIN [College] AS c ON s.[CollegeId] = c.[CollegeId] " +
-                "WHERE c.[HostelId] = ? AND h.[EmailType] = ? AND h.[Status] = ? GROUP BY h.[StudentId]",
+                "FROM [EmailHistory] AS h INNER JOIN [Student] AS s ON h.[StudentId] = s.[StudentId] " +
+                "WHERE s.[HostelId] = ? AND h.[EmailType] = ? AND h.[Status] = ? GROUP BY h.[StudentId]",
                 r => (StudentId: r.GetInt("StudentId"), LastSent: r.GetDate("LastSent")),
                 Db.Param("@HostelId", hostelId),
                 Db.Param("@EmailType", EmailType.DueReminder),

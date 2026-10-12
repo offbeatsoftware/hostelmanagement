@@ -13,6 +13,7 @@ namespace HostelManagement.Forms;
 public sealed class StudentEditForm : Form
 {
     private readonly int _studentId;
+    private readonly int _hostelId;
     private readonly string _currentPhotoPath;
     private readonly string _currentAadhaarCardPath;
 
@@ -57,6 +58,7 @@ public sealed class StudentEditForm : Form
     public StudentEditForm(IReadOnlyList<College> colleges, Student? student = null)
     {
         _studentId = student?.StudentId ?? 0;
+        _hostelId = student?.HostelId ?? HostelContext.CurrentHostelId ?? 0;
         _currentPhotoPath = student?.PhotoPath ?? string.Empty;
         _currentAadhaarCardPath = student?.AadhaarCardPath ?? string.Empty;
 
@@ -76,9 +78,9 @@ public sealed class StudentEditForm : Form
         // ---- Student ----
         TableLayoutPanel studentFields = FormFields.CreateTable(labelWidth: 140, inputWidth: 420);
         _nameBox = FormFields.AddTextBox(studentFields, "Student name", 150, required: true);
-        _genderBox = AddCombo(studentFields, "Gender", ["", .. Student.Genders]);
+        _genderBox = AddCombo(studentFields, "Gender", ["", .. Student.Genders], required: true);
         _birthPicker = AddDatePicker(studentFields, "Date of birth", optional: true);
-        _mobileBox = FormFields.AddTextBox(studentFields, "Mobile", 20, required: true);
+        _mobileBox = FormFields.AddTextBox(studentFields, "Mobile", 20);
         _emailBox = FormFields.AddTextBox(studentFields, "Email", 150);
         _addressBox = FormFields.AddTextBox(studentFields, "Address", 255, multiline: true);
         _aadhaarBox = FormFields.AddTextBox(studentFields, "Aadhaar number", 14);
@@ -94,20 +96,21 @@ public sealed class StudentEditForm : Form
             Margin = new Padding(0, 4, 0, 4),
             DisplayMember = nameof(College.CollegeName),
             ValueMember = nameof(College.CollegeId),
-            DataSource = colleges.ToList(),
+            // The college is optional (client decision): the first entry leaves it empty.
+            DataSource = new List<College> { new() { CollegeId = 0, CollegeName = "(not entered)" } }.Concat(colleges).ToList(),
         };
-        FormFields.AddRow(stayFields, "College", _collegeBox, required: true);
+        FormFields.AddRow(stayFields, "College", _collegeBox);
         _courseBox = FormFields.AddTextBox(stayFields, "Course", 100);
         _classBox = FormFields.AddTextBox(stayFields, "Class", 50);
-        _admissionPicker = AddDatePicker(stayFields, "Admission date", optional: false, required: true);
-        _statusBox = AddCombo(stayFields, "Status", StudentStatus.All, required: true);
+        _admissionPicker = AddDatePicker(stayFields, "Admission date", optional: false);
+        _statusBox = AddCombo(stayFields, "Status", StudentStatus.All);
         _remarksBox = FormFields.AddTextBox(stayFields, "Remarks", 255, multiline: true);
         AddTab("College & Stay", stayFields);
 
         // ---- Father & Mother ----
         TableLayoutPanel parentFields = FormFields.CreateTable(labelWidth: 140, inputWidth: 420);
-        _fatherNameBox = FormFields.AddTextBox(parentFields, "Father's name", 150, required: true);
-        _fatherMobileBox = FormFields.AddTextBox(parentFields, "Father's mobile", 20, required: true);
+        _fatherNameBox = FormFields.AddTextBox(parentFields, "Father's name", 150);
+        _fatherMobileBox = FormFields.AddTextBox(parentFields, "Father's mobile", 20);
         _fatherEmailBox = FormFields.AddTextBox(parentFields, "Father's email", 150);
         _motherNameBox = FormFields.AddTextBox(parentFields, "Mother's name", 150);
         _motherMobileBox = FormFields.AddTextBox(parentFields, "Mother's mobile", 20);
@@ -201,7 +204,7 @@ public sealed class StudentEditForm : Form
             // The college list is filled by data binding once the form exists.
             if (student is not null)
             {
-                _collegeBox.SelectedValue = student.CollegeId;
+                _collegeBox.SelectedValue = student.CollegeId ?? 0;
             }
             ShowFiles();
         };
@@ -445,6 +448,7 @@ public sealed class StudentEditForm : Form
                 new Student
                 {
                     StudentId = _studentId,
+                    HostelId = _hostelId,
                     StudentName = _nameBox.Text,
                     Gender = _genderBox.SelectedItem as string ?? string.Empty,
                     DateOfBirth = _birthPicker.Checked ? _birthPicker.Value.Date : null,
@@ -458,7 +462,7 @@ public sealed class StudentEditForm : Form
                     MotherEmail = _motherEmailBox.Text,
                     Address = _addressBox.Text,
                     AadhaarNumber = _aadhaarBox.Text,
-                    CollegeId = _collegeBox.SelectedValue is int collegeId ? collegeId : 0,
+                    CollegeId = _collegeBox.SelectedValue is int collegeId and > 0 ? collegeId : null,
                     Course = _courseBox.Text,
                     ClassName = _classBox.Text,
                     AdmissionDate = _admissionPicker.Value.Date,

@@ -217,10 +217,7 @@ public static class AllocationService
     private static void CheckRoomFor(Student student, int roomId)
     {
         Room room = RoomService.CheckCanAllocate(roomId);
-        College college = CollegeRepository.Get(student.CollegeId)
-            ?? throw new ValidationException("The student's college no longer exists.");
-
-        if (room.HostelId != college.HostelId)
+        if (room.HostelId != student.HostelId)
         {
             throw new ValidationException($"Room {room.RoomNumber} belongs to another hostel.");
         }

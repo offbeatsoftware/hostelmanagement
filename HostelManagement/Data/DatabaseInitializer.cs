@@ -202,6 +202,10 @@ public static class DatabaseInitializer
         if (version < DatabaseSchema.Version && version >= DatabaseSchema.FirstUpgradableVersion)
         {
             // Version 13 to 14 only added the PaymentChange table, created above; the data is kept.
+            if (version < 15)
+            {
+                UpgradeStudentsToVersion15(connection);
+            }
             Db.Execute(connection, null, "UPDATE [SchemaInfo] SET [Version] = ?", Db.Param("@Version", DatabaseSchema.Version));
             AppLogger.Info($"Upgraded the database from version {version} to {DatabaseSchema.Version}.");
             return;
@@ -216,6 +220,36 @@ public static class DatabaseInitializer
                 "This database was created by a newer version of the application.\n\n" +
                 "Please install the latest version of the application.");
         }
+    }
+
+    /// <summary>
+    /// Version 15 (client decision): only the student's name and gender are required. The student now keeps the
+    /// hostel itself (it came from the college, which is optional now), filled in from the college; college,
+    /// mobile and the father's name and mobile may be empty. A column that is part of an index or a relationship
+    /// cannot be changed, so those are dropped first and made again afterwards.
+    /// </summary>
+    private static void UpgradeStudentsToVersion15(OleDbConnection connection)
+    {
+        string[] steps =
+        [
+            "ALTER TABLE [Student] ADD COLUMN [HostelId] INTEGER",
+            "UPDATE [Student] AS s INNER JOIN [College] AS c ON s.[CollegeId] = c.[CollegeId] SET s.[HostelId] = c.[HostelId]",
+            "ALTER TABLE [Student] ADD CONSTRAINT [FK_Student_Hostel] FOREIGN KEY ([HostelId]) REFERENCES [Hostel] ([HostelId])",
+            "CREATE INDEX [IX_Student_HostelId] ON [Student] ([HostelId])",
+            "ALTER TABLE [Student] DROP CONSTRAINT [FK_Student_College]",
+            "DROP INDEX [IX_Student_Mobile] ON [Student]",
+            "ALTER TABLE [Student] ALTER COLUMN [CollegeId] INTEGER",
+            "ALTER TABLE [Student] ALTER COLUMN [Mobile] TEXT(20)",
+            "ALTER TABLE [Student] ALTER COLUMN [FatherName] TEXT(150)",
+            "ALTER TABLE [Student] ALTER COLUMN [FatherMobile] TEXT(20)",
+            "CREATE INDEX [IX_Student_Mobile] ON [Student] ([Mobile])",
+            "ALTER TABLE [Student] ADD CONSTRAINT [FK_Student_College] FOREIGN KEY ([CollegeId]) REFERENCES [College] ([CollegeId])",
+        ];
+        foreach (string step in steps)
+        {
+            Db.Execute(connection, null, step);
+        }
+        AppLogger.Info("Students now keep their hostel; college, mobile and father's details are optional.");
     }
 
     /// <summary>

@@ -33,7 +33,7 @@ public sealed class ReportServiceTests : TestDatabase
         int id = StudentService.Save(
             new Student
             {
-                StudentName = name, Gender = RoomGender.Male, Mobile = "9876543210", CollegeId = collegeId ?? CollegeId,
+                HostelId = HostelId, StudentName = name, Gender = RoomGender.Male, Mobile = "9876543210", CollegeId = collegeId ?? CollegeId,
                 AdmissionDate = YearStart, AadhaarNumber = aadhaar, Course = "B.Com", ClassName = "First year",
                 FatherName = $"Father of {name}", FatherMobile = "9812345678", FatherEmail = "father@example.com",
             }).StudentId;

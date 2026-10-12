@@ -53,8 +53,8 @@ public static class IdCardService
                 continue;
             }
 
-            College? college = CollegeRepository.Get(student.CollegeId);
-            Hostel? hostel = college is null ? null : HostelService.GetHostel(college.HostelId);
+            College? college = student.CollegeId is int collegeId ? CollegeRepository.Get(collegeId) : null;
+            Hostel? hostel = HostelService.GetHostel(student.HostelId);
             RoomAllocation? room = AllocationRepository.GetCurrentForStudent(studentId);
             string? photo = StudentFileService.Exists(student.PhotoPath) ? StudentFileService.FullPath(student.PhotoPath) : null;
             if (photo is null)

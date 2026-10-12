@@ -10,12 +10,11 @@ public static class InvoiceRepository
     private const string SelectInvoices =
         "SELECT i.*, s.[StudentName], " +
         "(SELECT SUM(p.[Amount]) FROM [Payment] AS p WHERE p.[InvoiceId] = i.[InvoiceId]) AS [PaidAmount] " +
-        "FROM ([Invoice] AS i INNER JOIN [Student] AS s ON i.[StudentId] = s.[StudentId]) " +
-        "INNER JOIN [College] AS c ON s.[CollegeId] = c.[CollegeId]";
+        "FROM [Invoice] AS i INNER JOIN [Student] AS s ON i.[StudentId] = s.[StudentId]";
 
     /// <summary>Invoices of the hostel's students, newest first.</summary>
     public static List<Invoice> GetForHostel(int hostelId) =>
-        Db.Query(SelectInvoices + " WHERE c.[HostelId] = ? ORDER BY i.[InvoiceDate] DESC, i.[InvoiceId] DESC", Map,
+        Db.Query(SelectInvoices + " WHERE s.[HostelId] = ? ORDER BY i.[InvoiceDate] DESC, i.[InvoiceId] DESC", Map,
             Db.Param("@HostelId", hostelId));
 
     /// <summary>A student's invoices, newest academic year first.</summary>

@@ -14,7 +14,9 @@ public sealed class StudentServiceTests : TestDatabase
 
     private Student NewStudent(string name = "Aman Sharma", string aadhaar = "", int? collegeId = null) => new()
     {
+        HostelId = HostelId,
         StudentName = name,
+        Gender = RoomGender.Male,
         Mobile = "9876543210",
         CollegeId = collegeId ?? CollegeId,
         AdmissionDate = new DateTime(2026, 7, 1),
@@ -128,12 +130,13 @@ public sealed class StudentServiceTests : TestDatabase
     }
 
     [Theory]
-    [InlineData("", "9876543210", "student's name")]
-    [InlineData("Aman", "", "student's mobile")]
-    [InlineData("Aman", "12ab", "valid mobile")]
-    public void Save_StudentRequiredFields(string name, string mobile, string expected)
+    [InlineData("", RoomGender.Male, "9876543210", "student's name")]
+    [InlineData("Aman", "", "9876543210", "gender")]
+    [InlineData("Aman", RoomGender.Male, "12ab", "valid mobile")]
+    public void Save_NameAndGenderAreRequired_OtherDetailsAreChecked(string name, string gender, string mobile, string expected)
     {
         Student student = NewStudent(name);
+        student.Gender = gender;
         student.Mobile = mobile;
 
         var ex = Assert.Throws<ValidationException>(() => Add(student));
@@ -143,22 +146,36 @@ public sealed class StudentServiceTests : TestDatabase
     }
 
     [Fact]
-    public void Save_RequiresCollege()
+    public void Save_OnlyNameAndGender_IsEnough()
+    {
+        // Client decision (version 1.3): every other detail is optional, the college included.
+        Student saved = Add(new Student { HostelId = HostelId, StudentName = "Neha", Gender = RoomGender.Female });
+
+        Assert.True(saved.StudentId > 0);
+        Assert.Null(saved.CollegeId);
+        Assert.Equal(string.Empty, saved.CollegeName);
+        Assert.Equal(string.Empty, saved.Mobile);
+        Assert.Equal(string.Empty, saved.FatherName);
+        Assert.Equal(HostelId, saved.HostelId);
+        Assert.Contains(StudentService.GetStudents(HostelId), s => s.StudentId == saved.StudentId);
+        Assert.Null(saved.FeeContact);
+    }
+
+    [Fact]
+    public void Save_CollegeMustBeOneOfThisHostel()
     {
         Student student = NewStudent();
-        student.CollegeId = 0;
+        student.CollegeId = AddCollege(AddHostel("Other Hostel"), "Other College");
 
-        Assert.Contains("college", Assert.Throws<ValidationException>(() => Add(student)).Message);
+        Assert.Contains("college of this hostel", Assert.Throws<ValidationException>(() => Add(student)).Message);
     }
 
     [Theory]
-    [InlineData("", "9812345678", "", "", "", "father's name")]
-    [InlineData("Rakesh", "", "", "", "", "father's mobile")]
     [InlineData("Rakesh", "98ab", "", "", "", "valid mobile number for the father")]
     [InlineData("Rakesh", "9812345678", "not-an-email", "", "", "valid email address for the father")]
     [InlineData("Rakesh", "9812345678", "", "12ab", "", "valid mobile number for the mother")]
     [InlineData("Rakesh", "9812345678", "", "", "not-an-email", "valid email address for the mother")]
-    public void Save_FatherNameAndMobileAreRequired_EmailsAndMotherAreOptionalButChecked(string fatherName, string fatherMobile,
+    public void Save_ParentDetailsAreOptionalButChecked(string fatherName, string fatherMobile,
         string fatherEmail, string motherMobile, string motherEmail, string expected)
     {
         Student student = NewStudent();
@@ -235,7 +252,7 @@ public sealed class StudentServiceTests : TestDatabase
         var ex = Assert.Throws<ValidationException>(() =>
             StudentService.Save(student));
 
-        Assert.Contains("another hostel", ex.Message);
+        Assert.Contains("college of this hostel", ex.Message);
     }
 
     [Fact]

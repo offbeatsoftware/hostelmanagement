@@ -72,8 +72,9 @@ public abstract class TestDatabase : IDisposable
         CollegeService.Save(new College { HostelId = hostelId, CollegeName = name }).CollegeId;
 
     protected int AddStudent(string name = "Test Student", int? collegeId = null) =>
-        Db.Insert("INSERT INTO [Student] ([StudentName], [CollegeId], [Mobile], [FatherName], [FatherMobile], [AdmissionDate], [Status]) " +
-            "VALUES (?, ?, '9876543210', 'Test Father', '9811111111', #01/15/2026#, ?)",
+        Db.Insert("INSERT INTO [Student] ([HostelId], [StudentName], [CollegeId], [Mobile], [FatherName], [FatherMobile], [AdmissionDate], [Status]) " +
+            "VALUES (?, ?, ?, '9876543210', 'Test Father', '9811111111', #01/15/2026#, ?)",
+            Db.Param("@HostelId", HostelId),
             Db.Param("@StudentName", name),
             Db.Param("@CollegeId", collegeId ?? CollegeId),
             Db.Param("@Status", "Active"));
@@ -93,6 +94,7 @@ public abstract class TestDatabase : IDisposable
         string fatherEmail = "rakesh@example.com", string motherEmail = "", int? collegeId = null) =>
         StudentService.Save(new Student
         {
+            HostelId = HostelId,
             StudentName = name,
             Gender = gender,
             Mobile = "9876543210",

@@ -7,22 +7,22 @@ namespace HostelManagement.Data;
 public static class StudentRepository
 {
     private const string SelectStudents =
-        "SELECT s.*, c.[CollegeName] FROM [Student] AS s INNER JOIN [College] AS c ON s.[CollegeId] = c.[CollegeId]";
+        "SELECT s.*, c.[CollegeName] FROM [Student] AS s LEFT JOIN [College] AS c ON s.[CollegeId] = c.[CollegeId]";
 
-    /// <summary>Students of a hostel (through their college).</summary>
+    /// <summary>Students of a hostel.</summary>
     public static List<Student> GetForHostel(int hostelId) =>
-        Db.Query(SelectStudents + " WHERE c.[HostelId] = ?", Map, Db.Param("@HostelId", hostelId));
+        Db.Query(SelectStudents + " WHERE s.[HostelId] = ?", Map, Db.Param("@HostelId", hostelId));
 
     public static Student? Get(int studentId) =>
         Db.Query(SelectStudents + " WHERE s.[StudentId] = ?", Map, Db.Param("@StudentId", studentId)).FirstOrDefault();
 
     public static int Insert(OleDbConnection connection, OleDbTransaction transaction, Student student) =>
         Db.Insert(connection, transaction,
-            "INSERT INTO [Student] ([StudentName], [DateOfBirth], [Gender], [Address], [CollegeId], [Course], " +
+            "INSERT INTO [Student] ([HostelId], [StudentName], [DateOfBirth], [Gender], [Address], [CollegeId], [Course], " +
             "[ClassName], [Mobile], [Email], [FatherName], [FatherMobile], [FatherEmail], [MotherName], [MotherMobile], " +
             "[MotherEmail], [AadhaarNumber], [AdmissionDate], [Status], [Remarks]) " +
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            Parameters(student));
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [Db.Param("@HostelId", student.HostelId), .. Parameters(student)]);
 
     public static void Update(OleDbConnection connection, OleDbTransaction transaction, Student student) =>
         Db.Execute(connection, transaction,
@@ -70,10 +70,10 @@ public static class StudentRepository
         Db.Param("@CollegeId", student.CollegeId),
         Db.OptionalText("@Course", student.Course),
         Db.OptionalText("@ClassName", student.ClassName),
-        Db.Param("@Mobile", student.Mobile),
+        Db.OptionalText("@Mobile", student.Mobile),
         Db.OptionalText("@Email", student.Email),
-        Db.Param("@FatherName", student.FatherName),
-        Db.Param("@FatherMobile", student.FatherMobile),
+        Db.OptionalText("@FatherName", student.FatherName),
+        Db.OptionalText("@FatherMobile", student.FatherMobile),
         Db.OptionalText("@FatherEmail", student.FatherEmail),
         Db.OptionalText("@MotherName", student.MotherName),
         Db.OptionalText("@MotherMobile", student.MotherMobile),
@@ -87,11 +87,12 @@ public static class StudentRepository
     private static Student Map(IDataRecord record) => new()
     {
         StudentId = record.GetInt("StudentId"),
+        HostelId = record.GetInt("HostelId"),
         StudentName = record.GetText("StudentName"),
         DateOfBirth = record.GetNullableDate("DateOfBirth"),
         Gender = record.GetText("Gender"),
         Address = record.GetText("Address"),
-        CollegeId = record.GetInt("CollegeId"),
+        CollegeId = record.GetNullableInt("CollegeId"),
         Course = record.GetText("Course"),
         ClassName = record.GetText("ClassName"),
         Mobile = record.GetText("Mobile"),

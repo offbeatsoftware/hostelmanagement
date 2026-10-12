@@ -9,7 +9,8 @@ public static class HostelRepository
     private const string SelectHostels =
         "SELECT h.*, " +
         "(SELECT COUNT(*) FROM [College] AS c WHERE c.[HostelId] = h.[HostelId]) AS [CollegeCount], " +
-        "(SELECT COUNT(*) FROM [Room] AS r WHERE r.[HostelId] = h.[HostelId]) AS [RoomCount] " +
+        "(SELECT COUNT(*) FROM [Room] AS r WHERE r.[HostelId] = h.[HostelId]) AS [RoomCount], " +
+        "(SELECT COUNT(*) FROM [Student] AS s WHERE s.[HostelId] = h.[HostelId]) AS [StudentCount] " +
         "FROM [Hostel] AS h";
 
     /// <summary>All hostels ordered by name, with their college and room counts.</summary>
@@ -63,5 +64,6 @@ public static class HostelRepository
         UpdatedDate = record.GetNullableDate("UpdatedDate"),
         CollegeCount = record.GetInt("CollegeCount"),
         RoomCount = record.GetInt("RoomCount"),
+        StudentCount = record.GetInt("StudentCount"),
     };
 }

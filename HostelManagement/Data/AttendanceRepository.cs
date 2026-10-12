@@ -11,8 +11,8 @@ public static class AttendanceRepository
     /// <summary>The saved records of the hostel's students for a date.</summary>
     public static List<Saved> GetForDate(int hostelId, DateTime date) =>
         Db.Query(
-            "SELECT a.* FROM ([Attendance] AS a INNER JOIN [Student] AS s ON a.[StudentId] = s.[StudentId]) " +
-            "INNER JOIN [College] AS c ON s.[CollegeId] = c.[CollegeId] WHERE c.[HostelId] = ? AND a.[AttendanceDate] = ?",
+            "SELECT a.* FROM [Attendance] AS a INNER JOIN [Student] AS s ON a.[StudentId] = s.[StudentId] " +
+            "WHERE s.[HostelId] = ? AND a.[AttendanceDate] = ?",
             Map,
             Db.Param("@HostelId", hostelId),
             Db.Param("@AttendanceDate", date.Date));

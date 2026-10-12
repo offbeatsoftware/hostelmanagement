@@ -9,23 +9,25 @@ public static class StudentStatus
     public static IReadOnlyList<string> All { get; } = [Active, Left];
 }
 
-/// <summary>A student. The student's hostel is the hostel of the student's college.</summary>
+/// <summary>A student of a hostel. Only the name and gender are required (client decision).</summary>
 public sealed class Student
 {
     public static IReadOnlyList<string> Genders { get; } = ["Male", "Female", "Other"];
 
     public int StudentId { get; set; }
+    public int HostelId { get; set; }
     public string StudentName { get; set; } = string.Empty;
     public DateTime? DateOfBirth { get; set; }
     public string Gender { get; set; } = string.Empty;
     public string Address { get; set; } = string.Empty;
-    public int CollegeId { get; set; }
+    /// <summary>The student's college, or null when not entered.</summary>
+    public int? CollegeId { get; set; }
     public string Course { get; set; } = string.Empty;
     public string ClassName { get; set; } = string.Empty;
     public string Mobile { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
 
-    // Father and mother (client decision, version 1.2): father's name and mobile are required.
+    // Father and mother (client decision, version 1.2): all optional since version 1.3.
     public string FatherName { get; set; } = string.Empty;
     public string FatherMobile { get; set; } = string.Empty;
     public string FatherEmail { get; set; } = string.Empty;

@@ -19,7 +19,7 @@ public sealed class AgreementServiceTests : TestDatabase
     private int AddStudent(string name, string gender = RoomGender.Male, string address = "12 MG Road, Jaipur") =>
         StudentService.Save(new Student
         {
-            StudentName = name, Gender = gender, Mobile = "9876543210", CollegeId = CollegeId, AdmissionDate = CheckInDate, Address = address,
+            HostelId = HostelId, StudentName = name, Gender = gender, Mobile = "9876543210", CollegeId = CollegeId, AdmissionDate = CheckInDate, Address = address,
             FatherName = $"Father of {name}", FatherMobile = "9812345678",
         }).StudentId;
 

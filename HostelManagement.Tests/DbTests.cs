@@ -63,8 +63,8 @@ public sealed class DbTests : TestDatabase
         // DateTime.Now has milliseconds, which cause "Data type mismatch" unless OleDbType.Date is used.
         DateTime now = DateTime.Now;
         int id = Db.Insert(
-            "INSERT INTO [Student] ([StudentName], [CollegeId], [Mobile], [FatherName], [FatherMobile], [DateOfBirth], [AdmissionDate], [Status]) " +
-            "VALUES (?, ?, '9876543210', 'Father', '9811111111', ?, ?, ?)",
+            "INSERT INTO [Student] ([HostelId], [StudentName], [CollegeId], [Mobile], [FatherName], [FatherMobile], [DateOfBirth], [AdmissionDate], [Status]) " +
+            $"VALUES ({HostelId}, ?, ?, '9876543210', 'Father', '9811111111', ?, ?, ?)",
             Db.Param("@StudentName", "Date Test"),
             Db.Param("@CollegeId", CollegeId),
             Db.Param("@DateOfBirth", new DateTime(2006, 2, 28)),
@@ -159,18 +159,22 @@ public sealed class DbTests : TestDatabase
     public void RequiredColumn_RejectsNull()
     {
         Assert.Throws<OleDbException>(() => Db.Execute(
-            "INSERT INTO [Student] ([StudentName], [CollegeId], [Mobile], [FatherName], [FatherMobile], [AdmissionDate], [Status]) " +
-            "VALUES (?, ?, '9876543210', 'Father', '9811111111', #01/15/2026#, ?)",
+            "INSERT INTO [Student] ([HostelId], [StudentName], [CollegeId], [Mobile], [FatherName], [FatherMobile], [AdmissionDate], [Status]) " +
+            $"VALUES ({HostelId}, ?, ?, '9876543210', 'Father', '9811111111', #01/15/2026#, ?)",
             Db.Param("@StudentName", null), Db.Param("@CollegeId", CollegeId), Db.Param("@Status", "Active")));
     }
 
     [Fact]
-    public void Student_WithoutCollege_IsRejected()
+    public void Student_WithoutHostel_IsRejected_ButCollegeMobileAndFatherMayBeEmpty()
     {
         Assert.Throws<OleDbException>(() => Db.Execute(
-            "INSERT INTO [Student] ([StudentName], [Mobile], [FatherName], [FatherMobile], [AdmissionDate], [Status]) " +
-            "VALUES (?, '9876543210', 'Father', '9811111111', #01/15/2026#, ?)",
-            Db.Param("@StudentName", "No College"), Db.Param("@Status", "Active")));
+            "INSERT INTO [Student] ([StudentName], [AdmissionDate], [Status]) VALUES (?, #01/15/2026#, ?)",
+            Db.Param("@StudentName", "No Hostel"), Db.Param("@Status", "Active")));
+
+        Db.Execute(
+            $"INSERT INTO [Student] ([HostelId], [StudentName], [Gender], [AdmissionDate], [Status]) VALUES ({HostelId}, ?, 'Male', #01/15/2026#, ?)",
+            Db.Param("@StudentName", "Only Name"), Db.Param("@Status", "Active"));
+        Assert.Equal(1, Count("Student"));
     }
 
     [Fact]
@@ -180,8 +184,8 @@ public sealed class DbTests : TestDatabase
         int studentId = Db.InTransaction((connection, transaction) =>
         {
             int id = Db.Insert(connection, transaction,
-                "INSERT INTO [Student] ([StudentName], [CollegeId], [Mobile], [FatherName], [FatherMobile], [AdmissionDate], [Status]) " +
-            "VALUES (?, ?, '9876543210', 'Father', '9811111111', #01/15/2026#, ?)",
+                "INSERT INTO [Student] ([HostelId], [StudentName], [CollegeId], [Mobile], [FatherName], [FatherMobile], [AdmissionDate], [Status]) " +
+            $"VALUES ({HostelId}, ?, ?, '9876543210', 'Father', '9811111111', #01/15/2026#, ?)",
                 Db.Param("@StudentName", "With Invoice"), Db.Param("@CollegeId", collegeId), Db.Param("@Status", "Active"));
             Db.Execute(connection, transaction,
                 "INSERT INTO [Invoice] ([InvoiceNumber], [StudentId], [InvoiceDate], [AcademicYear], [RoomRent], [TransportAmount]) " +
@@ -202,8 +206,8 @@ public sealed class DbTests : TestDatabase
         Assert.Throws<InvalidOperationException>(() => Db.InTransaction((connection, transaction) =>
         {
             Db.Execute(connection, transaction,
-                "INSERT INTO [Student] ([StudentName], [CollegeId], [Mobile], [FatherName], [FatherMobile], [AdmissionDate], [Status]) " +
-            "VALUES (?, ?, '9876543210', 'Father', '9811111111', #01/15/2026#, ?)",
+                "INSERT INTO [Student] ([HostelId], [StudentName], [CollegeId], [Mobile], [FatherName], [FatherMobile], [AdmissionDate], [Status]) " +
+            $"VALUES ({HostelId}, ?, ?, '9876543210', 'Father', '9811111111', #01/15/2026#, ?)",
                 Db.Param("@StudentName", "Rolled Back"), Db.Param("@CollegeId", collegeId), Db.Param("@Status", "Active"));
             throw new InvalidOperationException("Simulated failure");
         }));

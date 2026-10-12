@@ -197,8 +197,7 @@ public static class InvoiceService
             ?? throw new ValidationException("This invoice no longer exists.");
         Student student = StudentService.GetStudent(invoice.StudentId)
             ?? throw new ValidationException("The invoice's student no longer exists.");
-        int hostelId = CollegeRepository.Get(student.CollegeId)?.HostelId ?? 0;
-        Hostel hostel = HostelService.GetHostel(hostelId)
+        Hostel hostel = HostelService.GetHostel(student.HostelId)
             ?? throw new ValidationException("The invoice's hostel no longer exists.");
 
         // The room the student is in now, or the last room during the academic year.

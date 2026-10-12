@@ -7,12 +7,11 @@ namespace HostelManagement.Data;
 public static class PaymentChangeRepository
 {
     private const string SelectChanges =
-        "SELECT x.*, s.[StudentName] FROM ([PaymentChange] AS x INNER JOIN [Student] AS s ON x.[StudentId] = s.[StudentId]) " +
-        "INNER JOIN [College] AS c ON s.[CollegeId] = c.[CollegeId]";
+        "SELECT x.*, s.[StudentName] FROM [PaymentChange] AS x INNER JOIN [Student] AS s ON x.[StudentId] = s.[StudentId]";
 
     /// <summary>The changes to the payments of the hostel's students, newest first.</summary>
     public static List<PaymentChange> GetForHostel(int hostelId) =>
-        Db.Query(SelectChanges + " WHERE c.[HostelId] = ? ORDER BY x.[ChangedDate] DESC, x.[PaymentChangeId] DESC", Map,
+        Db.Query(SelectChanges + " WHERE s.[HostelId] = ? ORDER BY x.[ChangedDate] DESC, x.[PaymentChangeId] DESC", Map,
             Db.Param("@HostelId", hostelId));
 
     /// <summary>The changes to one payment, oldest first.</summary>

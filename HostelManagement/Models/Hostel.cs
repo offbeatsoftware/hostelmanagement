@@ -14,4 +14,5 @@ public sealed class Hostel
     // Read only counts filled in by the hostel list.
     public int CollegeCount { get; set; }
     public int RoomCount { get; set; }
+    public int StudentCount { get; set; }
 }

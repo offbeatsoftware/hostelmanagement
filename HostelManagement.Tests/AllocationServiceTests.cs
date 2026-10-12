@@ -12,6 +12,7 @@ public sealed class AllocationServiceTests : TestDatabase
         StudentService.Save(
             new Student
             {
+                HostelId = HostelId,
                 StudentName = name,
                 Gender = gender,
                 Mobile = "9876543210",

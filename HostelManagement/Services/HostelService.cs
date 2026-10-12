@@ -66,11 +66,11 @@ public static class HostelService
         Hostel hostel = HostelRepository.Get(hostelId)
             ?? throw new ValidationException("This hostel no longer exists.");
 
-        if (hostel.CollegeCount > 0 || hostel.RoomCount > 0)
+        if (hostel.CollegeCount > 0 || hostel.RoomCount > 0 || hostel.StudentCount > 0)
         {
             throw new ValidationException(
-                $"\"{hostel.HostelName}\" cannot be deleted because it has {hostel.CollegeCount} college(s) " +
-                $"and {hostel.RoomCount} room(s). Delete those first.");
+                $"\"{hostel.HostelName}\" cannot be deleted because it has {hostel.StudentCount} student(s), " +
+                $"{hostel.CollegeCount} college(s) and {hostel.RoomCount} room(s). Delete those first.");
         }
 
         Db.InTransaction((connection, transaction) =>

@@ -22,7 +22,7 @@ public static class DatabaseSchema
     /// Increase by one whenever a table or column changes, so databases with an older
     /// layout are detected at startup. Stored in the SchemaInfo table.
     /// </summary>
-    public const int Version = 14;
+    public const int Version = 15;
 
     /// <summary>
     /// The oldest version that is upgraded in place, keeping its data (version 1.2 onwards). New tables are
@@ -104,17 +104,18 @@ public static class DatabaseSchema
         new("Student", """
             CREATE TABLE [Student] (
                 [StudentId]     COUNTER CONSTRAINT [PK_Student] PRIMARY KEY,
+                [HostelId]      INTEGER NOT NULL,
                 [StudentName]   TEXT(150) NOT NULL,
                 [DateOfBirth]   DATETIME,
                 [Gender]        TEXT(20),
                 [Address]       TEXT(255),
-                [CollegeId]     INTEGER NOT NULL,
+                [CollegeId]     INTEGER,
                 [Course]        TEXT(100),
                 [ClassName]     TEXT(50),
-                [Mobile]        TEXT(20) NOT NULL,
+                [Mobile]        TEXT(20),
                 [Email]         TEXT(150),
-                [FatherName]    TEXT(150) NOT NULL,
-                [FatherMobile]  TEXT(20) NOT NULL,
+                [FatherName]    TEXT(150),
+                [FatherMobile]  TEXT(20),
                 [FatherEmail]   TEXT(150),
                 [MotherName]    TEXT(150),
                 [MotherMobile]  TEXT(20),
@@ -125,10 +126,12 @@ public static class DatabaseSchema
                 [AdmissionDate] DATETIME NOT NULL,
                 [Status]        TEXT(20) NOT NULL,
                 [Remarks]       TEXT(255),
+                CONSTRAINT [FK_Student_Hostel] FOREIGN KEY ([HostelId]) REFERENCES [Hostel] ([HostelId]),
                 CONSTRAINT [FK_Student_College] FOREIGN KEY ([CollegeId]) REFERENCES [College] ([CollegeId])
             )
             """,
             "CREATE INDEX [IX_Student_StudentName] ON [Student] ([StudentName])",
+            "CREATE INDEX [IX_Student_HostelId] ON [Student] ([HostelId])",
             "CREATE INDEX [IX_Student_Mobile] ON [Student] ([Mobile])"),
 
         new("RoomAllocation", """

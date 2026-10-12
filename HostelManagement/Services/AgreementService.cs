@@ -69,7 +69,7 @@ public static partial class AgreementService
         Room room = RoomRepository.Get(allocation.RoomId)
             ?? throw new ValidationException("The student's room no longer exists.");
         Hostel? hostel = HostelService.GetHostel(room.HostelId);
-        College? college = CollegeRepository.Get(student.CollegeId);
+        College? college = student.CollegeId is int collegeId ? CollegeRepository.Get(collegeId) : null;
 
         // The fee of the academic year of the agreement, or the student's latest fee.
         Invoice? fee = InvoiceRepository.GetForYear(studentId, AcademicYear.Of(agreementDate))
@@ -85,11 +85,12 @@ public static partial class AgreementService
                 RoomGender.Female => "D/o",
                 _ => "D/o, S/o",
             },
-            ["ParentName"] = student.FatherName,
-            ["Address"] = student.Address.ReplaceLineEndings(", "),
-            ["StudentMobile"] = student.Mobile,
-            ["ParentMobile"] = student.FatherMobile,
-            ["CollegeName"] = college?.CollegeName ?? string.Empty,
+            // Details not entered (only name and gender are required) print as a line to fill in by hand.
+            ["ParentName"] = OrBlank(student.FatherName),
+            ["Address"] = OrBlank(student.Address.ReplaceLineEndings(", ")),
+            ["StudentMobile"] = OrBlank(student.Mobile),
+            ["ParentMobile"] = OrBlank(student.FatherMobile),
+            ["CollegeName"] = OrBlank(college?.CollegeName ?? string.Empty),
             ["HostelName"] = hostel?.HostelName ?? string.Empty,
             ["HostelType"] = room.Gender == RoomGender.Female ? "Girls" : "Boys",
             ["RoomNumber"] = room.RoomNumber,
@@ -122,4 +123,6 @@ public static partial class AgreementService
 
     [GeneratedRegex(@"\{([A-Za-z]+)\}")]
     private static partial Regex FieldPattern();
+
+    private static string OrBlank(string value) => value.Length > 0 ? value : "____________________";
 }

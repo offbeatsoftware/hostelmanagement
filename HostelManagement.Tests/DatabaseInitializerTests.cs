@@ -121,14 +121,45 @@ public sealed class DatabaseInitializerTests : TestDatabase
         Assert.Equal(Models.EmailSettings.DefaultReminder, settings.Reminder);
     }
 
-    [Fact]
-    public void Initialize_DatabaseOfVersion1_2_IsUpgradedInPlace_KeepingTheData()
+    /// <summary>Turns the Student table back into its version 13/14 layout: hostel through the college, more required columns.</summary>
+    private static void MakeStudentTableAsBeforeVersion15()
     {
-        AddStudent("Existing Student");
+        string[] steps =
+        [
+            "ALTER TABLE [Student] DROP CONSTRAINT [FK_Student_Hostel]",
+            "DROP INDEX [IX_Student_HostelId] ON [Student]",
+            "ALTER TABLE [Student] DROP COLUMN [HostelId]",
+            "ALTER TABLE [Student] DROP CONSTRAINT [FK_Student_College]",
+            "DROP INDEX [IX_Student_Mobile] ON [Student]",
+            "ALTER TABLE [Student] ALTER COLUMN [CollegeId] INTEGER NOT NULL",
+            "ALTER TABLE [Student] ALTER COLUMN [Mobile] TEXT(20) NOT NULL",
+            "ALTER TABLE [Student] ALTER COLUMN [FatherName] TEXT(150) NOT NULL",
+            "ALTER TABLE [Student] ALTER COLUMN [FatherMobile] TEXT(20) NOT NULL",
+            "CREATE INDEX [IX_Student_Mobile] ON [Student] ([Mobile])",
+            "ALTER TABLE [Student] ADD CONSTRAINT [FK_Student_College] FOREIGN KEY ([CollegeId]) REFERENCES [College] ([CollegeId])",
+        ];
+        foreach (string step in steps)
+        {
+            Db.Execute(step);
+        }
+    }
+
+    [Theory]
+    [InlineData(13)]
+    [InlineData(14)]
+    public void Initialize_DatabaseOfVersion1_2_IsUpgradedInPlace_KeepingTheData(int version)
+    {
+        int studentId = AddStudent("Existing Student");
         Services.AuthService.IsValidLogin("admin", "admin");
         Services.AuthService.ChangePassword("admin", "Balaji@2026", "Balaji@2026");
-        Db.Execute("DROP TABLE [PaymentChange]");
-        Db.Execute("UPDATE [SchemaInfo] SET [Version] = ?", Db.Param("@Version", DatabaseSchema.FirstUpgradableVersion));
+        MakeStudentTableAsBeforeVersion15();
+        Assert.Throws<System.Data.OleDb.OleDbException>(() => Db.Execute(
+            "INSERT INTO [Student] ([StudentName], [Gender], [AdmissionDate], [Status]) VALUES ('No College', 'Male', #01/15/2026#, 'Active')"));
+        if (version == 13)
+        {
+            Db.Execute("DROP TABLE [PaymentChange]");
+        }
+        Db.Execute("UPDATE [SchemaInfo] SET [Version] = ?", Db.Param("@Version", version));
 
         DatabaseInitializer.Initialize();
 
@@ -136,6 +167,14 @@ public sealed class DatabaseInitializerTests : TestDatabase
         Assert.Equal(1, Count("Student"));
         Assert.Equal(0, Count("PaymentChange"));
         Assert.True(Services.AuthService.IsValidLogin("admin", "Balaji@2026"));
+
+        // The student now keeps the hostel of their college; new students need only a name and gender.
+        Assert.Equal(HostelId, Services.StudentService.GetStudent(studentId)!.HostelId);
+        Assert.Single(Services.StudentService.GetStudents(HostelId));
+        Models.Student added = Services.StudentService.Save(
+            new Models.Student { HostelId = HostelId, StudentName = "Only Name", Gender = Models.RoomGender.Female });
+        Assert.Null(added.CollegeId);
+        Assert.Equal(2, Services.StudentService.GetStudents(HostelId).Count);
     }
 
     [Fact]

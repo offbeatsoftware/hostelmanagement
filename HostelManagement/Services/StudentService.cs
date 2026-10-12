@@ -128,6 +128,7 @@ public static class StudentService
     private static Student Clean(Student input) => new()
     {
         StudentId = input.StudentId,
+        HostelId = input.HostelId,
         StudentName = Validators.Clean(input.StudentName),
         DateOfBirth = input.DateOfBirth?.Date,
         Gender = Validators.Clean(input.Gender),
@@ -150,7 +151,8 @@ public static class StudentService
     };
 
     /// <summary>
-    /// Name, mobile, college, admission date and the father's name and mobile are required (client decision).
+    /// Only the name and gender are required (client decision, version 1.3); everything else that is entered
+    /// must be valid. The gender decides which rooms the student can be checked into.
     /// </summary>
     private static void Validate(Student student, Student? existing)
     {
@@ -158,17 +160,9 @@ public static class StudentService
         {
             throw new ValidationException("Please enter the student's name.");
         }
-        if (student.Mobile.Length == 0)
+        if (student.Gender.Length == 0)
         {
-            throw new ValidationException("Please enter the student's mobile number.");
-        }
-        if (student.FatherName.Length == 0)
-        {
-            throw new ValidationException("Please enter the father's name.");
-        }
-        if (student.FatherMobile.Length == 0)
-        {
-            throw new ValidationException("Please enter the father's mobile number.");
+            throw new ValidationException("Please select the gender.");
         }
         Validators.CheckLength(student.StudentName, 150, "Student name");
         Validators.CheckLength(student.FatherName, 150, "Father's name");
@@ -235,8 +229,20 @@ public static class StudentService
             throw new ValidationException("Another student already has this Aadhaar number.");
         }
 
-        College college = CollegeRepository.Get(student.CollegeId)
-            ?? throw new ValidationException("Please select the college.");
+        // A student stays in the hostel they were added to; the college, when chosen, must be one of that hostel.
+        if (existing is not null)
+        {
+            student.HostelId = existing.HostelId;
+        }
+        if (HostelRepository.Get(student.HostelId) is null)
+        {
+            throw new ValidationException("Please select a hostel first.");
+        }
+        if (student.CollegeId is int collegeId &&
+            (CollegeRepository.Get(collegeId) is not College college || college.HostelId != student.HostelId))
+        {
+            throw new ValidationException("Please select a college of this hostel from the list.");
+        }
 
         if (existing is not null && AllocationRepository.GetCurrentForStudent(existing.StudentId) is RoomAllocation room)
         {
@@ -251,12 +257,6 @@ public static class StudentService
                 throw new ValidationException(
                     $"{existing.StudentName} is in room {room.RoomNumber}, so the gender cannot be changed. Check out first.");
             }
-        }
-        if (existing is not null &&
-            CollegeRepository.Get(existing.CollegeId) is College oldCollege &&
-            oldCollege.HostelId != college.HostelId)
-        {
-            throw new ValidationException("A student cannot be moved to a college of another hostel.");
         }
     }
 }

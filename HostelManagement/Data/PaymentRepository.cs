@@ -8,13 +8,12 @@ public static class PaymentRepository
 {
     private const string SelectPayments =
         "SELECT p.*, s.[StudentName], i.[InvoiceNumber] " +
-        "FROM (([Payment] AS p INNER JOIN [Student] AS s ON p.[StudentId] = s.[StudentId]) " +
-        "INNER JOIN [Invoice] AS i ON p.[InvoiceId] = i.[InvoiceId]) " +
-        "INNER JOIN [College] AS c ON s.[CollegeId] = c.[CollegeId]";
+        "FROM ([Payment] AS p INNER JOIN [Student] AS s ON p.[StudentId] = s.[StudentId]) " +
+        "INNER JOIN [Invoice] AS i ON p.[InvoiceId] = i.[InvoiceId]";
 
     /// <summary>Payments of the hostel's students, newest first.</summary>
     public static List<Payment> GetForHostel(int hostelId) =>
-        Db.Query(SelectPayments + " WHERE c.[HostelId] = ? ORDER BY p.[PaymentDate] DESC, p.[PaymentId] DESC", Map,
+        Db.Query(SelectPayments + " WHERE s.[HostelId] = ? ORDER BY p.[PaymentDate] DESC, p.[PaymentId] DESC", Map,
             Db.Param("@HostelId", hostelId));
 
     /// <summary>Payments of one invoice, oldest first.</summary>
