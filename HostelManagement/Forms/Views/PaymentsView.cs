@@ -13,6 +13,7 @@ namespace HostelManagement.Forms.Views;
 public sealed class PaymentsView : UserControl
 {
     private const string AllMethods = "All methods";
+    private const string RemarksColumn = "Remarks";
 
     private readonly Hostel _hostel;
     private readonly TextBox _searchBox;
@@ -23,7 +24,6 @@ public sealed class PaymentsView : UserControl
     private readonly Button _emailButton;
     private readonly Button _editButton;
     private readonly Button _deleteButton;
-    private readonly Button _remarksButton;
     private readonly Label _summaryLabel;
 
     private List<Payment> _payments = [];
@@ -75,11 +75,6 @@ public sealed class PaymentsView : UserControl
         UiTheme.StyleDangerButton(_deleteButton);
         _deleteButton.Click += (_, _) => DeleteSelectedPayment();
 
-        _remarksButton = new Button { Text = "View Remarks" };
-        UiTheme.StyleSecondaryButton(_remarksButton);
-        _remarksButton.Width = 130;
-        _remarksButton.Click += (_, _) => ShowSelectedRemarks();
-
         var historyButton = new Button { Text = "Change History" };
         UiTheme.StyleSecondaryButton(historyButton);
         historyButton.Width = 140;
@@ -91,7 +86,7 @@ public sealed class PaymentsView : UserControl
         FlowLayoutPanel filterRow = FormFields.CreateButtonRow(_searchBox, _methodFilter, _summaryLabel);
         filterRow.Dock = DockStyle.Top;
         FlowLayoutPanel toolbar = FormFields.CreateButtonRow(
-            recordButton, _editButton, _deleteButton, _viewButton, _saveButton, _emailButton, _remarksButton, historyButton);
+            recordButton, _editButton, _deleteButton, _viewButton, _saveButton, _emailButton, historyButton);
         toolbar.Dock = DockStyle.Top;
 
         _grid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
@@ -103,11 +98,27 @@ public sealed class PaymentsView : UserControl
         FormFields.AddGridColumn(_grid, nameof(Payment.PaymentMethod), "Paid by", 9);
         FormFields.AddGridColumn(_grid, nameof(Payment.Reference), "Reference", 13);
         FormFields.AddGridColumn(_grid, nameof(Payment.Amount), "Amount", 11, format: "C2", alignRight: true);
-        // Long remarks end with "..." in the list; View Remarks shows them in full.
-        FormFields.AddGridColumn(_grid, nameof(Payment.Remarks), "Remarks", 16);
+        // A View button on every row opens the payment's remarks in a popup (the text itself is not listed).
+        _grid.Columns.Add(new DataGridViewButtonColumn
+        {
+            Name = RemarksColumn,
+            HeaderText = "Remarks",
+            Text = "View",
+            UseColumnTextForButtonValue = true,
+            FlatStyle = FlatStyle.Flat,
+            FillWeight = 8,
+        });
+        _grid.CellContentClick += (_, e) =>
+        {
+            if (e.RowIndex >= 0 && _grid.Columns[e.ColumnIndex].Name == RemarksColumn &&
+                _grid.Rows[e.RowIndex].DataBoundItem is Payment payment)
+            {
+                ShowRemarks(payment);
+            }
+        };
         _grid.CellDoubleClick += (_, e) =>
         {
-            if (e.RowIndex >= 0)
+            if (e.RowIndex >= 0 && _grid.Columns[e.ColumnIndex].Name != RemarksColumn)
             {
                 ViewSelectedReceipt();
             }
@@ -181,17 +192,13 @@ public sealed class PaymentsView : UserControl
         _emailButton.Enabled = hasSelection;
         _editButton.Enabled = hasSelection;
         _deleteButton.Enabled = hasSelection;
-        _remarksButton.Enabled = hasSelection;
     }
 
-    /// <summary>Shows the selected payment's full remarks in a popup.</summary>
-    private void ShowSelectedRemarks()
+    /// <summary>Shows a payment's full remarks in a popup.</summary>
+    private void ShowRemarks(Payment payment)
     {
-        if (SelectedPayment is Payment payment)
-        {
-            using var dialog = new PaymentRemarksForm(payment);
-            dialog.ShowDialog(this);
-        }
+        using var dialog = new PaymentRemarksForm(payment);
+        dialog.ShowDialog(this);
     }
 
     private void RecordPayment()
