@@ -307,8 +307,7 @@ public sealed class AllocationForm : Form
             }
             else if (student is not null && rooms.Count == 0)
             {
-                FormFields.ShowError(_messageLabel,
-                    $"There is no free bed in a room for {RoomGender.DisplayName(student.Gender).ToLowerInvariant()}.");
+                FormFields.ShowError(_messageLabel, AllocationService.ExplainNoRoom(_hostelId, student, _current?.RoomId ?? 0));
             }
         }
         catch (Exception ex)

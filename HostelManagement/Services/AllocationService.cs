@@ -44,6 +44,30 @@ public static class AllocationService
             .Where(r => r.Gender == gender && r.Available > 0 && r.RoomId != exceptRoomId)
             .ToList();
 
+    /// <summary>
+    /// Why no room can be offered to a student: names the rooms with free beds that are for the other gender (or
+    /// switched off), so the admin knows whether the student's gender or the room's setting needs changing.
+    /// </summary>
+    public static string ExplainNoRoom(int hostelId, Student student, int exceptRoomId = 0)
+    {
+        string forWhom = RoomGender.DisplayName(student.Gender).ToLowerInvariant();
+        List<Room> rooms = RoomService.GetRooms(hostelId).Where(r => r.RoomId != exceptRoomId).ToList();
+        List<Room> otherGender = rooms.Where(r => r.IsActive && r.Gender != student.Gender && r.Capacity > r.Occupied).ToList();
+        List<Room> switchedOff = rooms.Where(r => !r.IsActive && r.Gender == student.Gender && r.Capacity > r.Occupied).ToList();
+
+        string message = $"There is no free bed in a room for {forWhom}: {student.StudentName} is saved as {student.Gender}.";
+        if (otherGender.Count > 0)
+        {
+            message += " Free beds in " + RoomGender.DisplayName(otherGender[0].Gender).ToLowerInvariant() + "' rooms: " +
+                       string.Join(", ", otherGender.Select(r => $"{r.RoomNumber} ({r.Capacity - r.Occupied})")) + ".";
+        }
+        if (switchedOff.Count > 0)
+        {
+            message += " Switched off: " + string.Join(", ", switchedOff.Select(r => r.RoomNumber)) + ".";
+        }
+        return message + " If a gender is wrong, correct it on the Students screen (student) or the Rooms screen (room).";
+    }
+
     /// <summary>The free beds of a room (1 up to its capacity), for choosing the bed at check-in or transfer.</summary>
     public static List<int> GetFreeBeds(int roomId)
     {

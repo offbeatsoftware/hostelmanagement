@@ -117,6 +117,23 @@ public sealed class AllocationServiceTests : TestDatabase
     }
 
     [Fact]
+    public void NoRoomForTheStudent_TheMessageNamesTheRoomsOfTheOtherGender()
+    {
+        // The client's case: a girls' triple room with 2 free beds, and a student saved as male.
+        Room girlsRoom = NewRoom("200", capacity: 3, gender: RoomGender.Female);
+        AllocationService.CheckIn(NewStudent("Ritu", RoomGender.Female), girlsRoom.RoomId, DateTime.Today);
+        int sham = NewStudent("Sham", RoomGender.Male);
+
+        Assert.Empty(AllocationService.GetRoomsFor(HostelId, RoomGender.Male));
+        Assert.Single(AllocationService.GetRoomsFor(HostelId, RoomGender.Female));
+        string message = AllocationService.ExplainNoRoom(HostelId, StudentService.GetStudent(sham)!);
+
+        Assert.Contains("no free bed in a room for boys", message);
+        Assert.Contains("Sham is saved as Male", message);
+        Assert.Contains("girls' rooms: 200 (2)", message);
+    }
+
+    [Fact]
     public void CheckIn_StudentWithoutGender_IsRejected()
     {
         // Only a student saved before version 1.3 can have no gender.
