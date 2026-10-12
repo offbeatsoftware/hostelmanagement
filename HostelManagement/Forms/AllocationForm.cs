@@ -178,6 +178,16 @@ public sealed class AllocationForm : Form
         Controls.Add(saveButton);
         Controls.Add(cancelButton);
 
+        // A long message (for example why no room can be offered) pushes the buttons down and makes the window taller.
+        int buttonsTop = saveButton.Top;
+        int bottomSpace = ClientSize.Height - saveButton.Bottom;
+        _messageLabel.SizeChanged += (_, _) =>
+        {
+            int top = Math.Max(buttonsTop, _messageLabel.Bottom + 12);
+            saveButton.Top = cancelButton.Top = top;
+            ClientSize = new Size(ClientSize.Width, saveButton.Bottom + bottomSpace);
+        };
+
         Load += (_, _) =>
         {
             // The student list is filled by data binding once the form exists.
