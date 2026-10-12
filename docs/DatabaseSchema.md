@@ -298,7 +298,7 @@ Application settings as key and value pairs (Phase 11).
 
 | Column | Type | Notes |
 |---|---|---|
-| SettingKey | Text(50) | Primary key, for example `Email.SenderEmail`, `Email.Invoice.Subject` |
+| SettingKey | Text(50) | Primary key, for example `Email.SenderEmail`, `Email.Invoice.Subject`, `AcademicYear.StartMonth` (1 to 12, July when missing) |
 | SettingValue | Memo | The value. `Email.AppPassword` is encrypted with Windows (DPAPI) for the signed in Windows user, so after moving the database to another computer or Windows user it must be entered again |
 
 Email rules: one Gmail account for all hostels; emails are sent only when the admin clicks a button, with a

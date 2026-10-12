@@ -18,6 +18,8 @@ public abstract class TestDatabase : IDisposable
         AppPaths.UseDataFolder(DataFolder);
         AppPaths.EnsureFolders();
         CreateFreshDatabase();
+        // A fresh database has no start month saved: every test starts with the July default.
+        AcademicYearService.Load();
     }
 
     /// <summary>Builds the database from the schema with ADOX, ignoring any shipped template.</summary>

@@ -91,7 +91,7 @@ public static class InvoicePdfWriter
                  {
                      ("Invoice number", invoice.InvoiceNumber),
                      ("Invoice date", Date(invoice.InvoiceDate)),
-                     ("Academic year", $"{invoice.YearText} (Jul {invoice.AcademicYear} to Jun {invoice.AcademicYear + 1})"),
+                     ("Academic year", $"{invoice.YearText} ({AcademicYear.PeriodText(invoice.AcademicYear)})"),
                      ("Status", invoice.Status),
                  })
         {

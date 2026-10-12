@@ -40,8 +40,8 @@ public sealed class NewYearFeesForm : Form
         _yearBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 110, Margin = new Padding(0, 4, 16, 0) };
         int current = AcademicYear.Current;
         _yearBox.Items.AddRange([AcademicYear.Label(current), AcademicYear.Label(current + 1)]);
-        // From April the next academic year is the one being prepared.
-        _yearBox.SelectedIndex = DateTime.Today.Month is >= 4 and < AcademicYear.StartMonth ? 1 : 0;
+        // In the last three months of a year, the next academic year is the one being prepared.
+        _yearBox.SelectedIndex = DateTime.Today >= AcademicYear.Start(current + 1).AddMonths(-3) ? 1 : 0;
         _yearBox.SelectedIndexChanged += (_, _) => LoadCandidates();
         var note = new Label
         {

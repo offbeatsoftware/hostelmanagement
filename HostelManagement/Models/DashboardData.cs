@@ -31,6 +31,6 @@ public sealed class DashboardData
     public List<Payment> LatestPayments { get; init; } = [];
     public List<RoomAllocation> RecentCheckIns { get; init; } = [];
 
-    /// <summary>July to June of the current academic year.</summary>
+    /// <summary>The months of the current academic year.</summary>
     public List<MonthTotal> PaymentsPerMonth { get; init; } = [];
 }

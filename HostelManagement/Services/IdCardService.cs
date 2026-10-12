@@ -20,7 +20,7 @@ public sealed record IdCard(
 /// <summary>
 /// Student and transport I-cards (client decisions, version 1.2), with the student's photo. Any active student can
 /// get a student I-card; a transport I-card only for a student whose fee for the academic year includes transport.
-/// Cards are valid until the end of the academic year (30 June).
+/// Cards are valid until the last day of the academic year (30 June with the usual July start).
 /// </summary>
 public static class IdCardService
 {

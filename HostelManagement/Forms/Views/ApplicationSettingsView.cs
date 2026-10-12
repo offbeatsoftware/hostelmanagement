@@ -1,4 +1,5 @@
 using HostelManagement.Data;
+using HostelManagement.Models;
 using HostelManagement.Services;
 using HostelManagement.Utilities;
 
@@ -14,6 +15,10 @@ public sealed class ApplicationSettingsView : UserControl
     private readonly Button _testButton;
     private readonly DataGridView _resultsGrid;
     private readonly Label _summaryLabel;
+    private readonly ComboBox _startMonthBox;
+    private readonly Label _endLabel;
+    private readonly Label _currentYearLabel;
+    private readonly Label _yearMessage;
 
     public ApplicationSettingsView()
     {
@@ -98,13 +103,112 @@ public sealed class ApplicationSettingsView : UserControl
             Text = "Database",
         };
 
+        // ---- Academic year ----
+        var yearHeading = new Label
+        {
+            Dock = DockStyle.Top,
+            Height = 28,
+            Font = UiTheme.BodyBoldFont,
+            ForeColor = UiTheme.TextPrimary,
+            Text = "Academic year",
+        };
+        TableLayoutPanel yearTable = FormFields.CreateTable(labelWidth: 140, inputWidth: 520);
+        yearTable.Dock = DockStyle.Top;
+        _startMonthBox = new ComboBox
+        {
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Font = UiTheme.BodyFont,
+            Width = 160,
+            Margin = new Padding(0, 4, 0, 4),
+        };
+        _startMonthBox.Items.AddRange([.. Enumerable.Range(1, 12).Select(m => "1 " + AcademicYear.MonthName(m))]);
+        _startMonthBox.SelectedIndexChanged += (_, _) => ShowYearPreview();
+        FormFields.AddRow(yearTable, "Starts on", _startMonthBox);
+        _endLabel = InfoValue();
+        FormFields.AddRow(yearTable, "Ends on", _endLabel);
+        _currentYearLabel = InfoValue();
+        FormFields.AddRow(yearTable, "Current year", _currentYearLabel);
+
+        var saveYearButton = new Button { Text = "Save" };
+        UiTheme.StylePrimaryButton(saveYearButton);
+        saveYearButton.Click += (_, _) => SaveStartMonth();
+        _yearMessage = FormFields.CreateMessageLabel();
+        var yearNote = new Label
+        {
+            AutoSize = true,
+            ForeColor = UiTheme.TextMuted,
+            Margin = new Padding(12, 9, 0, 0),
+            Text = "Fees, invoice numbers, the dashboard, reports and I-cards follow this year.",
+        };
+        FlowLayoutPanel yearButtons = FormFields.CreateButtonRow(saveYearButton, _yearMessage, yearNote);
+        FormFields.AddRow(yearTable, string.Empty, yearButtons);
+        var yearGap = new Panel { Dock = DockStyle.Top, Height = 16 };
+
         // Docked controls are laid out in reverse order of adding: the grid fills what is left.
         Controls.Add(_resultsGrid);
         Controls.Add(buttonRow);
         Controls.Add(infoTable);
         Controls.Add(heading);
+        Controls.Add(yearGap);
+        Controls.Add(yearTable);
+        Controls.Add(yearHeading);
+
+        _startMonthBox.SelectedIndex = AcademicYear.StartMonth - 1;
 
         ShowFileSize();
+    }
+
+    private static Label InfoValue() => new()
+    {
+        AutoSize = true,
+        Font = UiTheme.BodyFont,
+        ForeColor = UiTheme.TextPrimary,
+        Margin = new Padding(0, 8, 0, 4),
+    };
+
+    private int ChosenStartMonth => _startMonthBox.SelectedIndex + 1;
+
+    /// <summary>Shows when a year with the chosen start month ends, and which year today falls in.</summary>
+    private void ShowYearPreview()
+    {
+        int month = ChosenStartMonth;
+        _endLabel.Text = AcademicYear.EndText(month);
+        int startYear = DateTime.Today.Month >= month ? DateTime.Today.Year : DateTime.Today.Year - 1;
+        DateTime start = new(startYear, month, 1);
+        string label = month == 1 ? $"{startYear}" : $"{startYear}-{(startYear + 1) % 100:00}";
+        _currentYearLabel.Text = string.Create(System.Globalization.CultureInfo.InvariantCulture,
+            $"{label}: {start:d MMM yyyy} to {start.AddYears(1).AddDays(-1):d MMM yyyy}");
+        _yearMessage.Text = string.Empty;
+    }
+
+    private void SaveStartMonth()
+    {
+        int month = ChosenStartMonth;
+        if (month == AcademicYear.StartMonth)
+        {
+            FormFields.ShowSuccess(_yearMessage, "No change.");
+            return;
+        }
+        if (!Dialogs.Confirm(
+                $"Start the academic year on 1 {AcademicYear.MonthName(month)} from now on?\n\n" +
+                "New fees, invoice numbers, the dashboard, reports and I-cards will use the new year. " +
+                "Fees already made keep their academic year."))
+        {
+            return;
+        }
+        try
+        {
+            AcademicYearService.SaveStartMonth(month);
+            FormFields.ShowSuccess(_yearMessage, "Saved.");
+        }
+        catch (ValidationException ex)
+        {
+            FormFields.ShowError(_yearMessage, ex.Message);
+        }
+        catch (Exception ex)
+        {
+            ErrorHandler.Handle(ex, "The academic year could not be saved.");
+        }
     }
 
     private static Label AddInfoRow(TableLayoutPanel table, string caption, string value)

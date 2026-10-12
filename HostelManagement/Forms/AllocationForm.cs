@@ -136,7 +136,8 @@ public sealed class AllocationForm : Form
                 AllocationAction.Transfer => "The student leaves the current room and enters the new room on this date.",
                 AllocationAction.CheckOut => "The student's status will be set to Left.",
                 _ => "Only active rooms for the student's gender with a free bed are listed. The fee is for the academic " +
-                     "year of the check-in date (July to June); the student can pay it in any number of payments.",
+                     $"year of the check-in date ({AcademicYear.MonthName(AcademicYear.StartMonth)} to " +
+                     $"{AcademicYear.MonthName(AcademicYear.End(2001).Month)}); the student can pay it in any number of payments.",
             },
         };
 

@@ -38,6 +38,7 @@ internal static class Program
         try
         {
             DatabaseInitializer.Initialize();
+            AcademicYearService.Load();
         }
         catch (DatabaseException ex)
         {
