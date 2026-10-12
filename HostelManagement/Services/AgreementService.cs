@@ -8,7 +8,8 @@ using HostelManagement.Utilities;
 namespace HostelManagement.Services;
 
 /// <summary>The agreement text with the student's details filled in, ready to be written as a PDF.</summary>
-public sealed record AgreementDocument(string StudentName, string ParentName, string FilledText);
+/// <param name="PhotoFile">The student's photo (full path), printed at the top of the agreement; null when there is none.</param>
+public sealed record AgreementDocument(string StudentName, string ParentName, string FilledText, string? PhotoFile = null);
 
 /// <summary>
 /// Residency agreement (client decision): the client's agreement text with the student's name, father,
@@ -107,7 +108,8 @@ public static partial class AgreementService
                 // A missing value leaves a dotted line to fill in by hand, as on the printed form.
                 ? $"{ValueStart}{(value.Trim().Length > 0 ? value.Trim() : "................................")}{ValueEnd}"
                 : m.Value);
-        return new AgreementDocument(student.StudentName, student.FatherName, filled);
+        string? photo = StudentFileService.Exists(student.PhotoPath) ? StudentFileService.FullPath(student.PhotoPath) : null;
+        return new AgreementDocument(student.StudentName, student.FatherName, filled, photo);
     }
 
     /// <summary>A file name such as Agreement_Aman-Sharma_2026-10-06.pdf.</summary>

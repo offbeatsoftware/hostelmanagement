@@ -92,6 +92,7 @@ public sealed class LayoutTests : TestDatabase
                 ("Payment remarks", () => new PaymentRemarksForm(payment)),
                 ("Payment history", () => new PaymentHistoryForm("Payment change history", changes)),
                 ("Take photo", () => new CameraForm()),
+                ("I-card valid till", () => new IdCardValidTillForm(transport: true, 12, IdCardService.DefaultValidTill(DateTime.Today))),
             };
 
             foreach ((string name, Func<Form> create) in dialogs)
@@ -272,7 +273,7 @@ internal static class LayoutChecker
         int indent = list.DrawMode == DrawMode.Normal ? 2 : 8;
         foreach (object item in list.Items)
         {
-            string text = list.GetItemText(item);
+            string text = list.GetItemText(item) ?? string.Empty;
             if (TextRenderer.MeasureText(text, list.Font).Width + indent > list.ClientSize.Width)
             {
                 return text;

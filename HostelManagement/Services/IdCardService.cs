@@ -20,16 +20,29 @@ public sealed record IdCard(
 /// <summary>
 /// Student and transport I-cards (client decisions, version 1.2), with the student's photo. Any active student can
 /// get a student I-card; a transport I-card only for a student whose fee for the academic year includes transport.
-/// Cards are valid until the last day of the academic year (30 June with the usual July start).
+/// The admin types the "Valid till" date each time cards are printed (client decision); it starts as the last day
+/// of the academic year.
 /// </summary>
 public static class IdCardService
 {
-    /// <summary>The cards for the chosen students; students who cannot get one are returned as problems.</summary>
-    public static (List<IdCard> Cards, List<string> Problems) Prepare(IReadOnlyList<int> studentIds, bool transport, DateTime today)
+    /// <summary>The "Valid till" date offered when printing: the last day of the academic year.</summary>
+    public static DateTime DefaultValidTill(DateTime today) => AcademicYear.End(AcademicYear.Of(today));
+
+    /// <summary>
+    /// The cards for the chosen students, valid till the given date (the end of the academic year when null);
+    /// students who cannot get one are returned as problems.
+    /// </summary>
+    public static (List<IdCard> Cards, List<string> Problems) Prepare(IReadOnlyList<int> studentIds, bool transport, DateTime today,
+        DateTime? validTill = null)
     {
         if (studentIds.Count == 0)
         {
             throw new ValidationException("Please select one or more students.");
+        }
+        DateTime validUntil = (validTill ?? DefaultValidTill(today)).Date;
+        if (validUntil < today.Date)
+        {
+            throw new ValidationException("The Valid till date cannot be in the past.");
         }
 
         int academicYear = AcademicYear.Of(today);
@@ -72,7 +85,7 @@ public static class IdCardService
                 student.Mobile,
                 student.FatherMobile,
                 photo,
-                AcademicYear.End(academicYear),
+                validUntil,
                 AcademicYear.Label(academicYear)));
         }
         return (cards, problems);

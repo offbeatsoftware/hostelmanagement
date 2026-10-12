@@ -33,6 +33,19 @@ public sealed class IdCardServiceTests : TestDatabase
     }
 
     [Fact]
+    public void ValidTill_IsTheDateTheAdminChose_AndCannotBeInThePast()
+    {
+        int aman = StudentWithPhoto("Aman", 12_000m);
+        DateTime chosen = DateTime.Today.AddMonths(3);
+
+        Assert.Equal(chosen, Assert.Single(IdCardService.Prepare([aman], transport: false, DateTime.Today, chosen).Cards).ValidTill);
+        Assert.Equal(chosen, Assert.Single(IdCardService.Prepare([aman], transport: true, DateTime.Today, chosen).Cards).ValidTill);
+        Assert.Contains("past", Assert.Throws<ValidationException>(() =>
+            IdCardService.Prepare([aman], transport: false, DateTime.Today, DateTime.Today.AddDays(-1))).Message);
+        Assert.Equal(AcademicYear.End(AcademicYear.Current), IdCardService.DefaultValidTill(DateTime.Today));
+    }
+
+    [Fact]
     public void StudentCard_HasTheStudentFatherRoomAndPhoto_ValidTillTheEndOfTheAcademicYear()
     {
         int aman = StudentWithPhoto("Aman", 0m);

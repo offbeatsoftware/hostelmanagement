@@ -25,7 +25,7 @@ public static class InvoicePdfWriter
         return path;
     }
 
-    /// <summary>A safe file name such as Invoice_SBH-2026-27-0001.pdf.</summary>
+    /// <summary>A safe file name such as Invoice_SBH-2026-2027-0001.pdf.</summary>
     public static string FileName(Invoice invoice) => $"Invoice_{invoice.InvoiceNumber.Replace('/', '-')}.pdf";
 
     public static void Write(InvoicePrintData data, string path)
@@ -91,7 +91,7 @@ public static class InvoicePdfWriter
                  {
                      ("Invoice number", invoice.InvoiceNumber),
                      ("Invoice date", Date(invoice.InvoiceDate)),
-                     ("Academic year", $"{invoice.YearText} ({AcademicYear.PeriodText(invoice.AcademicYear)})"),
+                     ("Academic year", invoice.YearText),
                      ("Status", invoice.Status),
                  })
         {

@@ -13,7 +13,7 @@ public sealed class AcademicYearTests : TestDatabase
         Assert.Equal(7, AcademicYear.StartMonth);
         Assert.Equal(2026, AcademicYear.Of(new DateTime(2026, 7, 1)));
         Assert.Equal(2025, AcademicYear.Of(new DateTime(2026, 6, 30)));
-        Assert.Equal("2026-27", AcademicYear.Label(2026));
+        Assert.Equal("2026-2027", AcademicYear.Label(2026));
         Assert.Equal(new DateTime(2027, 6, 30), AcademicYear.End(2026));
         Assert.Equal("1 Jul 2026 to 30 Jun 2027", AcademicYear.PeriodText(2026));
         Assert.Equal("30 June (the next year)", AcademicYear.EndText(7));

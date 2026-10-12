@@ -13,7 +13,7 @@ public sealed record ReceiptPrintData(Payment Payment, Invoice Invoice, Hostel H
 /// kept in the change history. Every payment is made against a student's yearly invoice; the student pays
 /// any amount any number of times, but never more than the amount still pending (no advance or extra payments); methods are cash,
 /// UPI, bank transfer and cheque, and every method except cash needs a reference. Each payment gets a
-/// receipt number such as SBH/R/2026-27/0001, one sequence per academic year of the payment date.
+/// receipt number such as SBH/R/2026-2027/0001, one sequence per academic year of the payment date.
 /// </summary>
 public static class PaymentService
 {
@@ -46,7 +46,9 @@ public static class PaymentService
 
         payment.StudentId = invoice.StudentId;
         payment.CreatedDate = DateTime.Now;
-        string prefix = $"{ReceiptPrefix}/{InvoiceService.AcademicYearLabel(payment.PaymentDate)}/";
+        int receiptYear = AcademicYear.Of(payment.PaymentDate);
+        string prefix = $"{ReceiptPrefix}/{AcademicYear.Label(receiptYear)}/";
+        string earlierPrefix = $"{ReceiptPrefix}/{AcademicYear.ShortLabel(receiptYear)}/";
 
         int paymentId = Db.InTransaction((connection, transaction) =>
         {
@@ -63,7 +65,8 @@ public static class PaymentService
                     "Advance or extra payments are not accepted.");
             }
 
-            payment.ReceiptNumber = prefix + NextSequence(PaymentRepository.GetNumbersStartingWith(connection, transaction, prefix), prefix)
+            payment.ReceiptNumber = prefix + InvoiceService.NextNumber(prefix, earlierPrefix,
+                    p => PaymentRepository.GetNumbersStartingWith(connection, transaction, p))
                 .ToString("0000", CultureInfo.InvariantCulture);
             return PaymentRepository.Insert(connection, transaction, payment);
         });
@@ -238,10 +241,4 @@ public static class PaymentService
         Validators.CheckLength(payment.Reference, 100, "Reference");
         Validators.CheckLength(payment.Remarks, 255, "Remarks");
     }
-
-    private static int NextSequence(IEnumerable<string> numbers, string prefix) =>
-        numbers
-            .Select(n => int.TryParse(n[prefix.Length..], NumberStyles.None, CultureInfo.InvariantCulture, out int value) ? value : 0)
-            .DefaultIfEmpty(0)
-            .Max() + 1;
 }

@@ -1,3 +1,4 @@
+using HostelManagement.Data;
 using HostelManagement.Models;
 using HostelManagement.Reports;
 using HostelManagement.Services;
@@ -86,6 +87,25 @@ public sealed class InvoiceServiceTests : TestDatabase
 
         Assert.Equal([Prefix(year) + "0001", Prefix(year) + "0002", Prefix(year) + "0003"], numbers);
         Assert.Equal(Prefix(year + 1) + "0001", nextYear.InvoiceNumber);
+    }
+
+    [Fact]
+    public void Numbers_UseTheFullYear_AndCarryOnAfterNumbersWithTheShortYear()
+    {
+        int year = AcademicYear.Current;
+        Invoice first = InvoiceService.Create(AddStudentWithParents("First"), year, new YearFee(10_000m, 0m));
+        Assert.Equal($"SBH/{year}-{year + 1}/0001", first.InvoiceNumber);
+
+        // An invoice made before version 1.3 had the short year in its number.
+        string shortYear = $"{year}-{(year + 1) % 100:00}";
+        Db.Execute("UPDATE [Invoice] SET [InvoiceNumber] = ? WHERE [InvoiceId] = ?",
+            Db.Param("@InvoiceNumber", $"SBH/{shortYear}/0007"), Db.Param("@InvoiceId", first.InvoiceId));
+
+        Invoice next = InvoiceService.Create(AddStudentWithParents("Second"), year, new YearFee(10_000m, 0m));
+        Assert.Equal($"SBH/{year}-{year + 1}/0008", next.InvoiceNumber);
+
+        Payment receipt = Pay(next.InvoiceId, 1_000m, YearStart);
+        Assert.Equal($"SBH/R/{year}-{year + 1}/0001", receipt.ReceiptNumber);
     }
 
     [Fact]
@@ -217,9 +237,9 @@ public sealed class InvoiceServiceTests : TestDatabase
     }
 
     [Theory]
-    [InlineData("2026-06-30", 2025, "2025-26")]
-    [InlineData("2026-07-01", 2026, "2026-27")]
-    [InlineData("2027-03-15", 2026, "2026-27")]
+    [InlineData("2026-06-30", 2025, "2025-2026")]
+    [InlineData("2026-07-01", 2026, "2026-2027")]
+    [InlineData("2027-03-15", 2026, "2026-2027")]
     [InlineData("2099-12-31", 2099, "2099-00")]
     public void AcademicYear_RunsFromJulyToJune(string date, int year, string label)
     {

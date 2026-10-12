@@ -167,6 +167,32 @@ public sealed class AgreementServiceTests : TestDatabase
     }
 
     [Fact]
+    public void Pdf_ShowsTheStudentsPhoto_AndWorksWithoutOne()
+    {
+        Room room = TripleRoom();
+        int aman = AddStudent("Aman Sharma");
+        AllocationService.CheckIn(aman, room.RoomId, CheckInDate);
+        Assert.Null(AgreementService.Prepare(aman, AgreementDate).PhotoFile);
+
+        string photoFile = Path.Combine(DataFolder, "aman.png");
+        using (var bitmap = new System.Drawing.Bitmap(300, 400))
+        {
+            bitmap.Save(photoFile, System.Drawing.Imaging.ImageFormat.Png);
+        }
+        Student student = StudentService.GetStudent(aman)!;
+        StudentService.Save(student, new StudentFileChanges(photoFile));
+
+        AgreementDocument document = AgreementService.Prepare(aman, AgreementDate);
+        Assert.NotNull(document.PhotoFile);
+        Assert.True(File.Exists(document.PhotoFile));
+
+        string path = AgreementPdfWriter.SaveToAgreementsFolder(document, AgreementDate);
+        using PdfSharp.Pdf.PdfDocument pdf = PdfReader.Open(path, PdfDocumentOpenMode.Import);
+        Assert.True(pdf.PageCount >= 3);
+        Assert.True(new FileInfo(path).Length > 5_000);
+    }
+
+    [Fact]
     public void Words_MarkFilledValuesBold()
     {
         string line = $"Name {AgreementService.ValueStart}Aman Sharma{AgreementService.ValueEnd} of Room {AgreementService.ValueStart}101{AgreementService.ValueEnd}, bed";

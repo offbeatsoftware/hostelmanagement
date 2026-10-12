@@ -5,7 +5,7 @@ namespace HostelManagement.Models;
 /// <summary>
 /// The academic year starts on the 1st of the month chosen in Application Settings (July unless changed) and
 /// ends the day before the same date a year later. A year is stored as the calendar year in which it starts:
-/// with a July start, 2026 is the academic year 1 July 2026 to 30 June 2027, shown as "2026-27".
+/// with a July start, 2026 is the academic year 1 July 2026 to 30 June 2027, shown as "2026-2027" (client decision).
 /// </summary>
 public static class AcademicYear
 {
@@ -28,9 +28,23 @@ public static class AcademicYear
 
     public static int Current => Of(DateTime.Today);
 
-    /// <summary>"2026-27" for the academic year starting in 2026; "2026" when the year runs January to December.</summary>
-    public static string Label(int startYear) =>
-        StartMonth == 1 ? startYear.ToString(CultureInfo.InvariantCulture) : $"{startYear}-{(startYear + 1) % 100:00}";
+    /// <summary>"2026-2027" for the academic year starting in 2026; "2026" when the year runs January to December.</summary>
+    public static string Label(int startYear) => Label(startYear, StartMonth);
+
+    /// <summary>The label of a year with the given start month (used to preview a start month before it is saved).</summary>
+    public static string Label(int startYear, int startMonth) =>
+        startMonth == 1
+            ? startYear.ToString(CultureInfo.InvariantCulture)
+            : string.Create(CultureInfo.InvariantCulture, $"{startYear}-{startYear + 1}");
+
+    /// <summary>
+    /// The short label used in invoice and receipt numbers before version 1.3 ("2026-27"), so numbering of a
+    /// year carries on after numbers made earlier.
+    /// </summary>
+    public static string ShortLabel(int startYear) =>
+        StartMonth == 1
+            ? startYear.ToString(CultureInfo.InvariantCulture)
+            : string.Create(CultureInfo.InvariantCulture, $"{startYear}-{(startYear + 1) % 100:00}");
 
     public static DateTime Start(int startYear) => new(startYear, StartMonth, 1);
 

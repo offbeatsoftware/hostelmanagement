@@ -38,7 +38,7 @@ Hostel 1──* Room
 
 ## Schema version
 
-The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **14**).
+The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **15**).
 From version 13 (application 1.2) on, an older database is **upgraded in place** at startup and keeps its data
 (`DatabaseSchema.FirstUpgradableVersion`). A database older than that, or newer than the application, is refused
 with an explanation instead of failing later with confusing errors. Increase the version whenever a table or column changes.
@@ -59,6 +59,7 @@ with an explanation instead of failing later with confusing errors. Increase the
 | 12 | Attendance table (night attendance, absence emails to parents) |
 | 13 | Version 1.2 (client feedback): fee per student and academic year on Invoice (RoomRent, TransportAmount, AcademicYear, one per student and year); Student father and mother columns; removed Hostel.BillingFrequency, SharingType.Rent and the Parent, Service, StudentService and InvoiceItem tables |
 | 14 | PaymentChange table (history of corrected and deleted payments). Upgraded in place from 13, keeping the data |
+| 15 | Version 1.3: only the student's name and gender are required. Student.HostelId added (filled in from the college on upgrade); CollegeId, Mobile, FatherName and FatherMobile may be empty. Upgraded in place from 13 and 14, keeping the data |
 
 ## Tables
 
@@ -129,17 +130,18 @@ instead). Students can only be allocated to an active room with a free bed.
 | Column | Type | Notes |
 |---|---|---|
 | StudentId | AutoNumber | Primary key |
+| HostelId | Number | Required, → Hostel, indexed (the student stays in this hostel) |
 | StudentName | Text(150) | Required, indexed for search |
 | DateOfBirth | Date/Time | Must be in the past |
-| Gender | Text(20) | Male / Female / Other |
+| Gender | Text(20) | Required by the application: Male / Female / Other (decides the rooms) |
 | Address | Text(255) | |
-| CollegeId | Number | Required, → College (the student's hostel is the college's hostel; cannot move to another hostel's college) |
+| CollegeId | Number | Optional, → College (must be a college of the student's hostel) |
 | Course | Text(100) | |
 | ClassName | Text(50) | The specification's "Class" (renamed: `Class` is a risky name in Access SQL) |
-| Mobile | Text(20) | Required, indexed for search |
+| Mobile | Text(20) | Optional, indexed for search |
 | Email | Text(150) | |
-| FatherName | Text(150) | Required |
-| FatherMobile | Text(20) | Required |
+| FatherName | Text(150) | Optional |
+| FatherMobile | Text(20) | Optional |
 | FatherEmail | Text(150) | Invoices, receipts and fee reminders go here (to MotherEmail when empty) |
 | MotherName | Text(150) | |
 | MotherMobile | Text(20) | |
@@ -147,7 +149,7 @@ instead). Students can only be allocated to an active room with a free bed.
 | PhotoPath | Text(255) | Relative to the application folder, e.g. `Photos\Students\S12_photo_20261005103000123.jpg` |
 | AadhaarNumber | Text(12) | Full 12 digit number (client decision), checked with the Verhoeff check digit, unique; shown masked (`XXXX XXXX 1234`) in lists |
 | AadhaarCardPath | Text(255) | Scanned Aadhaar card (PDF/JPG/PNG), e.g. `Documents\Students\S12_aadhaar_....pdf` |
-| AdmissionDate | Date/Time | Required; after the date of birth |
+| AdmissionDate | Date/Time | Today unless changed; after the date of birth |
 | Status | Text(20) | Required: Active / Left |
 | Remarks | Text(255) | |
 

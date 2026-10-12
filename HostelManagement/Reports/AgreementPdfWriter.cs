@@ -8,13 +8,16 @@ namespace HostelManagement.Reports;
 
 /// <summary>
 /// Writes the residency agreement as an A4 PDF: the title in red as on the client's form, wrapped paragraphs
-/// over as many pages as needed, filled in values in bold, and signature lines at the end.
+/// over as many pages as needed, filled in values in bold, and signature lines at the end. The student's photo
+/// (passport size) is printed at the top right of the first page; without a photo the box says where to paste one.
 /// </summary>
 public static class AgreementPdfWriter
 {
     private const double Margin = 56;
     private const double LineHeight = 14.5;
     private const double ParagraphGap = 5;
+    private const double PhotoWidth = 84;
+    private const double PhotoHeight = 105;
     private static readonly XColor TitleRed = XColor.FromArgb(220, 30, 30);
 
     /// <summary>Saves the agreement in the application's Agreements folder and returns its full path.</summary>
@@ -63,6 +66,25 @@ public static class AgreementPdfWriter
         }
 
         NewPage();
+
+        // ---- Photo, top right of the first page; the text beside it is narrower ----
+        double photoX = Margin + width - PhotoWidth;
+        double photoBottom = Margin + PhotoHeight + 8;
+        if (document.PhotoFile is not null && LoadPhoto(document.PhotoFile, PhotoWidth / PhotoHeight) is XImage photo)
+        {
+            using (photo)
+            {
+                g.DrawImage(photo, photoX, Margin, PhotoWidth, PhotoHeight);
+            }
+        }
+        else
+        {
+            g.DrawString("Paste photo", small, new XSolidBrush(Muted), new XRect(photoX, Margin, PhotoWidth, PhotoHeight), XStringFormats.Center);
+        }
+        g.DrawRectangle(new XPen(XColors.Black, 0.6), photoX, Margin, PhotoWidth, PhotoHeight);
+        XGraphics firstPage = g;
+        double TextWidth() => g == firstPage && y < photoBottom ? width - PhotoWidth - 14 : width;
+
         foreach (string line in document.FilledText.Split('\n').Select(l => l.TrimEnd('\r')))
         {
             if (line.Trim().Length == 0)
@@ -72,7 +94,7 @@ public static class AgreementPdfWriter
             else if (line.StartsWith("# ", StringComparison.Ordinal))
             {
                 Ensure(30);
-                g.DrawString(Plain(line[2..]), title, new XSolidBrush(TitleRed), new XRect(Margin, y, width, 22), XStringFormats.TopCenter);
+                g.DrawString(Plain(line[2..]), title, new XSolidBrush(TitleRed), new XRect(Margin, y, TextWidth(), 22), XStringFormats.TopCenter);
                 y += 32;
             }
             else if (line.StartsWith("## ", StringComparison.Ordinal))
@@ -84,7 +106,7 @@ public static class AgreementPdfWriter
             }
             else
             {
-                foreach (List<Word> wrapped in Wrap(g, Words(line), width, body, bold))
+                foreach (List<Word> wrapped in Wrap(g, Words(line), TextWidth(), body, bold))
                 {
                     Ensure(LineHeight);
                     double x = Margin;

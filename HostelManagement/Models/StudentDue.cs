@@ -29,7 +29,7 @@ public sealed class StudentDue
 
     public decimal PendingAmount => Invoices.Sum(i => i.PendingAmount);
 
-    /// <summary>"2026-27" or "2025-26, 2026-27".</summary>
+    /// <summary>"2026-2027" or "2025-2026, 2026-2027".</summary>
     public string YearsText => string.Join(", ", Invoices.Select(i => i.YearText));
 
     /// <summary>Father name and mobile on one line.</summary>

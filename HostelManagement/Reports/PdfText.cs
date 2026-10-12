@@ -1,3 +1,4 @@
+using System.Drawing.Imaging;
 using HostelManagement.Utilities;
 using PdfSharp.Drawing;
 using PdfSharp.Fonts;
@@ -99,5 +100,37 @@ public static class PdfText
             parts.Add(number < 20 ? Ones[number] : (Tens[number / 10] + " " + Ones[number % 10]).Trim());
         }
         return string.Join(" ", parts);
+    }
+
+    /// <summary>The photo cropped to the frame's shape and stored as JPG, so any photo format works.</summary>
+    public static XImage? LoadPhoto(string file, double aspect)
+    {
+        try
+        {
+            using var stream = new MemoryStream(File.ReadAllBytes(file));
+            using var original = Image.FromStream(stream);
+            int width = original.Width;
+            int height = original.Height;
+            Rectangle crop = width / (double)height > aspect
+                ? new Rectangle((width - (int)(height * aspect)) / 2, 0, (int)(height * aspect), height)
+                : new Rectangle(0, (height - (int)(width / aspect)) / 2, width, (int)(width / aspect));
+
+            const int outputHeight = 400;
+            using var cropped = new Bitmap((int)(outputHeight * aspect), outputHeight);
+            using (Graphics graphics = Graphics.FromImage(cropped))
+            {
+                graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                graphics.DrawImage(original, new Rectangle(0, 0, cropped.Width, cropped.Height), crop, GraphicsUnit.Pixel);
+            }
+            var jpg = new MemoryStream();
+            cropped.Save(jpg, ImageFormat.Jpeg);
+            jpg.Position = 0;
+            return XImage.FromStream(jpg);
+        }
+        catch (Exception ex) when (ex is IOException or ArgumentException or OutOfMemoryException or UnauthorizedAccessException)
+        {
+            AppLogger.Error($"The photo {file} could not be used in a PDF.", ex);
+            return null;
+        }
     }
 }

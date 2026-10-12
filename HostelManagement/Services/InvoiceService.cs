@@ -24,7 +24,7 @@ public sealed record NewYearFeeCandidate(Student Student, string RoomText, Invoi
 /// academic year (July to June); the full amount is due even when the student joins mid-year. Every new
 /// academic year the admin enters a new fee. The student pays in any number of payments; the balance is the
 /// total minus everything paid. The admin can change the amounts later, but not below what is already paid.
-/// Invoice numbers: SBH/2026-27/0001, one sequence per academic year. No GST, deposits or discounts.
+/// Invoice numbers: SBH/2026-2027/0001, one sequence per academic year (continuing after SBH/2026-27/ numbers). No GST, deposits or discounts.
 /// </summary>
 public static class InvoiceService
 {
@@ -42,7 +42,7 @@ public static class InvoiceService
     /// <summary>The student's invoice for the academic year, if any.</summary>
     public static Invoice? GetForYear(int studentId, int academicYear) => InvoiceRepository.GetForYear(studentId, academicYear);
 
-    /// <summary>"2026-27" for a date in the academic year July 2026 to June 2027.</summary>
+    /// <summary>"2026-2027" for a date in the academic year July 2026 to June 2027.</summary>
     public static string AcademicYearLabel(DateTime date) => AcademicYear.Label(AcademicYear.Of(date));
 
     /// <summary>Checks the amounts of a yearly fee.</summary>
@@ -96,7 +96,8 @@ public static class InvoiceService
             RoomRent = fee.RoomRent,
             TransportAmount = fee.TransportAmount,
             Remarks = Validators.Clean(fee.Remarks),
-            InvoiceNumber = prefix + NextSequence(InvoiceRepository.GetNumbersStartingWith(connection, transaction, prefix), prefix)
+            InvoiceNumber = prefix + NextNumber(prefix, $"{NumberPrefix}/{AcademicYear.ShortLabel(academicYear)}/",
+                    p => InvoiceRepository.GetNumbersStartingWith(connection, transaction, p))
                 .ToString("0000", CultureInfo.InvariantCulture),
         };
         int invoiceId = InvoiceRepository.Insert(connection, transaction, invoice);
@@ -233,9 +234,14 @@ public static class InvoiceService
         }
     }
 
-    private static int NextSequence(IEnumerable<string> numbers, string prefix) =>
-        numbers
-            .Select(n => int.TryParse(n[prefix.Length..], NumberStyles.None, CultureInfo.InvariantCulture, out int value) ? value : 0)
+    /// <summary>
+    /// The next sequence number of a year: one more than the highest so far, counting the numbers made with the
+    /// earlier short year ("SBH/2026-27/0003" is followed by "SBH/2026-2027/0004").
+    /// </summary>
+    internal static int NextNumber(string prefix, string earlierPrefix, Func<string, IEnumerable<string>> numbersStartingWith) =>
+        new[] { prefix, earlierPrefix }.Distinct()
+            .SelectMany(p => numbersStartingWith(p)
+                .Select(n => int.TryParse(n[p.Length..], NumberStyles.None, CultureInfo.InvariantCulture, out int value) ? value : 0))
             .DefaultIfEmpty(0)
             .Max() + 1;
 }

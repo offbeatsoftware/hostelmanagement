@@ -305,7 +305,7 @@ public static class EmailService
             ?? throw new ValidationException(
                 $"Neither the father nor the mother of {student.StudentName} has an email address. Add one on the Students screen.");
 
-    /// <summary>"2026-27 (invoice SBH/2026-27/0001): total Rs. 62,000, paid Rs. 15,000, pending Rs. 47,000".</summary>
+    /// <summary>"2026-2027 (invoice SBH/2026-2027/0001): total Rs. 62,000, paid Rs. 15,000, pending Rs. 47,000".</summary>
     private static string FeeLine(Invoice invoice)
     {
         string parts = invoice.HasTransport

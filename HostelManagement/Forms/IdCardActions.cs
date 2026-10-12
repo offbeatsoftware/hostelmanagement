@@ -13,7 +13,21 @@ internal static class IdCardActions
         try
         {
             DateTime today = DateTime.Today;
-            (List<IdCard> cards, List<string> problems) = IdCardService.Prepare(studentIds, transport, today);
+            if (studentIds.Count == 0)
+            {
+                Dialogs.Warning("Please select one or more students.");
+                return;
+            }
+            DateTime validTill;
+            using (var ask = new IdCardValidTillForm(transport, studentIds.Count, IdCardService.DefaultValidTill(today)))
+            {
+                if (ask.ShowDialog(owner) != DialogResult.OK)
+                {
+                    return;
+                }
+                validTill = ask.ValidTill;
+            }
+            (List<IdCard> cards, List<string> problems) = IdCardService.Prepare(studentIds, transport, today, validTill);
             if (cards.Count == 0)
             {
                 Dialogs.Warning("No I-card could be made:" + Environment.NewLine + Environment.NewLine +

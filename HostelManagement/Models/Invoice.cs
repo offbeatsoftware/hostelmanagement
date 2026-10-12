@@ -20,7 +20,7 @@ public sealed class Invoice
     public int StudentId { get; set; }
     public DateTime InvoiceDate { get; set; }
 
-    /// <summary>The academic year, stored as the year it starts in (2026 for 2026-27).</summary>
+    /// <summary>The academic year, stored as the year it starts in (2026 for 2026-2027).</summary>
     public int AcademicYear { get; set; }
 
     public decimal RoomRent { get; set; }
@@ -40,7 +40,7 @@ public sealed class Invoice
 
     public bool HasTransport => TransportAmount > 0;
 
-    /// <summary>"2026-27".</summary>
+    /// <summary>"2026-2027".</summary>
     public string YearText => Models.AcademicYear.Label(AcademicYear);
 
     public string Status => PendingAmount <= 0 ? InvoiceStatus.Paid

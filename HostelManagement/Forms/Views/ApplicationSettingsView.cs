@@ -175,7 +175,7 @@ public sealed class ApplicationSettingsView : UserControl
         _endLabel.Text = AcademicYear.EndText(month);
         int startYear = DateTime.Today.Month >= month ? DateTime.Today.Year : DateTime.Today.Year - 1;
         DateTime start = new(startYear, month, 1);
-        string label = month == 1 ? $"{startYear}" : $"{startYear}-{(startYear + 1) % 100:00}";
+        string label = AcademicYear.Label(startYear, month);
         _currentYearLabel.Text = string.Create(System.Globalization.CultureInfo.InvariantCulture,
             $"{label}: {start:d MMM yyyy} to {start.AddYears(1).AddDays(-1):d MMM yyyy}");
         _yearMessage.Text = string.Empty;

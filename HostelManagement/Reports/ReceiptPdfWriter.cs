@@ -22,7 +22,7 @@ public static class ReceiptPdfWriter
         return path;
     }
 
-    /// <summary>A safe file name such as Receipt_SBH-R-2026-27-0001.pdf.</summary>
+    /// <summary>A safe file name such as Receipt_SBH-R-2026-2027-0001.pdf.</summary>
     public static string FileName(Payment payment) => $"Receipt_{payment.ReceiptNumber.Replace('/', '-')}.pdf";
 
     public static void Write(ReceiptPrintData data, string path)
@@ -110,11 +110,7 @@ public static class ReceiptPdfWriter
                          $"total fee {Rupees(invoice.TotalAmount)}).";
         g.DrawString(Fit(g, towards, body, width), body, XBrushes.Black, Margin, y + 9);
         y += 16;
-        if (payment.Remarks.Length > 0)
-        {
-            g.DrawString(Fit(g, "Remarks: " + payment.Remarks, body, width), body, XBrushes.Black, Margin, y + 9);
-            y += 16;
-        }
+        // Payment remarks are notes for the hostel only and are not printed (client decision).
 
         // ---- Invoice balance after this payment ----
         y += 8;

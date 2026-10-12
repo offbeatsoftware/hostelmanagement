@@ -30,7 +30,7 @@
     <Company>OffbeatSoftwaresolutions</Company>
     <Authors>OffbeatSoftwaresolutions</Authors>
     <Copyright>© OffbeatSoftwaresolutions</Copyright>
-    <Version>1.2.1</Version>
+    <Version>1.3.0</Version>
     <ApplicationIcon>Resources\AppIcon.ico</ApplicationIcon>
 
     <!-- Allows the project to be compiled on non Windows build machines (CI). -->

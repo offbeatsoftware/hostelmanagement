@@ -1,4 +1,3 @@
-using System.Drawing.Imaging;
 using HostelManagement.Services;
 using HostelManagement.Utilities;
 using PdfSharp.Drawing;
@@ -117,44 +116,12 @@ public static class IdCardPdfWriter
         // ---- Footer: validity and signature ----
         double footerY = y + CardHeight - 13;
         g.DrawString($"Valid till {card.ValidTill:dd MMM yyyy}", Font(6.5, bold: true), new XSolidBrush(colour), photoX, footerY + 7);
-        g.DrawLine(new XPen(Muted, 0.5), x + CardWidth - 70, footerY, x + CardWidth - 10, footerY);
-        g.DrawString("Warden", Font(6), new XSolidBrush(Muted), new XRect(x + CardWidth - 70, footerY + 1, 60, 8), XStringFormats.TopCenter);
+        g.DrawLine(new XPen(Muted, 0.5), x + CardWidth - 80, footerY, x + CardWidth - 10, footerY);
+        g.DrawString("Hostel Management", Font(6), new XSolidBrush(Muted), new XRect(x + CardWidth - 80, footerY + 1, 70, 8), XStringFormats.TopCenter);
         if (card.HostelPhone.Length > 0)
         {
             g.DrawString($"Ph. {card.HostelPhone}", Font(6), new XSolidBrush(Muted),
-                new XRect(x + 8, footerY - 1, CardWidth - 90, 8), XStringFormats.TopRight);
-        }
-    }
-
-    /// <summary>The photo cropped to the frame's shape and stored as JPG, so any photo format works.</summary>
-    private static XImage? LoadPhoto(string file, double aspect)
-    {
-        try
-        {
-            using var stream = new MemoryStream(File.ReadAllBytes(file));
-            using var original = Image.FromStream(stream);
-            int width = original.Width;
-            int height = original.Height;
-            Rectangle crop = width / (double)height > aspect
-                ? new Rectangle((width - (int)(height * aspect)) / 2, 0, (int)(height * aspect), height)
-                : new Rectangle(0, (height - (int)(width / aspect)) / 2, width, (int)(width / aspect));
-
-            const int outputHeight = 400;
-            using var cropped = new Bitmap((int)(outputHeight * aspect), outputHeight);
-            using (Graphics graphics = Graphics.FromImage(cropped))
-            {
-                graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                graphics.DrawImage(original, new Rectangle(0, 0, cropped.Width, cropped.Height), crop, GraphicsUnit.Pixel);
-            }
-            var jpg = new MemoryStream();
-            cropped.Save(jpg, ImageFormat.Jpeg);
-            jpg.Position = 0;
-            return XImage.FromStream(jpg);
-        }
-        catch (Exception ex) when (ex is IOException or ArgumentException or OutOfMemoryException or UnauthorizedAccessException)
-        {
-            AppLogger.Error($"The photo {file} could not be used on an I-card.", ex);
-            return null;
+                new XRect(x + 8, footerY - 1, CardWidth - 100, 8), XStringFormats.TopRight);
         }
     }
 }
