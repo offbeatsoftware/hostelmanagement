@@ -97,6 +97,7 @@ public static class StudentService
 
         StudentFileService.TryDelete(student.PhotoPath);
         StudentFileService.TryDelete(student.AadhaarCardPath);
+        AgreementSignatureService.DeleteForStudent(studentId);
     }
 
     private static void SaveFiles(int studentId, Student? existing, StudentFileChanges files)

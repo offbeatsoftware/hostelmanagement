@@ -2,6 +2,7 @@ using HostelManagement.Models;
 using HostelManagement.Reports;
 using HostelManagement.Services;
 using PdfSharp.Pdf.IO;
+using HostelManagement.Utilities;
 using Xunit;
 
 namespace HostelManagement.Tests;
@@ -190,6 +191,67 @@ public sealed class AgreementServiceTests : TestDatabase
         using PdfSharp.Pdf.PdfDocument pdf = PdfReader.Open(path, PdfDocumentOpenMode.Import);
         Assert.True(pdf.PageCount >= 3);
         Assert.True(new FileInfo(path).Length > 5_000);
+    }
+
+    private static Bitmap Scribble(Color colour)
+    {
+        var bitmap = new Bitmap(200, 60, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        using Graphics g = Graphics.FromImage(bitmap);
+        using var pen = new Pen(colour, 3);
+        g.DrawBezier(pen, 5, 50, 60, 0, 120, 60, 195, 10);
+        return bitmap;
+    }
+
+    [Fact]
+    public void Signatures_AreSavedPrintedAndRemoved_TheOwnerIsKeptForTheHostel()
+    {
+        Room room = TripleRoom();
+        int aman = AddStudent("Aman Sharma");
+        int ravi = AddStudent("Ravi Kumar");
+        AllocationService.CheckIn(aman, room.RoomId, CheckInDate);
+        AllocationService.CheckIn(ravi, room.RoomId, CheckInDate);
+        Assert.Null(AgreementService.Prepare(aman, AgreementDate).Signatures);
+        Assert.Contains("at least one", Assert.Throws<ValidationException>(() => AgreementSignatureService.Save(aman, HostelId,
+            new Dictionary<AgreementSigner, Image?> { [AgreementSigner.Student] = null }, "", AgreementDate, true)).Message);
+
+        using (Bitmap student = Scribble(Color.Navy))
+        using (Bitmap parent = Scribble(Color.Black))
+        using (Bitmap owner = Scribble(Color.DarkBlue))
+        {
+            AgreementSignatureService.Save(aman, HostelId, new Dictionary<AgreementSigner, Image?>
+            {
+                [AgreementSigner.Student] = student,
+                [AgreementSigner.Parent] = parent,
+                [AgreementSigner.Owner] = owner,
+                [AgreementSigner.Witness] = null,
+            }, " Mohan Lal ", AgreementDate, keepOwnerForHostel: true);
+        }
+
+        AgreementDocument document = AgreementService.Prepare(aman, AgreementDate);
+        AgreementSignatures signed = Assert.IsType<AgreementSignatures>(document.Signatures);
+        Assert.NotNull(signed.Student);
+        Assert.NotNull(signed.Parent);
+        Assert.NotNull(signed.Owner);
+        Assert.Null(signed.Witness);
+        Assert.Equal("Mohan Lal", signed.WitnessName);
+        Assert.Equal(AgreementDate, signed.SignedDate);
+
+        string path = AgreementPdfWriter.SaveToAgreementsFolder(document, AgreementDate);
+        using (PdfSharp.Pdf.PdfDocument pdf = PdfReader.Open(path, PdfDocumentOpenMode.Import))
+        {
+            Assert.True(pdf.PageCount >= 3);
+        }
+
+        // Ravi has not signed, but the owner's signature kept for the hostel is already on his agreement.
+        AgreementSignatures raviSigned = AgreementService.Prepare(ravi, AgreementDate).Signatures!;
+        Assert.Equal(AgreementSignatureService.GetHostelOwnerSignature(HostelId), raviSigned.Owner);
+        Assert.Null(raviSigned.Student);
+
+        AgreementSignatureService.DeleteForStudent(aman);
+        AgreementSignatures cleared = AgreementSignatureService.Get(aman, HostelId);
+        Assert.Null(cleared.Student);
+        Assert.Null(cleared.SignedDate);
+        Assert.NotNull(cleared.Owner);
     }
 
     [Fact]

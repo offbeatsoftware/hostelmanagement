@@ -25,6 +25,7 @@ public sealed class StudentsView : UserControl
     private readonly Button _editButton;
     private readonly Button _deleteButton;
     private readonly Button _agreementButton;
+    private readonly Button _signButton;
     private readonly Button _idCardButton;
     private readonly Button _transportCardButton;
     private readonly Label _countLabel;
@@ -82,6 +83,17 @@ public sealed class StudentsView : UserControl
             }
         };
 
+        _signButton = new Button { Text = "Sign Agreement" };
+        UiTheme.StyleSecondaryButton(_signButton);
+        _signButton.Width = 140;
+        _signButton.Click += (_, _) =>
+        {
+            if (SelectedStudent is Student student)
+            {
+                AgreementActions.Sign(this, student);
+            }
+        };
+
         var agreementTextButton = new Button { Text = "Agreement Text" };
         UiTheme.StyleSecondaryButton(agreementTextButton);
         agreementTextButton.Width = 130;
@@ -105,7 +117,7 @@ public sealed class StudentsView : UserControl
         _countLabel.ForeColor = UiTheme.TextMuted;
 
         FlowLayoutPanel buttonRow = FormFields.CreateButtonRow(
-            addButton, _editButton, _deleteButton, _agreementButton, agreementTextButton, _idCardButton, _transportCardButton,
+            addButton, _editButton, _deleteButton, _signButton, _agreementButton, agreementTextButton, _idCardButton, _transportCardButton,
             _countLabel);
         buttonRow.Dock = DockStyle.Top;
 
@@ -267,6 +279,7 @@ public sealed class StudentsView : UserControl
         _editButton.Enabled = hasSelection;
         _deleteButton.Enabled = hasSelection;
         _agreementButton.Enabled = hasSelection;
+        _signButton.Enabled = hasSelection;
         _idCardButton.Enabled = hasSelection;
         _transportCardButton.Enabled = hasSelection;
     }

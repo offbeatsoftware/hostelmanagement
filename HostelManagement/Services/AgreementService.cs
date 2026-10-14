@@ -9,7 +9,9 @@ namespace HostelManagement.Services;
 
 /// <summary>The agreement text with the student's details filled in, ready to be written as a PDF.</summary>
 /// <param name="PhotoFile">The student's photo (full path), printed at the top of the agreement; null when there is none.</param>
-public sealed record AgreementDocument(string StudentName, string ParentName, string FilledText, string? PhotoFile = null);
+/// <param name="Signatures">Signatures made on screen, printed above the signature lines; null when not signed.</param>
+public sealed record AgreementDocument(string StudentName, string ParentName, string FilledText, string? PhotoFile = null,
+    AgreementSignatures? Signatures = null);
 
 /// <summary>
 /// Residency agreement (client decision): the client's agreement text with the student's name, father,
@@ -109,7 +111,9 @@ public static partial class AgreementService
                 ? $"{ValueStart}{(value.Trim().Length > 0 ? value.Trim() : "................................")}{ValueEnd}"
                 : m.Value);
         string? photo = StudentFileService.Exists(student.PhotoPath) ? StudentFileService.FullPath(student.PhotoPath) : null;
-        return new AgreementDocument(student.StudentName, student.FatherName, filled, photo);
+        AgreementSignatures signatures = AgreementSignatureService.Get(studentId, student.HostelId);
+        return new AgreementDocument(student.StudentName, student.FatherName.Length > 0 ? student.FatherName : student.MotherName,
+            filled, photo, signatures.IsSigned ? signatures : null);
     }
 
     /// <summary>A file name such as Agreement_Aman-Sharma_2026-10-06.pdf.</summary>

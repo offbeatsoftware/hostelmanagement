@@ -92,6 +92,7 @@ public sealed class LayoutTests : TestDatabase
                 ("Payment remarks", () => new PaymentRemarksForm(payment)),
                 ("Payment history", () => new PaymentHistoryForm("Payment change history", changes)),
                 ("Take photo", () => new CameraForm()),
+                ("Sign agreement", () => new AgreementSignForm(student)),
                 ("I-card valid till", () => new IdCardValidTillForm(transport: true, 12, IdCardService.DefaultValidTill(DateTime.Today))),
             };
 

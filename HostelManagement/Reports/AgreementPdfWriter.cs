@@ -127,24 +127,36 @@ public static class AgreementPdfWriter
             }
         }
 
-        // ---- Signatures ----
-        Ensure(170);
-        y += 30;
+        // ---- Signatures (made on screen, printed above the lines) ----
+        AgreementSignatures? signed = document.Signatures;
+        const double SignatureHeight = 40;
+        Ensure(220);
+        y += 24;
         double column = width / 2;
-        foreach ((string left, string leftName, string right, string rightName) in new[]
+        foreach ((AgreementSigner leftSigner, string left, string leftName, AgreementSigner rightSigner, string right, string rightName) in new[]
                  {
-                     ("First Party (Owner)", "", "Second Party (Student)", document.StudentName),
-                     ("Parent / Guardian", document.ParentName, "Witness", ""),
+                     (AgreementSigner.Owner, "First Party (Owner)", "", AgreementSigner.Student, "Second Party (Student)", document.StudentName),
+                     (AgreementSigner.Parent, "Parent / Guardian", document.ParentName, AgreementSigner.Witness, "Witness", signed?.WitnessName ?? ""),
                  })
         {
-            y += 36;
-            g.DrawLine(new XPen(XColors.Black, 0.6), Margin, y, Margin + column - 40, y);
-            g.DrawLine(new XPen(XColors.Black, 0.6), Margin + column + 20, y, Margin + width, y);
-            g.DrawString(left, bold, XBrushes.Black, Margin, y + 13);
-            g.DrawString(right, bold, XBrushes.Black, Margin + column + 20, y + 13);
-            g.DrawString(leftName, body, XBrushes.Black, Margin, y + 27);
-            g.DrawString(rightName, body, XBrushes.Black, Margin + column + 20, y + 27);
+            y += SignatureHeight + 8;
+            double leftX = Margin;
+            double rightX = Margin + column + 20;
+            double lineWidth = column - 40;
+            DrawSignature(g, signed?.For(leftSigner), leftX, y - SignatureHeight - 2, lineWidth, SignatureHeight);
+            DrawSignature(g, signed?.For(rightSigner), rightX, y - SignatureHeight - 2, lineWidth, SignatureHeight);
+            g.DrawLine(new XPen(XColors.Black, 0.6), leftX, y, leftX + lineWidth, y);
+            g.DrawLine(new XPen(XColors.Black, 0.6), rightX, y, Margin + width, y);
+            g.DrawString(left, bold, XBrushes.Black, leftX, y + 13);
+            g.DrawString(right, bold, XBrushes.Black, rightX, y + 13);
+            g.DrawString(leftName, body, XBrushes.Black, leftX, y + 27);
+            g.DrawString(rightName, body, XBrushes.Black, rightX, y + 27);
             y += 34;
+        }
+        if (signed?.SignedDate is DateTime signedOn)
+        {
+            y += 10;
+            g.DrawString($"Signed on {signedOn:dd MMM yyyy}", body, XBrushes.Black, Margin, y + 10);
         }
         g.Dispose();
 
@@ -157,6 +169,24 @@ public static class AgreementPdfWriter
         }
 
         pdf.Save(path);
+    }
+
+    /// <summary>Draws a signature image fitted into the box, standing on its bottom edge; nothing when there is none.</summary>
+    private static void DrawSignature(XGraphics g, string? file, double x, double y, double width, double height)
+    {
+        using Image? image = AgreementSignatureService.Load(file);
+        if (image is null)
+        {
+            return;
+        }
+        double scale = Math.Min(width / image.Width, height / image.Height);
+        double drawWidth = image.Width * scale;
+        double drawHeight = image.Height * scale;
+        using var png = new MemoryStream();
+        image.Save(png, System.Drawing.Imaging.ImageFormat.Png);
+        png.Position = 0;
+        using XImage signature = XImage.FromStream(png);
+        g.DrawImage(signature, x, y + height - drawHeight, drawWidth, drawHeight);
     }
 
     /// <summary>A piece of text drawn in one font; Attached means no space before it (punctuation after a value).</summary>

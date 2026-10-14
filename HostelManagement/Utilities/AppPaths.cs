@@ -18,6 +18,9 @@ public static class AppPaths
     public static string StudentPhotosFolder => Path.Combine(DataFolder, "Photos", "Students");
     public static string StudentDocumentsFolder => Path.Combine(DataFolder, "Documents", "Students");
 
+    /// <summary>Agreement signatures (PNG images); inside Documents, so backups include them.</summary>
+    public static string SignaturesFolder => Path.Combine(DataFolder, "Documents", "Signatures");
+
     public static string BackupsFolder => Path.Combine(DataFolder, "Backups");
     public static string InvoicesFolder => Path.Combine(DataFolder, "Invoices");
     public static string ReceiptsFolder => Path.Combine(DataFolder, "Receipts");
@@ -31,6 +34,7 @@ public static class AppPaths
         Directory.CreateDirectory(DatabaseFolder);
         Directory.CreateDirectory(StudentPhotosFolder);
         Directory.CreateDirectory(StudentDocumentsFolder);
+        Directory.CreateDirectory(SignaturesFolder);
         Directory.CreateDirectory(BackupsFolder);
         Directory.CreateDirectory(InvoicesFolder);
         Directory.CreateDirectory(ReceiptsFolder);
