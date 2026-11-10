@@ -14,17 +14,28 @@ public static class EmailHistoryRepository
             "ORDER BY h.[SentDate] DESC, h.[EmailHistoryId] DESC",
             Map);
 
-    /// <summary>When each student of the hostel was last sent a reminder successfully.</summary>
+    /// <summary>When each student of the hostel was last sent a fee reminder (email or WhatsApp) successfully.</summary>
     public static Dictionary<int, DateTime> GetLastReminderDates(int hostelId) =>
         Db.Query(
                 "SELECT h.[StudentId], MAX(h.[SentDate]) AS [LastSent] " +
                 "FROM [EmailHistory] AS h INNER JOIN [Student] AS s ON h.[StudentId] = s.[StudentId] " +
-                "WHERE s.[HostelId] = ? AND h.[EmailType] = ? AND h.[Status] = ? GROUP BY h.[StudentId]",
+                "WHERE s.[HostelId] = ? AND h.[EmailType] IN (?, ?) AND h.[Status] = ? GROUP BY h.[StudentId]",
                 r => (StudentId: r.GetInt("StudentId"), LastSent: r.GetDate("LastSent")),
                 Db.Param("@HostelId", hostelId),
                 Db.Param("@EmailType", EmailType.DueReminder),
+                Db.Param("@WhatsAppType", EmailType.WhatsAppReminder),
                 Db.Param("@Status", EmailStatus.Sent))
             .ToDictionary(p => p.StudentId, p => p.LastSent);
+
+    /// <summary>The students a message of this kind and text (for example a WhatsApp attendance message for a date) was sent to.</summary>
+    public static HashSet<int> GetStudentsSent(string type, string subject) =>
+        Db.Query(
+                "SELECT DISTINCT [StudentId] FROM [EmailHistory] WHERE [EmailType] = ? AND [Subject] = ? AND [Status] = ?",
+                r => r.GetInt("StudentId"),
+                Db.Param("@EmailType", type),
+                Db.Param("@Subject", subject),
+                Db.Param("@Status", EmailStatus.Sent))
+            .ToHashSet();
 
     public static void Insert(EmailHistoryEntry entry) =>
         Db.Execute(

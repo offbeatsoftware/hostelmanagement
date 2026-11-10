@@ -8,9 +8,15 @@ public static class EmailType
     public const string DueReminder = "DueReminder";
     public const string Absence = "Absence";
 
+    // WhatsApp messages are kept in the same history (the recipient column then holds the mobile number).
+    public const string WhatsAppReminder = "WhatsAppReminder";
+    public const string WhatsAppAbsence = "WhatsAppAbsence";
+
     public static string DisplayName(string type) => type switch
     {
         DueReminder => "Fee reminder",
+        WhatsAppReminder => "WhatsApp fee reminder",
+        WhatsAppAbsence => "WhatsApp attendance",
         _ => type,
     };
 }

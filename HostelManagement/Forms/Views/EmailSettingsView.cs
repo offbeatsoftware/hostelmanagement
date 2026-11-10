@@ -5,8 +5,8 @@ using HostelManagement.Utilities;
 namespace HostelManagement.Forms.Views;
 
 /// <summary>
-/// Email Settings: the Gmail account that sends the emails, the editable invoice, receipt and reminder
-/// emails, and the history of emails sent.
+/// Email Settings: the Gmail account that sends the emails, the WhatsApp account, the editable invoice, receipt
+/// and reminder emails, and the history of emails and WhatsApp messages sent.
 /// </summary>
 public sealed class EmailSettingsView : UserControl
 {
@@ -19,6 +19,7 @@ public sealed class EmailSettingsView : UserControl
     private readonly DataGridView _historyGrid;
     private readonly Label _messageLabel;
     private readonly TextBox _testToBox;
+    private FlowLayoutPanel? _saveRow;
 
     public EmailSettingsView()
     {
@@ -73,6 +74,12 @@ public sealed class EmailSettingsView : UserControl
         accountPage.Controls.Add(accountStack);
         tabs.TabPages.Add(accountPage);
 
+        // ---- WhatsApp (saved with its own button) ----
+        var whatsAppPanel = new WhatsAppSettingsPanel { Location = new Point(16, 16) };
+        var whatsAppPage = new TabPage("WhatsApp") { BackColor = Color.White, AutoScroll = true };
+        whatsAppPage.Controls.Add(whatsAppPanel);
+        tabs.TabPages.Add(whatsAppPage);
+
         // ---- Email texts ----
         tabs.TabPages.Add(CreateTemplatePage("Invoice email", EmailType.Invoice, EmailSettings.DefaultInvoice));
         tabs.TabPages.Add(CreateTemplatePage("Receipt email", EmailType.Receipt, EmailSettings.DefaultReceipt));
@@ -102,7 +109,7 @@ public sealed class EmailSettingsView : UserControl
         refreshButton.Click += (_, _) => LoadHistory();
         var historyNote = FormFields.CreateMessageLabel();
         historyNote.ForeColor = UiTheme.TextMuted;
-        historyNote.Text = "The latest 500 emails of all hostels. Fee reminders list one row per invoice.";
+        historyNote.Text = "The latest 500 emails and WhatsApp messages of all hostels. Fee reminders list one row per invoice.";
         FlowLayoutPanel historyToolbar = FormFields.CreateButtonRow(refreshButton, historyNote);
         historyToolbar.Dock = DockStyle.Top;
         var historyPage = new TabPage("Email history") { BackColor = Color.White, Padding = new Padding(8) };
@@ -115,6 +122,8 @@ public sealed class EmailSettingsView : UserControl
             {
                 LoadHistory();
             }
+            // The WhatsApp tab has its own Save button; this one saves the Gmail account and email texts.
+            _saveRow!.Visible = tabs.SelectedTab != whatsAppPage;
         };
 
         // ---- Save ----
@@ -124,6 +133,7 @@ public sealed class EmailSettingsView : UserControl
         _messageLabel = FormFields.CreateMessageLabel();
         FlowLayoutPanel saveRow = FormFields.CreateButtonRow(saveButton, _messageLabel);
         saveRow.Dock = DockStyle.Bottom;
+        _saveRow = saveRow;
 
         var body = new Panel { Dock = DockStyle.Fill };
         body.Controls.Add(tabs);

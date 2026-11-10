@@ -118,7 +118,7 @@ public partial class MainForm : Form
 
         new("SETTINGS", "Admin Account", "Change the password, and the admin's email and phone.",
             _ => new AdminAccountView()),
-        new("SETTINGS", "Email Settings", "Gmail account, email texts and the history of emails sent.",
+        new("SETTINGS", "Email Settings", "Gmail and WhatsApp accounts, email texts and the history of messages sent.",
             _ => new EmailSettingsView()),
         new("SETTINGS", "Backup / Restore", "Back up the database, photos and documents, and restore a backup.",
             _ => new BackupView()),

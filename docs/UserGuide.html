@@ -33,7 +33,7 @@
 
 <div class="cover">
   <h1>Shri Balaji Hostel</h1>
-  <div class="subtitle">Hostel Management System: User Guide (version 1.3)</div>
+  <div class="subtitle">Hostel Management System: User Guide (version 1.4)</div>
   <img src="images/login.jpg" alt="Sign in screen">
 </div>
 
@@ -123,6 +123,7 @@
   <li>At night, open <b>Attendance</b>; today's date is shown.</li>
   <li>Untick <b>Present</b> for each student who is not in the hostel (add a remark if useful) and click <b class="ui">Save Attendance</b>.</li>
   <li>The saved absent students appear on the right. Click <b class="ui">Email Parents</b> to email the <b>mother</b> of each absent student (the father when the mother has no email), with a copy to the admin. Each parent is emailed once per date; the program asks before emailing again.</li>
+  <li>Or click <b class="ui">WhatsApp Parents</b> to send the WhatsApp attendance message to the <b>mother's mobile</b> (the father's when the mother has none). The program shows an example and asks before sending; each parent gets it once per date (section 9a).</li>
 </ol>
 <p>Choose another date to see or correct an earlier night. The text of the email is on <b>Settings</b> &gt; <b>Email Settings</b> &gt; <b>Attendance email</b>.</p>
 
@@ -158,6 +159,7 @@
   <li>On the right is the ready-made reminder text. Change it if you like; words in curly brackets such as <code>{Pending}</code> are filled in for each student. <b>Preview</b> shows exactly what the selected student's parent will receive.</li>
   <li>Click <b class="ui">Send Reminder</b>. Each email goes to the father (or the mother when the father has no email), with the invoice PDF and a copy to the admin. Students without any parent email are listed afterwards.</li>
 </ol>
+<p><b class="ui">Send WhatsApp</b> sends the WhatsApp fee reminder to the ticked students' parents instead: to the <b>father's mobile</b> (the mother's when the father has none), with the total, paid and pending amounts, the bank details and the payment QR code. The program shows an example and asks before sending; students without a valid mobile number are listed afterwards. <b>Last reminder</b> counts both emails and WhatsApp messages (section 9a).</p>
 <p><b class="ui">Save as Default</b> keeps a changed text for next time; <b class="ui">Saved Text</b> brings back the saved one. <b class="ui">Export PDF</b> saves the list of pending fees.</p>
 
 <h2>9. Email (Gmail)</h2>
@@ -176,6 +178,23 @@
 </ol>
 <p>The tabs <b>Invoice email</b>, <b>Receipt email</b>, <b>Fee reminder email</b> and <b>Attendance email</b> hold the texts of the emails; words in curly brackets are filled in. <b>Email history</b> lists every email, sent or failed, with the reason for a failure.</p>
 <div class="note">If the Gmail password is ever changed, Google cancels the app password: create a new one and enter it again. The app password is also needed again after moving to another PC.</div>
+
+<h2>9a. WhatsApp (fee reminders and attendance)</h2>
+<p>WhatsApp messages are sent from the hostel's WhatsApp number through Meta's WhatsApp Business Platform, as two message <b>templates</b> that Meta approves once: <code>fee_reminder</code> and <code>attendance_alert</code> (category Utility, English). Meta charges for each delivered message, roughly ₹0.11 to ₹0.12 each; nothing is sent automatically.</p>
+<h3>Set up on Meta (once)</h3>
+<ol>
+  <li>On <b>developers.facebook.com</b>: register, <b>Create App</b> with the use case <i>Connect with customers through WhatsApp</i> and the hostel's business portfolio, then <b>Start using the API</b>.</li>
+  <li>Connect the hostel's number (on the WhatsApp Business app this is done with a Meta partner, so the app keeps working on the phone). Note the <b>Phone Number ID</b> and the <b>WhatsApp Business Account ID</b> on the API Setup page.</li>
+  <li>In <b>WhatsApp Manager</b>: approve the display name, add a payment method and create the two templates with the agreed text.</li>
+  <li>In <b>Business Settings</b> &gt; <b>System users</b>: create a system user, assign the app and the WhatsApp account, and <b>Generate token</b> with <i>whatsapp_business_messaging</i>. Keep the token safe; never send it by chat or email.</li>
+</ol>
+<h3>Enter it in the program</h3>
+<ol>
+  <li><b>Settings</b> &gt; <b>Email Settings</b> &gt; <b>WhatsApp</b> tab: Phone Number ID, WhatsApp Business Account ID, the access token, the two template names (<code>fee_reminder</code>, <code>attendance_alert</code>) and the language <code>en</code>.</li>
+  <li>If the fee reminder template has the QR code as its header image, click <b class="ui">Choose QR...</b> and pick the payment QR image (PNG or JPG). Without an image header, leave it as <i>None</i>.</li>
+  <li>Click <b class="ui">Save WhatsApp Settings</b>, type a mobile number in <b>Send test to mobile</b> and click <b class="ui">Send Test Message</b>: Meta's "hello world" message should arrive.</li>
+</ol>
+<p>The token is stored encrypted for this Windows user and never shown again (leave the box empty to keep it); after moving to another PC, enter it again. Sent and failed WhatsApp messages are listed in <b>Email history</b> with the mobile number and, for a failure, the reason (for example "not on WhatsApp").</p>
 
 <h2>10. Dashboard and reports</h2>
 <div class="shot"><img src="images/dashboard.jpg" alt="Dashboard"><div>Dashboard with sample data</div></div>
@@ -215,6 +234,7 @@
   <tr><td>Payments</td><td>Any amount, any number of times, never more than pending. A wrong entry can be edited or deleted; every change is kept in the Change History. Balance = total fee minus everything paid. Reference required except for cash. No GST, deposit, discounts or late fee.</td></tr>
   <tr><td>Reminders</td><td>No due dates; the admin sends fee reminders whenever he wants, never automatically.</td></tr>
   <tr><td>Emails</td><td>Sent only when you click a button. Fees: father, else mother. Attendance: mother, else father. Copy to the admin.</td></tr>
+  <tr><td>WhatsApp</td><td>Sent only when you click a button, as Meta-approved templates. Fee reminder: father's mobile, else mother's. Attendance: mother's mobile, else father's; once per date unless you choose to send again.</td></tr>
   <tr><td>I-cards</td><td>Valid till the last day of the academic year. Transport I-card only with transport in this year's fee.</td></tr>
 </table>
 

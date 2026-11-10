@@ -18,6 +18,7 @@ public sealed class FeeRemindersView : UserControl
     private readonly TextBox _searchBox;
     private readonly DataGridView _grid;
     private readonly Button _sendButton;
+    private readonly Button _whatsAppButton;
     private readonly Button _payButton;
     private readonly Label _summaryLabel;
     private readonly TextBox _subjectBox;
@@ -55,6 +56,11 @@ public sealed class FeeRemindersView : UserControl
         _sendButton.Width = 190;
         _sendButton.Click += async (_, _) => await SendReminders();
 
+        _whatsAppButton = new Button { Text = "Send WhatsApp" };
+        UiTheme.StylePrimaryButton(_whatsAppButton);
+        _whatsAppButton.Width = 190;
+        _whatsAppButton.Click += async (_, _) => await SendWhatsApp();
+
         _payButton = new Button { Text = "Record Payment" };
         UiTheme.StyleSecondaryButton(_payButton);
         _payButton.Width = 140;
@@ -69,7 +75,7 @@ public sealed class FeeRemindersView : UserControl
 
         FlowLayoutPanel filterRow = FormFields.CreateButtonRow(_searchBox, selectAllButton, clearButton, _summaryLabel);
         filterRow.Dock = DockStyle.Top;
-        FlowLayoutPanel buttonRow = FormFields.CreateButtonRow(_sendButton, _payButton, exportButton);
+        FlowLayoutPanel buttonRow = FormFields.CreateButtonRow(_sendButton, _whatsAppButton, _payButton, exportButton);
         buttonRow.Dock = DockStyle.Top;
 
         _grid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
@@ -291,6 +297,8 @@ public sealed class FeeRemindersView : UserControl
         int count = TickedRows.Count;
         _sendButton.Enabled = count > 0;
         _sendButton.Text = count == 0 ? "Send Reminder" : $"Send Reminder ({count})";
+        _whatsAppButton.Enabled = count > 0;
+        _whatsAppButton.Text = count == 0 ? "Send WhatsApp" : $"Send WhatsApp ({count})";
         _payButton.Enabled = CurrentRow is not null;
     }
 
@@ -370,6 +378,35 @@ public sealed class FeeRemindersView : UserControl
         catch (Exception ex)
         {
             ErrorHandler.Handle(ex, "The reminders could not be sent.");
+        }
+    }
+
+    /// <summary>Sends the WhatsApp fee reminder (Meta-approved template) to the parents of the ticked students.</summary>
+    private async Task SendWhatsApp()
+    {
+        List<ReminderRow> ticked = TickedRows;
+        if (ticked.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            (List<WhatsAppMessage> messages, List<string> problems) = WhatsAppService.PrepareFeeReminders(ticked.Select(r => r.Due));
+            await WhatsAppSending.SendAsync(this, messages, problems, "fee reminder");
+            foreach (ReminderRow row in _rows)
+            {
+                row.Send = false;
+            }
+            LoadDues(CurrentRow?.Due.StudentId);
+        }
+        catch (ValidationException ex)
+        {
+            Dialogs.Warning(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            ErrorHandler.Handle(ex, "The WhatsApp reminders could not be sent.");
         }
     }
 

@@ -18,6 +18,7 @@ public sealed class AttendanceView : UserControl
     private readonly DataGridView _absentGrid;
     private readonly Button _saveButton;
     private readonly Button _emailButton;
+    private readonly Button _whatsAppButton;
     private readonly Label _absentNote;
 
     private BindingList<AttendanceEntry> _entries = new();
@@ -117,7 +118,12 @@ public sealed class AttendanceView : UserControl
         _emailButton.Click += async (_, _) => await EmailParents();
         _absentNote = FormFields.CreateMessageLabel();
         _absentNote.ForeColor = UiTheme.TextMuted;
-        FlowLayoutPanel absentButtons = FormFields.CreateButtonRow(_emailButton, _absentNote);
+        _whatsAppButton = new Button { Text = "WhatsApp Parents" };
+        UiTheme.StylePrimaryButton(_whatsAppButton);
+        _whatsAppButton.Width = 160;
+        _whatsAppButton.Click += async (_, _) => await WhatsAppParents();
+
+        FlowLayoutPanel absentButtons = FormFields.CreateButtonRow(_emailButton, _whatsAppButton, _absentNote);
         absentButtons.Dock = DockStyle.Bottom;
 
         var absentBody = new Panel { Dock = DockStyle.Fill };
@@ -198,6 +204,7 @@ public sealed class AttendanceView : UserControl
         _absentGrid.DataSource = absent;
         int notEmailed = absent.Count(e => e.ParentEmailedDate is null);
         _emailButton.Enabled = absent.Count > 0;
+        _whatsAppButton.Enabled = absent.Count > 0;
         _absentNote.Text = absent.Count == 0
             ? "No absent students saved for this date."
             : notEmailed == 0 ? "All parents have been emailed." : $"{notEmailed} parent(s) not emailed yet.";
@@ -272,6 +279,45 @@ public sealed class AttendanceView : UserControl
         catch (Exception ex)
         {
             ErrorHandler.Handle(ex, "The emails could not be sent.");
+        }
+    }
+
+    /// <summary>
+    /// Sends the WhatsApp attendance message to the parents of the absent students who have not had one for this
+    /// date yet.
+    /// </summary>
+    private async Task WhatsAppParents()
+    {
+        try
+        {
+            if (_dirty)
+            {
+                if (!Dialogs.Confirm("Save the attendance first?") || !SaveAttendance())
+                {
+                    return;
+                }
+            }
+
+            (List<WhatsAppMessage> messages, List<string> problems) = WhatsAppService.PrepareAbsences(_hostel.HostelId, _shownDate);
+            if (messages.Count == 0 && problems.Count == 0)
+            {
+                if (!Dialogs.Confirm("The parents of all absent students already had a WhatsApp message for this date. Send it again?"))
+                {
+                    return;
+                }
+                (messages, problems) = WhatsAppService.PrepareAbsences(_hostel.HostelId, _shownDate, includeAlreadySent: true);
+            }
+
+            await WhatsAppSending.SendAsync(this, messages, problems, "attendance message");
+            LoadSheet(_shownDate);
+        }
+        catch (ValidationException ex)
+        {
+            Dialogs.Warning(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            ErrorHandler.Handle(ex, "The WhatsApp messages could not be sent.");
         }
     }
 }
