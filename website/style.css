@@ -1,0 +1,34 @@
+:root{--ink:#1f2937;--muted:#5b6472;--brand:#9a3412;--brand-dark:#7c2d12;--accent:#f59e0b;--bg:#fffaf3;--card:#ffffff;--line:#eadfce}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.6}
+a{color:var(--brand)}
+.wrap{max-width:1040px;margin:0 auto;padding:0 16px}
+header{background:var(--brand);color:#fff}
+header .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding-top:14px;padding-bottom:14px}
+.logo{font-weight:700;font-size:1.25rem;color:#fff;text-decoration:none;letter-spacing:.5px}
+.logo span{display:block;font-size:.8rem;font-weight:400;opacity:.9}
+nav a{color:#fff;text-decoration:none;margin-left:16px;font-size:.95rem}
+nav a:hover,nav a.active{text-decoration:underline}
+.hero{background:linear-gradient(135deg,var(--brand-dark),var(--brand));color:#fff;padding:56px 0 64px}
+.hero h1{font-size:2.2rem;margin:0 0 8px}
+.hero p{font-size:1.1rem;max-width:640px;margin:0 0 20px;opacity:.95}
+.btn{display:inline-block;background:var(--accent);color:#1f2937;font-weight:600;padding:10px 20px;border-radius:6px;text-decoration:none}
+section{padding:44px 0}
+h2{color:var(--brand-dark);margin-top:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px}
+.card h3{margin:0 0 6px;font-size:1.05rem}
+.card p{margin:0;color:var(--muted);font-size:.95rem}
+.alt{background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+ul.rules{columns:2;column-gap:32px;padding-left:20px}
+ul.rules li{break-inside:avoid;margin-bottom:6px}
+.contact dt{font-weight:600;margin-top:10px}
+.contact dd{margin:0}
+.doc{background:#fff;border:1px solid var(--line);border-radius:10px;padding:28px;margin:32px auto}
+.doc h1{color:var(--brand-dark);margin-top:0}
+.doc h2{font-size:1.2rem;margin-top:28px}
+.updated{color:var(--muted);font-size:.9rem}
+footer{background:#2b1a10;color:#e9dccd;padding:28px 0;font-size:.9rem}
+footer a{color:#ffd28a;margin-right:14px}
+footer p{margin:6px 0}
+@media (max-width:640px){.hero h1{font-size:1.7rem}ul.rules{columns:1}nav a{margin:0 14px 0 0}.doc{padding:18px}}

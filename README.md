@@ -114,3 +114,9 @@ All screens follow these rules so the application stays consistent and easy to u
   and `Db.Param(...)` (positional, in placeholder order). Bracket all table and column names.
   Use `Db.InTransaction` for actions that change more than one row or table.
 - **Tab order:** set a logical `TabIndex` on every input control, top to bottom, left to right.
+
+## Website
+
+`website/` is the hostel's public website (home, privacy policy, terms, data deletion), used for Meta's
+WhatsApp Business registration. `.github/workflows/website.yml` publishes it to GitHub Pages at
+https://offbeatsoftware.github.io/hostelmanagement/ (one time setup: Settings > Pages > Source: GitHub Actions).
