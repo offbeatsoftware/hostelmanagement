@@ -149,19 +149,35 @@ public sealed class DatabaseInitializerTests : TestDatabase
     }
 
     /// <summary>
-    /// Databases of version 1.2 (13), 1.2.1 (14) and the first 1.3 build (15, where the columns stayed required)
-    /// are upgraded in place: the data is kept and a student needs only a name and gender.
+    /// Databases of version 1.2 (13), 1.2.1 (14), the first 1.3 build (15, where the columns stayed required) and
+    /// 1.3/1.4 (16, the client's) are upgraded in place: the data is kept, a student needs only a name and gender,
+    /// and refunds and waived fees work on the old fees.
     /// </summary>
     [Theory]
     [InlineData(13)]
     [InlineData(14)]
     [InlineData(15)]
+    [InlineData(16)]
     public void Initialize_EarlierDatabase_IsUpgradedInPlace_KeepingTheData(int version)
     {
         int studentId = AddStudent("Existing Student");
+        int invoiceId = Db.Insert(
+            "INSERT INTO [Invoice] ([InvoiceNumber], [StudentId], [InvoiceDate], [AcademicYear], [RoomRent], [TransportAmount]) " +
+            "VALUES ('SBH/2026-27/0001', ?, #07/01/2026#, 2026, 50000, 12000)", Db.Param("@StudentId", studentId));
+        Db.Execute(
+            "INSERT INTO [Payment] ([ReceiptNumber], [StudentId], [InvoiceId], [PaymentDate], [Amount], [PaymentMethod], [CreatedDate]) " +
+            "VALUES ('SBH/R/2026-27/0001', ?, ?, #07/01/2026#, 15000, 'Cash', #07/01/2026#)",
+            Db.Param("@StudentId", studentId), Db.Param("@InvoiceId", invoiceId));
         Services.AuthService.IsValidLogin("admin", "admin");
         Services.AuthService.ChangePassword("admin", "Balaji@2026", "Balaji@2026");
-        MakeStudentColumnsRequired();
+
+        // Before version 17 there were no refunds and no waived fees.
+        Db.Execute("DROP TABLE [Refund]");
+        Db.Execute("ALTER TABLE [Invoice] DROP COLUMN [WaivedAmount]");
+        if (version < 16)
+        {
+            MakeStudentColumnsRequired();
+        }
         if (version < 15)
         {
             RemoveStudentHostel();
@@ -194,6 +210,11 @@ public sealed class DatabaseInitializerTests : TestDatabase
         Assert.Equal(2, Services.StudentService.GetStudents(HostelId).Count);
         Assert.Throws<System.Data.OleDb.OleDbException>(() => Db.Execute(
             "UPDATE [Student] SET [CollegeId] = 999999 WHERE [StudentId] = ?", Db.Param("@StudentId", studentId)));
+
+        // The old fee and payment are unchanged; refunds work on them.
+        Models.Invoice fee = Services.InvoiceService.GetInvoice(invoiceId)!;
+        Assert.Equal((62_000m, 15_000m, 47_000m, 0m), (fee.TotalAmount, fee.PaidAmount, fee.PendingAmount, fee.WaivedAmount));
+        Assert.Equal(0, Count("Refund"));
     }
 
     [Fact]

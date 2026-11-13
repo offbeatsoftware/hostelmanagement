@@ -100,6 +100,48 @@ public static class StudentService
         AgreementSignatureService.DeleteForStudent(studentId);
     }
 
+    /// <summary>Makes an inactive (Left) student active again, for example a student who comes back.</summary>
+    public static void MakeActive(int studentId)
+    {
+        Student student = StudentRepository.Get(studentId) ?? throw new ValidationException("This student no longer exists.");
+        if (student.Status == StudentStatus.Active)
+        {
+            throw new ValidationException($"{student.StudentName} is already active.");
+        }
+        Db.InTransaction((connection, transaction) =>
+            AllocationRepository.SetStudentStatus(connection, transaction, studentId, StudentStatus.Active));
+        AppLogger.Info($"Student {studentId} made active again.");
+    }
+
+    /// <summary>
+    /// Deletes an inactive (Left) student for good, at any time (client decision, version 1.5), with all their fees,
+    /// payments, refunds, room history, attendance, emails, photo, Aadhaar card and agreement signatures. A backup is
+    /// made first (unless <paramref name="backupFirst"/> is false, for the automated tests) and its file name returned.
+    /// </summary>
+    public static string? DeletePermanently(int studentId, string reason, bool backupFirst = true)
+    {
+        Student student = StudentRepository.Get(studentId) ?? throw new ValidationException("This student no longer exists.");
+        if (student.Status != StudentStatus.Left || AllocationRepository.GetCurrentForStudent(studentId) is not null)
+        {
+            throw new ValidationException($"{student.StudentName} is active. Check the student out first; only inactive students can be deleted.");
+        }
+        string cleanReason = Validators.Clean(reason);
+        if (cleanReason.Length == 0)
+        {
+            throw new ValidationException("Please enter the reason for deleting the student.");
+        }
+
+        string? backup = backupFirst ? BackupService.Create(BackupKind.Manual, DateTime.Now).File.FileName : null;
+        Db.InTransaction((connection, transaction) => StudentRepository.DeleteWithHistory(connection, transaction, studentId));
+
+        StudentFileService.TryDelete(student.PhotoPath);
+        StudentFileService.TryDelete(student.AadhaarCardPath);
+        AgreementSignatureService.DeleteForStudent(studentId);
+        AppLogger.Info($"Deleted inactive student {studentId} ({student.StudentName}) with all records. Reason: {cleanReason}." +
+            (backup is null ? "" : $" Backup made first: {backup}."));
+        return backup;
+    }
+
     private static void SaveFiles(int studentId, Student? existing, StudentFileChanges files)
     {
         string photoPath = existing?.PhotoPath ?? string.Empty;

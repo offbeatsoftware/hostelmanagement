@@ -118,6 +118,7 @@ public static class PaymentService
                     $"The amount cannot be more than {Money.Format(allowed)}, the fee still open without this payment. " +
                     "Advance or extra payments are not accepted.");
             }
+            CheckRefundsStayCovered(connection, transaction, invoice.InvoiceNumber, existing.InvoiceId, existing.Amount - payment.Amount);
 
             PaymentRepository.Update(connection, transaction, payment);
             PaymentChangeRepository.Insert(connection, transaction, new PaymentChange
@@ -148,6 +149,7 @@ public static class PaymentService
 
         Db.InTransaction((connection, transaction) =>
         {
+            CheckRefundsStayCovered(connection, transaction, payment.InvoiceNumber, payment.InvoiceId, payment.Amount);
             PaymentRepository.Delete(connection, transaction, paymentId);
             PaymentChangeRepository.Insert(connection, transaction, new PaymentChange
             {
@@ -163,6 +165,23 @@ public static class PaymentService
             });
         });
         AppLogger.Info($"Deleted payment {payment.ReceiptNumber} of {payment.Amount} against invoice {payment.InvoiceNumber}.");
+    }
+
+    /// <summary>
+    /// Payments may not drop below the money already refunded on the fee: a payment that was (partly) refunded cannot
+    /// be lowered or deleted until the refund is deleted.
+    /// </summary>
+    private static void CheckRefundsStayCovered(System.Data.OleDb.OleDbConnection connection, System.Data.OleDb.OleDbTransaction transaction,
+        string invoiceNumber, int invoiceId, decimal reduction)
+    {
+        decimal refunded = PaymentRepository.GetRefundedAmount(connection, transaction, invoiceId);
+        decimal received = PaymentRepository.GetReceivedAmount(connection, transaction, invoiceId);
+        if (refunded > 0 && received - reduction < refunded)
+        {
+            throw new ValidationException(
+                $"{Money.Format(refunded)} has been refunded on invoice {invoiceNumber}, so the payments cannot be less than that. " +
+                "Delete the refund first if it was a mistake.");
+        }
     }
 
     /// <summary>Every correction and deletion of the hostel's payments, newest first.</summary>

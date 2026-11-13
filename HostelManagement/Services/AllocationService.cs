@@ -169,8 +169,16 @@ public static class AllocationService
         return AllocationRepository.GetCurrentForStudent(studentId)!;
     }
 
-    /// <summary>Checks a student out of their room and sets the student's status to Left.</summary>
-    public static void CheckOut(int studentId, DateTime date, string? remarks = null)
+    /// <summary>The fee still pending on all of the student's invoices.</summary>
+    public static decimal GetPendingFee(int studentId) =>
+        InvoiceRepository.GetForStudent(studentId).Sum(i => Math.Max(i.PendingAmount, 0m));
+
+    /// <summary>
+    /// Checks the student out of the room; the student's status becomes Left. Allowed with a fee pending (client
+    /// decision): it stays pending, or with <paramref name="waivePending"/> the rest of each fee is waived (the fee is
+    /// reduced to what was paid).
+    /// </summary>
+    public static void CheckOut(int studentId, DateTime date, string? remarks = null, bool waivePending = false)
     {
         date = date.Date;
         Student student = StudentService.GetStudent(studentId)
@@ -181,6 +189,7 @@ public static class AllocationService
         CheckDateAfterCheckIn(date, current, "check-out");
         CheckNotInFuture(date, "check-out");
         string cleanRemarks = CleanRemarks(remarks);
+        List<Invoice> toWaive = waivePending ? InvoiceRepository.GetForStudent(studentId).Where(i => i.PendingAmount > 0).ToList() : [];
 
         Db.InTransaction((connection, transaction) =>
         {
@@ -190,9 +199,17 @@ public static class AllocationService
                 throw new ValidationException("The student's room changed in the meantime. Please refresh and try again.");
             }
             AllocationRepository.SetStudentStatus(connection, transaction, studentId, StudentStatus.Left);
+            if (waivePending)
+            {
+                foreach (Invoice invoice in toWaive)
+                {
+                    InvoiceRepository.SetWaived(connection, transaction, invoice.InvoiceId, invoice.WaivedAmount + invoice.PendingAmount);
+                }
+            }
         });
 
-        AppLogger.Info($"Checked out student {studentId} from room {current.RoomId}.");
+        AppLogger.Info($"Checked out student {studentId} from room {current.RoomId}" +
+            (waivePending && toWaive.Count > 0 ? $", waived {toWaive.Sum(i => i.PendingAmount)} pending." : "."));
     }
 
     /// <summary>The requested bed if it is free, otherwise (when none is requested) the lowest free bed of the room.</summary>

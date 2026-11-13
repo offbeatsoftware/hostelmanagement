@@ -38,7 +38,7 @@ Hostel 1──* Room
 
 ## Schema version
 
-The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **16**).
+The `SchemaInfo` table holds one row with the schema version (`DatabaseSchema.Version`, currently **17**).
 From version 13 (application 1.2) on, an older database is **upgraded in place** at startup and keeps its data
 (`DatabaseSchema.FirstUpgradableVersion`). A database older than that, or newer than the application, is refused
 with an explanation instead of failing later with confusing errors. Increase the version whenever a table or column changes.
@@ -61,6 +61,7 @@ with an explanation instead of failing later with confusing errors. Increase the
 | 14 | PaymentChange table (history of corrected and deleted payments). Upgraded in place from 13, keeping the data |
 | 15 | Version 1.3: Student.HostelId added (filled in from the college on upgrade) |
 | 16 | Version 1.3: Student CollegeId, Mobile, FatherName and FatherMobile may be empty (rebuilt, since Access keeps a column required through ALTER COLUMN). Upgraded in place from 13, 14 and 15, keeping the data |
+| 17 | Version 1.5: Invoice.WaivedAmount (fee waived at check-out) and the Refund table (money paid back, with a refund receipt number). Both only added, so an upgrade from 13 to 16 keeps all data |
 
 ## Tables
 
@@ -198,6 +199,7 @@ A student's fee for one academic year.
 | RoomRent | Currency | Required, more than 0: the room rent agreed with the student for the year |
 | TransportAmount | Currency | Required, 0 when the student does not use transport |
 | Remarks | Text(255) | |
+| WaivedAmount | Currency | Version 1.5: the pending fee the admin chose to waive when the student checked out (empty = 0) |
 
 Rules (client decisions, version 1.2):
 - The fee is agreed per student, not per room type: two students in the same Double room can pay different amounts.
@@ -211,6 +213,12 @@ Rules (client decisions, version 1.2):
   number is unique. No GST, deposits or discounts.
 - An invoice can be deleted only while it has no payments and no emails.
 - Invoice PDFs (with every payment, total paid and pending) are saved in the `Invoices` folder.
+
+Amounts from version 1.5 (all calculated, none stored except WaivedAmount):
+- Fee = RoomRent + TransportAmount; Received = the sum of the payments; Refunded = the sum of the refunds.
+- Paid = Received − Refunded. Total due = Fee − Waived − Refunded. Pending = Total − Paid = Fee − Waived − Received.
+- So a refund lowers both the paid amount and the fee and never changes what is pending (client decision).
+- A student can check out with a fee pending. The admin chooses to keep it pending or to waive it (WaivedAmount).
 
 ### Payment
 | Column | Type | Notes |
@@ -244,12 +252,32 @@ and the change stays traceable.
 | PaymentId | Number | Required, indexed; no foreign key, so the row stays after the payment is deleted |
 | ReceiptNumber | Text(30) | Required |
 | StudentId | Number | Required, → Student |
-| ChangeType | Text(10) | Required: Edited / Deleted |
+| ChangeType | Text(10) | Required: Edited / Deleted / Refund del |
 | ChangedDate | Date/Time | Required |
 | Details | Text(255) | Required: old and new values, for example "Amount ₹10,000.00 to ₹12,000.00; Paid by Cash to UPI" |
 | Reason | Text(255) | The reason the admin typed |
 
 An edited payment keeps its receipt number; its amount can never be more than the fee less the other payments.
+
+### Refund
+Money paid back to a student (version 1.5), in full or in part, any number of times, also after check-out.
+
+| Column | Type | Notes |
+|---|---|---|
+| RefundId | AutoNumber | Primary key |
+| RefundNumber | Text(30) | Required, **unique**, for example `SBH/RF/2026-2027/0001` (one sequence per academic year of the refund date) |
+| StudentId | Number | Required, → Student |
+| InvoiceId | Number | Required, → Invoice (the fee the money is paid back from) |
+| RefundDate | Date/Time | Required, indexed; not in the future |
+| Amount | Currency | Required, more than 0 and never more than the amount paid on the invoice after earlier refunds |
+| RefundMethod | Text(30) | Required: Cash / UPI / Bank transfer / Cheque |
+| Reference | Text(100) | Required except for cash |
+| Reason | Text(255) | Required |
+| CreatedDate | Date/Time | Required |
+
+A refund entered by mistake can be deleted with a reason (kept in PaymentChange as "Refund del", PaymentId 0).
+A payment cannot be deleted or reduced below the refunds already given on its invoice. Refund receipt PDFs are
+saved in the `Receipts` folder.
 
 ### EmailHistory
 | Column | Type | Notes |

@@ -33,7 +33,7 @@
 
 <div class="cover">
   <h1>Shri Balaji Hostel</h1>
-  <div class="subtitle">Hostel Management System: User Guide (version 1.4)</div>
+  <div class="subtitle">Hostel Management System: User Guide (version 1.5)</div>
   <img src="images/login.jpg" alt="Sign in screen">
 </div>
 
@@ -105,7 +105,20 @@
   <li>After check-in the program offers to create the <b>residency agreement</b> PDF straight away.</li>
 </ol>
 <h3>Transfer and check-out</h3>
-<p>Select the student in <b>Room Allocation</b> and click <b class="ui">Transfer</b> (to another room, same day) or <b class="ui">Check-out</b>. Check-out sets the student to <b>Left</b>; the history of every room is kept. Neither changes the student's fee: use <b class="ui">Edit Fee</b> on the Invoices screen if the amount should change. A student who has left still owes the pending amount.</p>
+<p>Select the student in <b>Room Allocation</b> and click <b class="ui">Transfer</b> (to another room, same day) or <b class="ui">Check-out</b>. Check-out sets the student to <b>Left</b> (inactive); the history of every room is kept. A transfer does not change the fee.</p>
+<p>A student can check out <b>with or without paying</b>. When a fee is still pending, the check-out window shows the amount and asks:</p>
+<ul>
+  <li><b>Keep it pending</b>: the student still owes it; it stays on Fee Reminders and the student's invoice.</li>
+  <li><b>Waive it</b>: the rest of the fee is cancelled. The invoice then shows the fee, the amount waived at check-out and nothing pending.</li>
+</ul>
+<h3>Inactive students</h3>
+<p>Students who have checked out are on the <b>Inactive students</b> tab of the <b>Students</b> screen (current students are on <b>Active students</b>). For an inactive student you can:</p>
+<ul>
+  <li><b class="ui">View / Edit</b> the details and download the <b class="ui">Agreement PDF</b>.</li>
+  <li>Give a <b class="ui">Refund</b> (see section 7).</li>
+  <li><b class="ui">Make Active</b>: for a student who comes back. Then allocate a room in <b>Room Allocation</b>.</li>
+  <li><b class="ui">Delete Permanently</b>: removes the student and <b>every record</b>: invoices, payments, refunds, room history, attendance, messages, photo, Aadhaar card and signatures. Type the reason. The program first makes a backup of the database (shown when done), so a mistake can be undone with Restore. Use it only when the records are really no longer needed.</li>
+</ul>
 <h3>Residency agreement</h3>
 <p><b>Students</b> &gt; select the student &gt; <b class="ui">Agreement PDF</b>. Choose where to save it; it opens for printing. The agreement fills in the student's name, S/o or D/o with the father's name, address, Boys or Girls hostel, room and bed number, the number of beds in the room, the check-in date and the annual fee (the room rent plus transport agreed for the year, in figures and words). The student's <b>photo</b> is printed at the top right of the first page; without a photo the box says "Paste photo". Details that were not entered (address, mobile, father's name, college) print as a line to fill in by hand.</p>
 <h3>Signing the agreement on screen</h3>
@@ -149,8 +162,17 @@
   <li><b class="ui">Edit</b>: select the payment and correct the date, amount, method, reference or remarks, and type the reason (for example "wrong amount typed"). The receipt number stays the same; the receipt PDF shows the corrected details. The amount can never be more than the fee less the other payments.</li>
   <li><b class="ui">Delete</b>: for a payment entered by mistake (for example twice). Type the reason; the amount becomes pending again.</li>
   <li><b class="ui">Remarks</b>: every payment has a <b class="ui">View</b> button in the last column. It opens the full remarks of that payment in a popup. To change a remark, use <b class="ui">Edit</b>.</li>
-  <li><b class="ui">Change History</b>: every edit and deletion with the date and time, receipt, student, what changed (old and new values) and the reason. Deletions are shown in red.</li>
+  <li><b class="ui">Change History</b>: every edit and deletion (also deleted refunds) with the date and time, receipt, student, what changed (old and new values) and the reason. Deletions are shown in red.</li>
 </ul>
+<h3>Refunds</h3>
+<p>Money paid back to a student, for example when the student leaves early. A refund can be <b>full or partial</b>, given <b>any number of times</b>, and also <b>after the student has checked out</b>.</p>
+<ol>
+  <li><b>Payments</b> &gt; select a payment of the student &gt; <b class="ui">Refund</b>, or <b>Students</b> (either tab) &gt; select the student &gt; <b class="ui">Refund</b>.</li>
+  <li>Choose the fee (invoice) to refund from. The window shows what was paid and how much can still be refunded.</li>
+  <li>Enter the date, the amount, how it was paid back (Cash, UPI, Bank transfer or Cheque, with the reference except for cash) and the reason.</li>
+  <li>After saving, the program offers to open the <b>refund receipt</b> (number such as <b>SBH/RF/2026-2027/0001</b>, with the amount in words) and to email it to the father (or the mother).</li>
+</ol>
+<p>A refund lowers both what was paid and the fee, so the pending amount does not change. The refund can never be more than what was paid on that invoice after earlier refunds. <b>Payments</b> &gt; <b class="ui">Refunds</b> lists every refund with <b class="ui">View / Print</b>, <b class="ui">Email Receipt</b> and <b class="ui">Delete</b> (for a refund entered by mistake; type the reason). A payment cannot be deleted or reduced below the refunds already given on its invoice. The invoice PDF lists the refunds, and the dashboard shows money received after refunds.</p>
 
 <h2>8. Fee reminders</h2>
 <p><b>Fee Reminders</b> (under Billing) lists every student who still owes money, including students who have left, with the total fee, paid, pending, who the email goes to and when the last reminder was sent. There are no due dates: send a reminder whenever you want. Reminders are <b>never sent automatically</b>.</p>
@@ -248,7 +270,9 @@
   <tr><th>Topic</th><th>Rule</th></tr>
   <tr><td>Academic year</td><td>Starts on the 1st of the month chosen in Application Settings (1 July unless changed) and ends the day before the next one starts; shown as 2026-2027 (or 2026 for a January start).</td></tr>
   <tr><td>Fee</td><td>Agreed per student at check-in: room rent and transport for the year. One invoice per student per academic year; the full amount is due even when joining mid-year. A new fee every year (New Year Fees).</td></tr>
-  <tr><td>Rooms</td><td>Boys or girls; the sharing type decides the number of beds only; one student per bed. Transfer and check-out on any day; they do not change the fee.</td></tr>
+  <tr><td>Rooms</td><td>Boys or girls; the sharing type decides the number of beds only; one student per bed. Transfer and check-out on any day. Check-out is allowed with a fee pending: keep it pending or waive it.</td></tr>
+  <tr><td>Refunds</td><td>Full or partial, any number of times, also after check-out; never more than what was paid. Pending does not change. Every refund has a receipt.</td></tr>
+  <tr><td>Students</td><td>Checked-out students are inactive (separate tab). They can be made active again or deleted permanently with all their records, after a backup.</td></tr>
   <tr><td>Payments</td><td>Any amount, any number of times, never more than pending. A wrong entry can be edited or deleted; every change is kept in the Change History. Balance = total fee minus everything paid. Reference required except for cash. No GST, deposit, discounts or late fee.</td></tr>
   <tr><td>Reminders</td><td>No due dates; the admin sends fee reminders whenever he wants, never automatically.</td></tr>
   <tr><td>Emails</td><td>Sent only when you click a button. Fees: father, else mother. Attendance: mother, else father. Copy to the admin.</td></tr>

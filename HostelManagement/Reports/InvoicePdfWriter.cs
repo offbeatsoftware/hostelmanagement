@@ -117,7 +117,7 @@ public static class InvoicePdfWriter
             y += 20;
             g.DrawLine(new XPen(Line, 0.5), Margin, y, Margin + width, y);
         }
-        DrawRow(g, bold, y, feeColumns, ["Total fee", Rupees(invoice.TotalAmount)]);
+        DrawRow(g, bold, y, feeColumns, ["Total fee", Rupees(invoice.FeeAmount)]);
         y += 30;
 
         // ---- Payments received ----
@@ -150,14 +150,57 @@ public static class InvoicePdfWriter
             g.DrawLine(new XPen(Line, 0.5), Margin, y, Margin + width, y);
         }
 
+        // ---- Refunds given (only when there are any) ----
+        List<Refund> refunds = data.Refunds ?? [];
+        if (refunds.Count > 0)
+        {
+            if (y > page.Height.Point - Margin - 160 - 20 * refunds.Count)
+            {
+                g.Dispose();
+                page = document.AddPage();
+                page.Size = PdfSharp.PageSize.A4;
+                g = XGraphics.FromPdfPage(page);
+                y = Margin;
+            }
+            y += 10;
+            g.DrawString("Refunds given", heading, XBrushes.Black, Margin, y + 10);
+            y += 18;
+            g.DrawRectangle(new XSolidBrush(HeaderFill), Margin, y, width, 22);
+            DrawRow(g, bold, y, payColumns, ["Date", "Refund no.", "Method", "Reason", "Amount"], leftColumns: 4);
+            y += 22;
+            foreach (Refund refund in refunds)
+            {
+                DrawRow(g, body, y, payColumns,
+                    [Date(refund.RefundDate), refund.RefundNumber, refund.RefundMethod, refund.Reason, Rupees(refund.Amount)],
+                    leftColumns: 4);
+                y += 20;
+                g.DrawLine(new XPen(Line, 0.5), Margin, y, Margin + width, y);
+            }
+        }
+
         // ---- Totals ----
+        if (y > page.Height.Point - Margin - 150)
+        {
+            g.Dispose();
+            page = document.AddPage();
+            page.Size = PdfSharp.PageSize.A4;
+            g = XGraphics.FromPdfPage(page);
+            y = Margin;
+        }
         y += 10;
-        foreach ((string label, decimal amount, XFont font) in new[]
-                 {
-                     ("Total fee", invoice.TotalAmount, body),
-                     ("Total paid", invoice.PaidAmount, body),
-                     ("Pending", invoice.PendingAmount, Font(11, bold: true)),
-                 })
+        var totals = new List<(string, decimal, XFont)> { ("Total fee", invoice.FeeAmount, body) };
+        if (invoice.WaivedAmount > 0)
+        {
+            totals.Add(("Waived at check-out", invoice.WaivedAmount, body));
+        }
+        totals.Add(("Total paid", invoice.ReceivedAmount, body));
+        if (invoice.RefundedAmount > 0)
+        {
+            totals.Add(("Refunded", invoice.RefundedAmount, body));
+            totals.Add(("Paid after refunds", invoice.PaidAmount, body));
+        }
+        totals.Add(("Pending", invoice.PendingAmount, Font(11, bold: true)));
+        foreach ((string label, decimal amount, XFont font) in totals)
         {
             g.DrawString(label, font, XBrushes.Black,
                 new XRect(Margin + width - 290, y, 150, 16), XStringFormats.TopRight);

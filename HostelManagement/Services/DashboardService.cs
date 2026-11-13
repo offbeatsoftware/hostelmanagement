@@ -23,6 +23,11 @@ public static class DashboardService
         List<Invoice> invoices = InvoiceService.GetInvoices(hostelId);
         List<Payment> payments = PaymentService.GetPayments(hostelId);
         List<StudentDue> dues = PendingDuesService.GetDues(hostelId);
+        // Money received is shown net of the refunds paid back in the same period (version 1.5).
+        List<Refund> refunds = RefundService.GetRefunds(hostelId);
+        decimal Net(DateTime from, DateTime to) =>
+            payments.Where(p => p.PaymentDate >= from && p.PaymentDate <= to).Sum(p => p.Amount) -
+            refunds.Where(r => r.RefundDate >= from && r.RefundDate <= to).Sum(r => r.Amount);
 
         return new DashboardData
         {
@@ -34,8 +39,8 @@ public static class DashboardService
             OccupiedBeds = rooms.Sum(r => r.Occupied),
             FreeBeds = rooms.Sum(r => r.Available),
             InvoicedThisYear = invoices.Where(i => i.AcademicYear == academicYear).Sum(i => i.TotalAmount),
-            ReceivedThisMonth = payments.Where(p => p.PaymentDate >= monthStart && p.PaymentDate <= today).Sum(p => p.Amount),
-            ReceivedThisYear = payments.Where(p => p.PaymentDate >= yearStart && p.PaymentDate <= today).Sum(p => p.Amount),
+            ReceivedThisMonth = Net(monthStart, today),
+            ReceivedThisYear = Net(yearStart, today),
             PendingAmount = dues.Sum(d => d.PendingAmount),
             PendingStudents = dues.Count,
             HighestPending = dues.Take(ListSize).ToList(),
@@ -47,8 +52,7 @@ public static class DashboardService
                 .ToList(),
             PaymentsPerMonth = Enumerable.Range(0, 12)
                 .Select(i => yearStart.AddMonths(i))
-                .Select(month => new MonthTotal(month,
-                    payments.Where(p => p.PaymentDate >= month && p.PaymentDate < month.AddMonths(1)).Sum(p => p.Amount)))
+                .Select(month => new MonthTotal(month, Math.Max(0, Net(month, month.AddMonths(1).AddTicks(-1)))))
                 .ToList(),
         };
     }

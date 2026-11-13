@@ -24,6 +24,7 @@ public sealed class PaymentsView : UserControl
     private readonly Button _emailButton;
     private readonly Button _editButton;
     private readonly Button _deleteButton;
+    private readonly Button _refundButton;
     private readonly Label _summaryLabel;
 
     private List<Payment> _payments = [];
@@ -75,6 +76,24 @@ public sealed class PaymentsView : UserControl
         UiTheme.StyleDangerButton(_deleteButton);
         _deleteButton.Click += (_, _) => DeleteSelectedPayment();
 
+        _refundButton = new Button { Text = "Refund" };
+        UiTheme.StyleSecondaryButton(_refundButton);
+        _refundButton.Click += async (_, _) =>
+        {
+            if (SelectedPayment is Payment payment && await RefundActions.RefundAsync(this, payment.StudentId, payment.InvoiceId) is not null)
+            {
+                LoadPayments(payment.PaymentId);
+            }
+        };
+        var refundsButton = new Button { Text = "Refunds" };
+        UiTheme.StyleSecondaryButton(refundsButton);
+        refundsButton.Click += (_, _) =>
+        {
+            using var dialog = new RefundsForm(_hostel.HostelId);
+            dialog.ShowDialog(this);
+            LoadPayments(SelectedPayment?.PaymentId);
+        };
+
         var historyButton = new Button { Text = "Change History" };
         UiTheme.StyleSecondaryButton(historyButton);
         historyButton.Width = 140;
@@ -86,7 +105,7 @@ public sealed class PaymentsView : UserControl
         FlowLayoutPanel filterRow = FormFields.CreateButtonRow(_searchBox, _methodFilter, _summaryLabel);
         filterRow.Dock = DockStyle.Top;
         FlowLayoutPanel toolbar = FormFields.CreateButtonRow(
-            recordButton, _editButton, _deleteButton, _viewButton, _saveButton, _emailButton, historyButton);
+            recordButton, _editButton, _deleteButton, _viewButton, _saveButton, _emailButton, _refundButton, refundsButton, historyButton);
         toolbar.Dock = DockStyle.Top;
 
         _grid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
@@ -192,6 +211,7 @@ public sealed class PaymentsView : UserControl
         _emailButton.Enabled = hasSelection;
         _editButton.Enabled = hasSelection;
         _deleteButton.Enabled = hasSelection;
+        _refundButton.Enabled = hasSelection;
     }
 
     /// <summary>Shows a payment's full remarks in a popup.</summary>

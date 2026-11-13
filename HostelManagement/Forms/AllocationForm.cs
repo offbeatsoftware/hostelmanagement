@@ -31,6 +31,7 @@ public sealed class AllocationForm : Form
     private readonly TextBox? _transportBox;
     private readonly Label? _feeLabel;
     private readonly Label _messageLabel;
+    private readonly RadioButton? _waiveRadio;
     private Invoice? _existingFee;
 
     /// <param name="students">Students without a room (check-in only).</param>
@@ -107,6 +108,20 @@ public sealed class AllocationForm : Form
         FormFields.AddRow(fields, dateCaption, _datePicker, required: true);
         _remarksBox = FormFields.AddTextBox(fields, "Remarks", 255, multiline: true);
 
+        // Check-out is allowed with a fee pending (client decision): keep it to collect later, or waive the rest.
+        int pendingRows = 0;
+        decimal pending = action == AllocationAction.CheckOut && current is not null ? AllocationService.GetPendingFee(current.StudentId) : 0m;
+        if (pending > 0)
+        {
+            FormFields.AddRow(fields, "Fee pending", CreateInfoLabel(Money.Format(pending)));
+            var keepRadio = new RadioButton { AutoSize = true, Checked = true, Text = "Keep it pending (it can still be collected and reminded)" };
+            _waiveRadio = new RadioButton { AutoSize = true, Text = "Waive it (the fee is reduced to what was paid)" };
+            FlowLayoutPanel choice = FormFields.CreateStack(keepRadio, _waiveRadio);
+            choice.Margin = new Padding(0, 2, 0, 4);
+            FormFields.AddRow(fields, string.Empty, choice);
+            pendingRows = 80;
+        }
+
         if (action == AllocationAction.CheckIn)
         {
             // The fee agreed with this student for the academic year (client decision, version 1.2).
@@ -123,7 +138,8 @@ public sealed class AllocationForm : Form
             _datePicker.ValueChanged += (_, _) => ShowExistingFee();
         }
         fields.Location = new Point(20, 20);
-        int bottom = action == AllocationAction.CheckIn ? 105 : 0;
+        int bottom = action == AllocationAction.CheckIn ? 105 : pendingRows;
+        ClientSize = new Size(ClientSize.Width, ClientSize.Height + pendingRows);
 
         var note = new Label
         {
@@ -401,12 +417,14 @@ public sealed class AllocationForm : Form
                     break;
 
                 default:
+                    bool waive = _waiveRadio?.Checked == true;
                     if (!Dialogs.Confirm($"Check out {_current!.StudentName} from room {_current.RoomNumber} on {date:dd MMM yyyy}? " +
-                                         "The student's status will be set to Left."))
+                                         "The student's status will be set to Left." +
+                                         (waive ? " The pending fee will be waived." : "")))
                     {
                         return;
                     }
-                    AllocationService.CheckOut(studentId, date, _remarksBox.Text);
+                    AllocationService.CheckOut(studentId, date, _remarksBox.Text, waive);
                     break;
             }
 

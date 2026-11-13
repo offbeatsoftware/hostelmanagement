@@ -104,6 +104,34 @@ public static class EmailService
             [ReceiptPdfWriter.SaveToReceiptsFolder(data)]);
     }
 
+    /// <summary>The refund receipt email (fixed wording), with the refund receipt PDF, to the father or the mother.</summary>
+    public static readonly EmailTemplate RefundTemplate = new(
+        "Refund receipt {RefundNumber} for {StudentName}",
+        "Dear {ParentName},\n\n" +
+        "We have refunded {RefundAmount} for {StudentName} on {RefundDate} ({RefundMethod}), from the hostel fee for the " +
+        "academic year {AcademicYear} (invoice {InvoiceNumber}).\n" +
+        "The refund receipt is attached.\n\n" +
+        "Regards,\n{HostelName}\n{HostelPhone}");
+
+    public static OutgoingEmail PrepareRefundReceipt(int refundId)
+    {
+        GetConfiguredSettings();
+        RefundPrintData data = RefundService.GetPrintData(refundId);
+        EmailContact contact = RequireFeeContact(data.Student);
+        Refund refund = data.Refund;
+
+        var values = CommonValues(data.Student, contact, data.Hostel);
+        values["RefundNumber"] = refund.RefundNumber;
+        values["RefundAmount"] = PdfText.Rupees(refund.Amount);
+        values["RefundDate"] = Date(refund.RefundDate);
+        values["RefundMethod"] = refund.RefundMethod;
+        values["InvoiceNumber"] = data.Invoice.InvoiceNumber;
+        values["AcademicYear"] = data.Invoice.YearText;
+
+        return Build(EmailType.Refund, RefundTemplate, values, data.Student, contact, [data.Invoice.InvoiceId],
+            [RefundReceiptPdfWriter.SaveToReceiptsFolder(data)]);
+    }
+
     /// <summary>
     /// A fee reminder with the student's total, paid and pending amounts and the invoice PDFs. The admin may
     /// change the text for this sending (<paramref name="template"/>); otherwise the saved text is used.

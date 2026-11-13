@@ -49,11 +49,23 @@ public static class StudentRepository
             Db.Param("@AadhaarNumber", aadhaarNumber),
             Db.Param("@StudentId", exceptStudentId))) > 0;
 
-    /// <summary>Room allocations, invoices, payments, emails and attendance that keep a student's record in use.</summary>
+    /// <summary>
+    /// Deletes a student together with everything recorded about them (client decision, version 1.5: an inactive
+    /// student can be deleted for good). Records that point at others go first.
+    /// </summary>
+    public static void DeleteWithHistory(OleDbConnection connection, OleDbTransaction transaction, int studentId)
+    {
+        foreach (string table in new[] { "Attendance", "EmailHistory", "PaymentChange", "Refund", "Payment", "Invoice", "RoomAllocation", "Student" })
+        {
+            Db.Execute(connection, transaction, $"DELETE FROM [{table}] WHERE [StudentId] = ?", Db.Param("@StudentId", studentId));
+        }
+    }
+
+    /// <summary>Room allocations, invoices, payments, refunds, emails and attendance that keep a student's record in use.</summary>
     public static int CountHistory(int studentId)
     {
         int total = 0;
-        foreach (string table in new[] { "RoomAllocation", "Invoice", "Payment", "PaymentChange", "EmailHistory", "Attendance" })
+        foreach (string table in new[] { "RoomAllocation", "Invoice", "Payment", "Refund", "PaymentChange", "EmailHistory", "Attendance" })
         {
             total += Convert.ToInt32(Db.Scalar($"SELECT COUNT(*) FROM [{table}] WHERE [StudentId] = ?",
                 Db.Param("@StudentId", studentId)));

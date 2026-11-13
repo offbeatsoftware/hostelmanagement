@@ -25,11 +25,21 @@ public static class PaymentRepository
         Db.Query(SelectPayments + " WHERE p.[PaymentId] = ?", Map, Db.Param("@PaymentId", paymentId)).FirstOrDefault();
 
     /// <summary>The amount already paid against the invoice (read inside the transaction that adds a payment).</summary>
-    public static decimal GetPaidAmount(OleDbConnection connection, OleDbTransaction transaction, int invoiceId)
+    public static decimal GetPaidAmount(OleDbConnection connection, OleDbTransaction transaction, int invoiceId) =>
+        GetReceivedAmount(connection, transaction, invoiceId) - GetRefundedAmount(connection, transaction, invoiceId);
+
+    /// <summary>All payments for the invoice, before refunds.</summary>
+    public static decimal GetReceivedAmount(OleDbConnection connection, OleDbTransaction transaction, int invoiceId) =>
+        Sum(connection, transaction, "SELECT SUM([Amount]) FROM [Payment] WHERE [InvoiceId] = ?", invoiceId);
+
+    /// <summary>All refunds made against the invoice.</summary>
+    public static decimal GetRefundedAmount(OleDbConnection connection, OleDbTransaction transaction, int invoiceId) =>
+        Sum(connection, transaction, "SELECT SUM([Amount]) FROM [Refund] WHERE [InvoiceId] = ?", invoiceId);
+
+    private static decimal Sum(OleDbConnection connection, OleDbTransaction transaction, string sql, int invoiceId)
     {
-        object? paid = Db.Scalar(connection, transaction, "SELECT SUM([Amount]) FROM [Payment] WHERE [InvoiceId] = ?",
-            Db.Param("@InvoiceId", invoiceId));
-        return paid is null or DBNull ? 0m : Convert.ToDecimal(paid);
+        object? total = Db.Scalar(connection, transaction, sql, Db.Param("@InvoiceId", invoiceId));
+        return total is null or DBNull ? 0m : Convert.ToDecimal(total);
     }
 
     /// <summary>All receipt numbers starting with the prefix (for the next number in the sequence).</summary>

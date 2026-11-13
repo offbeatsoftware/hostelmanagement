@@ -241,6 +241,26 @@ public sealed class EmailServiceTests : TestDatabase
     }
 
     [Fact]
+    public void RefundEmail_GoesToTheFeeContact_WithTheRefundReceipt()
+    {
+        SetUpGmail();
+        Invoice invoice = Fee(StudentInRoom("Aman"));
+        Pay(invoice.InvoiceId, 10_000m);
+        Refund refund = RefundService.Record(new Refund
+        {
+            InvoiceId = invoice.InvoiceId, RefundDate = Today, Amount = 2_000m, RefundMethod = PaymentMethod.Cash, Reason = "Left early",
+        });
+
+        OutgoingEmail email = EmailService.PrepareRefundReceipt(refund.RefundId);
+
+        Assert.Equal(EmailType.Refund, email.EmailType);
+        Assert.Contains(refund.RefundNumber, email.Subject);
+        Assert.Contains("Rs. 2,000.00", email.Body);
+        Assert.Equal("aman.father@example.com", email.RecipientEmail);
+        Assert.StartsWith("Refund_", Path.GetFileName(email.AttachmentPaths.Single()));
+    }
+
+    [Fact]
     public void ReceiptEmail_ShowsThePaymentAndBalance()
     {
         SetUpGmail();

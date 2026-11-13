@@ -5,6 +5,9 @@ public static class PaymentChangeType
 {
     public const string Edited = "Edited";
     public const string Deleted = "Deleted";
+
+    /// <summary>A refund entered by mistake was deleted (kept in the same change history).</summary>
+    public const string RefundDeleted = "Refund del";
 }
 
 /// <summary>

@@ -6,10 +6,11 @@ namespace HostelManagement.Data;
 
 public static class InvoiceRepository
 {
-    // PaidAmount = sum of the payments for the invoice.
+    // Received = the payments for the invoice; Refunded = the refunds (paid amount = received - refunded).
     private const string SelectInvoices =
         "SELECT i.*, s.[StudentName], " +
-        "(SELECT SUM(p.[Amount]) FROM [Payment] AS p WHERE p.[InvoiceId] = i.[InvoiceId]) AS [PaidAmount] " +
+        "(SELECT SUM(p.[Amount]) FROM [Payment] AS p WHERE p.[InvoiceId] = i.[InvoiceId]) AS [Received], " +
+        "(SELECT SUM(r.[Amount]) FROM [Refund] AS r WHERE r.[InvoiceId] = i.[InvoiceId]) AS [Refunded] " +
         "FROM [Invoice] AS i INNER JOIN [Student] AS s ON i.[StudentId] = s.[StudentId]";
 
     /// <summary>Invoices of the hostel's students, newest first.</summary>
@@ -67,9 +68,10 @@ public static class InvoiceRepository
     public static void Delete(OleDbConnection connection, OleDbTransaction transaction, int invoiceId) =>
         Db.Execute(connection, transaction, "DELETE FROM [Invoice] WHERE [InvoiceId] = ?", Db.Param("@InvoiceId", invoiceId));
 
-    /// <summary>Payments and emails that keep an invoice in use.</summary>
+    /// <summary>Payments, refunds and emails that keep an invoice in use.</summary>
     public static int CountReferences(int invoiceId) =>
         Convert.ToInt32(Db.Scalar("SELECT COUNT(*) FROM [Payment] WHERE [InvoiceId] = ?", Db.Param("@InvoiceId", invoiceId))) +
+        Convert.ToInt32(Db.Scalar("SELECT COUNT(*) FROM [Refund] WHERE [InvoiceId] = ?", Db.Param("@InvoiceId", invoiceId))) +
         Convert.ToInt32(Db.Scalar("SELECT COUNT(*) FROM [EmailHistory] WHERE [InvoiceId] = ?", Db.Param("@InvoiceId", invoiceId)));
 
     private static Invoice Map(IDataRecord record) => new()
@@ -83,6 +85,14 @@ public static class InvoiceRepository
         TransportAmount = record.GetMoney("TransportAmount"),
         Remarks = record.GetText("Remarks"),
         StudentName = record.GetText("StudentName"),
-        PaidAmount = record.GetMoney("PaidAmount"),
+        WaivedAmount = record.GetMoney("WaivedAmount"),
+        RefundedAmount = record.GetMoney("Refunded"),
+        PaidAmount = record.GetMoney("Received") - record.GetMoney("Refunded"),
     };
+
+    /// <summary>Sets the waived part of a fee (at check-out).</summary>
+    public static void SetWaived(OleDbConnection connection, OleDbTransaction transaction, int invoiceId, decimal waived) =>
+        Db.Execute(connection, transaction, "UPDATE [Invoice] SET [WaivedAmount] = ? WHERE [InvoiceId] = ?",
+            Db.Param("@WaivedAmount", waived),
+            Db.Param("@InvoiceId", invoiceId));
 }

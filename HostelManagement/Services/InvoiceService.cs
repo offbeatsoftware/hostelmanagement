@@ -7,7 +7,8 @@ using HostelManagement.Utilities;
 namespace HostelManagement.Services;
 
 /// <summary>Everything printed on an invoice: the fee for the year and every payment made against it.</summary>
-public sealed record InvoicePrintData(Invoice Invoice, Hostel Hostel, Student Student, string RoomText, List<Payment> Payments);
+public sealed record InvoicePrintData(Invoice Invoice, Hostel Hostel, Student Student, string RoomText, List<Payment> Payments,
+    List<Refund>? Refunds = null);
 
 /// <summary>The room rent and transport agreed with a student for one academic year.</summary>
 public sealed record YearFee(decimal RoomRent, decimal TransportAmount, string? Remarks = null)
@@ -106,17 +107,21 @@ public static class InvoiceService
         return invoiceId;
     }
 
-    /// <summary>Changes the agreed rent and transport of an invoice. The total cannot go below the amount already paid.</summary>
+    /// <summary>
+    /// Changes the agreed rent and transport of an invoice. Less any waived part, the fee cannot go below the
+    /// payments already received (refunds lower the fee and the paid amount alike, so they do not count).
+    /// </summary>
     public static Invoice UpdateFee(int invoiceId, YearFee fee)
     {
         Invoice invoice = InvoiceRepository.Get(invoiceId)
             ?? throw new ValidationException("This invoice no longer exists.");
         ValidateFee(fee);
-        if (fee.Total < invoice.PaidAmount)
+        if (fee.Total - invoice.WaivedAmount < invoice.ReceivedAmount)
         {
             throw new ValidationException(
-                $"{Money.Format(invoice.PaidAmount)} has already been paid against invoice {invoice.InvoiceNumber}. " +
-                "The new total cannot be less than that.");
+                $"{Money.Format(invoice.ReceivedAmount)} has already been paid against invoice {invoice.InvoiceNumber}" +
+                (invoice.WaivedAmount > 0 ? $" and {Money.Format(invoice.WaivedAmount)} was waived" : "") +
+                ". The new total cannot be less than that.");
         }
 
         InvoiceRepository.UpdateFee(invoiceId, fee.RoomRent, fee.TransportAmount, Validators.Clean(fee.Remarks));
@@ -215,7 +220,8 @@ public static class InvoiceService
             .ToList();
 
         return new InvoicePrintData(invoice, hostel, student,
-            allocation is null ? string.Empty : $"Room {allocation.RoomAndBed}", payments);
+            allocation is null ? string.Empty : $"Room {allocation.RoomAndBed}", payments,
+            RefundRepository.GetForInvoice(invoice.InvoiceId).OrderBy(r => r.RefundDate).ThenBy(r => r.RefundId).ToList());
     }
 
     private static void CheckAmount(decimal amount, string name)

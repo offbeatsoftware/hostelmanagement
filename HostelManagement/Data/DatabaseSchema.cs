@@ -22,7 +22,7 @@ public static class DatabaseSchema
     /// Increase by one whenever a table or column changes, so databases with an older
     /// layout are detected at startup. Stored in the SchemaInfo table.
     /// </summary>
-    public const int Version = 16;
+    public const int Version = 17;
 
     /// <summary>
     /// The oldest version that is upgraded in place, keeping its data (version 1.2 onwards). New tables are
@@ -160,6 +160,7 @@ public static class DatabaseSchema
                 [RoomRent]      CURRENCY NOT NULL,
                 [TransportAmount] CURRENCY NOT NULL,
                 [Remarks]       TEXT(255),
+                [WaivedAmount]  CURRENCY,
                 CONSTRAINT [UQ_Invoice_InvoiceNumber] UNIQUE ([InvoiceNumber]),
                 CONSTRAINT [UQ_Invoice_StudentYear] UNIQUE ([StudentId], [AcademicYear]),
                 CONSTRAINT [FK_Invoice_Student] FOREIGN KEY ([StudentId]) REFERENCES [Student] ([StudentId])
@@ -200,6 +201,26 @@ public static class DatabaseSchema
             )
             """,
             "CREATE INDEX [IX_PaymentChange_PaymentId] ON [PaymentChange] ([PaymentId])"),
+
+        // Version 1.5: money paid back to a student; it also lowers the fee by the same amount (client decision).
+        new("Refund", """
+            CREATE TABLE [Refund] (
+                [RefundId]      COUNTER CONSTRAINT [PK_Refund] PRIMARY KEY,
+                [RefundNumber]  TEXT(30) NOT NULL,
+                [StudentId]     INTEGER NOT NULL,
+                [InvoiceId]     INTEGER NOT NULL,
+                [RefundDate]    DATETIME NOT NULL,
+                [Amount]        CURRENCY NOT NULL,
+                [RefundMethod]  TEXT(30) NOT NULL,
+                [Reference]     TEXT(100),
+                [Reason]        TEXT(255) NOT NULL,
+                [CreatedDate]   DATETIME NOT NULL,
+                CONSTRAINT [UQ_Refund_RefundNumber] UNIQUE ([RefundNumber]),
+                CONSTRAINT [FK_Refund_Student] FOREIGN KEY ([StudentId]) REFERENCES [Student] ([StudentId]),
+                CONSTRAINT [FK_Refund_Invoice] FOREIGN KEY ([InvoiceId]) REFERENCES [Invoice] ([InvoiceId])
+            )
+            """,
+            "CREATE INDEX [IX_Refund_RefundDate] ON [Refund] ([RefundDate])"),
 
         new("EmailHistory", """
             CREATE TABLE [EmailHistory] (

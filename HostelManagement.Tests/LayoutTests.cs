@@ -66,6 +66,13 @@ public sealed class LayoutTests : TestDatabase
         PaymentService.Delete(Pay(invoice.InvoiceId, 500m).PaymentId, "Entered twice");
         List<PaymentChange> changes = PaymentService.GetChanges(HostelId);
         List<Invoice> pending = PaymentService.GetInvoicesWithPending(HostelId);
+        Student payer = StudentService.GetStudent(invoice.StudentId)!;
+        List<Invoice> refundable = RefundService.GetRefundableInvoices(payer.StudentId);
+        RefundService.Record(new Refund
+        {
+            InvoiceId = invoice.InvoiceId, RefundDate = DateTime.Today, Amount = 100m, RefundMethod = PaymentMethod.Cash,
+            Reason = "Left early",
+        });
         var problems = new List<string>();
 
         MainFormTests.RunOnStaThread(() =>
@@ -91,6 +98,12 @@ public sealed class LayoutTests : TestDatabase
                 ("Delete payment", () => new PaymentDeleteForm(payment)),
                 ("Payment remarks", () => new PaymentRemarksForm(payment)),
                 ("Payment history", () => new PaymentHistoryForm("Payment change history", changes)),
+                ("Refund", () => new RefundForm(payer, refundable, invoice.InvoiceId)),
+                ("Refunds", () => new RefundsForm(HostelId)),
+                ("Delete student permanently", () => new ReasonForm("Delete Student Permanently",
+                    "Delete Aman Sharma permanently? Every record of this student is removed: invoices, payments, refunds, room " +
+                    "history, attendance, messages, photo, Aadhaar card and signatures. A backup of the database is made first.",
+                    "Delete Permanently")),
                 ("Take photo", () => new CameraForm()),
                 ("Sign agreement", () => new AgreementSignForm(student)),
                 ("Manual WhatsApp", () => new ManualWhatsAppForm(

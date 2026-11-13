@@ -79,6 +79,9 @@ public static class DatabaseInitializer
     }
 
     /// <summary>Names of the application tables that exist in the database.</summary>
+    private static bool ColumnExists(OleDbConnection connection, string table, string column) =>
+        connection.GetOleDbSchemaTable(OleDbSchemaGuid.Columns, [null, null, table, column]) is { Rows.Count: > 0 };
+
     public static HashSet<string> GetExistingTableNames(OleDbConnection connection)
     {
         DataTable? tables = connection.GetOleDbSchemaTable(
@@ -209,6 +212,15 @@ public static class DatabaseInitializer
             if (version < 16)
             {
                 UpgradeStudentsToVersion16(connection);
+            }
+            if (version < 17)
+            {
+                // Version 17 (1.5): the Refund table is created above; a fee can have a waived part.
+                if (!ColumnExists(connection, "Invoice", "WaivedAmount"))
+                {
+                    Db.Execute(connection, null, "ALTER TABLE [Invoice] ADD COLUMN [WaivedAmount] CURRENCY");
+                }
+                AppLogger.Info("Added refunds and waived fees.");
             }
             Db.Execute(connection, null, "UPDATE [SchemaInfo] SET [Version] = ?", Db.Param("@Version", DatabaseSchema.Version));
             AppLogger.Info($"Upgraded the database from version {version} to {DatabaseSchema.Version}.");
