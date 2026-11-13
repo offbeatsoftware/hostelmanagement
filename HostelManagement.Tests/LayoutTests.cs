@@ -1,6 +1,7 @@
 using HostelManagement.Forms;
 using HostelManagement.Models;
 using HostelManagement.Services;
+using HostelManagement.Utilities;
 using Xunit;
 
 namespace HostelManagement.Tests;
@@ -29,6 +30,38 @@ public sealed class LayoutTests : TestDatabase
 
     private static IEnumerable<Control> AllControls(Control parent) =>
         parent.Controls.Cast<Control>().SelectMany(c => new[] { c }.Concat(AllControls(c)));
+
+    [Fact]
+    public void ChosenTabAndDisabledButtons_AreReadable()
+    {
+        SeedData();
+        MainFormTests.RunOnStaThread(() =>
+        {
+            using var view = new Forms.Views.StudentsView(HostelService.GetHostel(HostelId)!);
+            List<RadioButton> tabs = AllControls(view).OfType<RadioButton>().ToList();
+            RadioButton active = tabs.Single(t => t.Text == "Active students");
+            RadioButton inactive = tabs.Single(t => t.Text == "Inactive students");
+            Assert.True(active.Checked);
+            Assert.Equal(Color.White, active.ForeColor);
+            Assert.Equal(UiTheme.NavSelected, active.BackColor);
+            Assert.Equal(active.BackColor, active.FlatAppearance.CheckedBackColor);
+            Assert.NotEqual(inactive.ForeColor, inactive.BackColor);
+
+            inactive.Checked = true;
+            Assert.Equal(Color.White, inactive.ForeColor);
+            Assert.Equal(inactive.BackColor, inactive.FlatAppearance.CheckedBackColor);
+            Assert.Equal(UiTheme.NavSelected, active.ForeColor);
+            Assert.Equal(Color.White, active.BackColor);
+
+            using var button = new Button { Text = "Send WhatsApp" };
+            UiTheme.StylePrimaryButton(button);
+            button.Enabled = false;
+            Assert.NotEqual(UiTheme.Primary, button.BackColor);
+            button.Enabled = true;
+            Assert.Equal(UiTheme.Primary, button.BackColor);
+            Assert.Equal(Color.White, button.ForeColor);
+        });
+    }
 
     [Fact]
     public void EveryScreen_FitsWithoutCutOffOrOverlappingControls()

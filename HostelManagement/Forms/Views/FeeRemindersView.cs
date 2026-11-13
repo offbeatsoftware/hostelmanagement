@@ -88,14 +88,14 @@ public sealed class FeeRemindersView : UserControl
             FillWeight = 5,
             SortMode = DataGridViewColumnSortMode.NotSortable,
         });
-        AddReadOnlyColumn(nameof(ReminderRow.StudentName), "Student", 17);
+        AddReadOnlyColumn(nameof(ReminderRow.StudentName), "Student", 15);
         AddReadOnlyColumn(nameof(ReminderRow.RoomNumber), "Room", 6);
-        AddReadOnlyColumn(nameof(ReminderRow.Years), "Year", 7);
+        AddReadOnlyColumn(nameof(ReminderRow.Years), "Year", 10);
         AddReadOnlyColumn(nameof(ReminderRow.TotalAmount), "Total fee", 10, "C0");
         AddReadOnlyColumn(nameof(ReminderRow.PaidAmount), "Paid", 10, "C0");
         AddReadOnlyColumn(nameof(ReminderRow.PendingAmount), "Pending", 10, "C0");
-        AddReadOnlyColumn(nameof(ReminderRow.EmailText), "Email goes to", 21);
-        AddReadOnlyColumn(nameof(ReminderRow.LastReminderDate), "Last reminder", 10, "dd MMM yyyy");
+        AddReadOnlyColumn(nameof(ReminderRow.EmailText), "Email goes to", 19);
+        AddReadOnlyColumn(nameof(ReminderRow.LastReminderDate), "Last reminder", 11, "dd MMM yyyy");
         _grid.CellFormatting += (_, e) =>
         {
             if (e.RowIndex >= 0 && _grid.Rows[e.RowIndex].DataBoundItem is ReminderRow { CanEmail: false } && e.CellStyle is not null)

@@ -76,6 +76,7 @@ public static class UiTheme
         grid.ColumnHeadersDefaultCellStyle.ForeColor = TextPrimary;
         grid.ColumnHeadersDefaultCellStyle.Font = BodyBoldFont;
         grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = ContentBackground;
+        grid.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.False;
 
         grid.DefaultCellStyle.SelectionBackColor = Color.FromArgb(209, 231, 245);
         grid.DefaultCellStyle.SelectionForeColor = TextPrimary;
@@ -92,5 +93,27 @@ public static class UiTheme
         button.Size = ButtonSize;
         button.Cursor = Cursors.Hand;
         button.UseVisualStyleBackColor = false;
+
+        // A disabled coloured button is shown grey, so it is clearly not clickable (Windows draws its text grey).
+        ButtonColors.AddOrUpdate(button, new Tuple<Color, Color>(back, fore));
+        button.EnabledChanged -= ShowEnabledState;
+        button.EnabledChanged += ShowEnabledState;
+        ShowEnabledState(button, EventArgs.Empty);
+    }
+
+    private static readonly Color DisabledBackground = Color.FromArgb(233, 236, 239);
+
+    /// <summary>The normal colours of each coloured button, to restore when it is enabled again.</summary>
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Button, Tuple<Color, Color>> ButtonColors = new();
+
+    private static void ShowEnabledState(object? sender, EventArgs e)
+    {
+        if (sender is not Button button || !ButtonColors.TryGetValue(button, out Tuple<Color, Color>? colors) ||
+            colors.Item1 == Color.White)
+        {
+            return; // white buttons already look disabled with grey text
+        }
+        button.BackColor = button.Enabled ? colors.Item1 : DisabledBackground;
+        button.ForeColor = button.Enabled ? colors.Item2 : TextMuted;
     }
 }

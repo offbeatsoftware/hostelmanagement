@@ -227,6 +227,8 @@ public static class FormFields
             Name = property,
             HeaderText = header,
             FillWeight = fillWeight,
+            // The header is never cut off, even in a narrow window (the list then scrolls sideways).
+            MinimumWidth = TextRenderer.MeasureText(header, UiTheme.BodyBoldFont).Width + 16,
         };
         if (format is not null)
         {

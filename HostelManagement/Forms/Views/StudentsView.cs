@@ -61,6 +61,8 @@ public sealed class StudentsView : UserControl
         _activeTab = CreateTab("Active students");
         _inactiveTab = CreateTab("Inactive students");
         _activeTab.Checked = true;
+        StyleTab(_activeTab);
+        StyleTab(_inactiveTab);
         FlowLayoutPanel tabRow = FormFields.CreateButtonRow(_activeTab, _inactiveTab);
         tabRow.Dock = DockStyle.Top;
 
@@ -241,9 +243,12 @@ public sealed class StudentsView : UserControl
     /// <summary>The chosen tab is filled; the other is outlined.</summary>
     private static void StyleTab(RadioButton tab)
     {
+        // Checked: white text on orange; not checked: orange text on white (CheckedBackColor follows, so the
+        // text never ends up orange on orange).
         tab.BackColor = tab.Checked ? UiTheme.NavSelected : Color.White;
         tab.ForeColor = tab.Checked ? Color.White : UiTheme.NavSelected;
-        tab.FlatAppearance.CheckedBackColor = UiTheme.NavSelected;
+        tab.FlatAppearance.CheckedBackColor = tab.BackColor;
+        tab.FlatAppearance.MouseOverBackColor = tab.Checked ? UiTheme.NavSelected : UiTheme.NavHover;
     }
 
     /// <summary>Shows the buttons that belong to the selected tab.</summary>
