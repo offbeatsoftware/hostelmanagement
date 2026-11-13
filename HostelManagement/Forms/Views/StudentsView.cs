@@ -131,12 +131,12 @@ public sealed class StudentsView : UserControl
 
         _makeActiveButton = new Button { Text = "Make Active" };
         UiTheme.StyleSecondaryButton(_makeActiveButton);
-        _makeActiveButton.Width = 120;
+        _makeActiveButton.Width = Math.Max(120, TextRenderer.MeasureText(_makeActiveButton.Text, _makeActiveButton.Font).Width + 32);
         _makeActiveButton.Click += (_, _) => MakeSelectedActive();
 
         _deletePermanentlyButton = new Button { Text = "Delete Permanently" };
         UiTheme.StyleDangerButton(_deletePermanentlyButton);
-        _deletePermanentlyButton.Width = 160;
+        _deletePermanentlyButton.Width = Math.Max(160, TextRenderer.MeasureText(_deletePermanentlyButton.Text, _deletePermanentlyButton.Font).Width + 32);
         _deletePermanentlyButton.Click += (_, _) => DeleteSelectedPermanently();
 
         _countLabel = FormFields.CreateMessageLabel();

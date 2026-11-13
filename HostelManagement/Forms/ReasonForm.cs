@@ -36,7 +36,7 @@ public sealed class ReasonForm : Form
         {
             UiTheme.StylePrimaryButton(okButton);
         }
-        okButton.Width = 120;
+        okButton.Width = Math.Max(120, TextRenderer.MeasureText(actionText, okButton.Font).Width + 32);
         okButton.Click += (_, _) =>
         {
             if (_reasonBox.Text.Trim().Length == 0)

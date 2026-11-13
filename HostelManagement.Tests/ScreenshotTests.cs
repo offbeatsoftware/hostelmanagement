@@ -92,9 +92,10 @@ public sealed class ScreenshotTests : TestDatabase
             for (int month = 0; i < names.Length - 2 && month <= i % 4; month++)
             {
                 DateTime paid = yearStart.AddMonths(month).AddDays(10 + i);
-                if (paid <= today)
+                decimal pending = InvoiceService.GetInvoice(invoice.InvoiceId)!.PendingAmount;
+                if (paid <= today && pending > 0)
                 {
-                    Pay(invoice.InvoiceId, 9_000m + 1_500m * i, paid);
+                    Pay(invoice.InvoiceId, Math.Min(9_000m + 1_500m * i, pending), paid);
                 }
             }
         }
