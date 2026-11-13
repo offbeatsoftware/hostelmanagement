@@ -147,7 +147,7 @@ public static class WhatsAppService
     /// </summary>
     public const string FeeReminderText =
         "Dear {{1}},\nThis is a fee reminder from {{2}} for {{3}} for the academic year {{4}}.\nTotal fee: ₹{{5}}\n" +
-        "Paid: ₹{{6}}\nPending: ₹{{7}}\n\n(Bank account details and the payment QR code, as in the approved template.)\n\n" +
+        "Paid: ₹{{6}}\nPending: ₹{{7}}\n\n(Payment by UPI QR code, as in the approved template.)\n\n" +
         "After paying, please share the payment receipt or UTR number on {{8}}. Thank you.";
 
     public const string AttendanceText =

@@ -161,7 +161,8 @@ public sealed class WhatsAppServiceTests : TestDatabase
         Assert.Contains($"for Aman for the academic year {AcademicYear.Label(AcademicYear.Current)}", message.Text);
         Assert.Contains("Total fee: ₹62,000", message.Text);
         Assert.Contains("Pending: ₹47,000", message.Text);
-        Assert.Contains("IFSC: HDFC0008528", message.Text);
+        Assert.Contains("scan our UPI QR code", message.Text);
+        Assert.DoesNotContain("50200116556437", message.Text);
         Assert.Contains("on 98290 12345", message.Text);
         Assert.DoesNotContain("{", message.Text);
         Assert.False(message.WithPaymentQr);

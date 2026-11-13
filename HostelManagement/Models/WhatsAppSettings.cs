@@ -33,12 +33,9 @@ public sealed class WhatsAppSettings
         "Total fee: ₹{TotalAmount}\n" +
         "Paid: ₹{PaidAmount}\n" +
         "Pending: ₹{Pending}\n\n" +
-        "To pay the fee:\n" +
-        "Account name: SHRI BALAJI HOSTEL\n" +
-        "Account number: 50200116556437\n" +
-        "IFSC: HDFC0008528 (HDFC Bank, E C Road)\n" +
-        "Account type: Current\n" +
-        "Or pay by scanning our UPI QR code with any UPI app (GPay, PhonePe, Paytm, BHIM).\n\n" +
+        // No bank account number: WhatsApp's business policy says not to share full financial account numbers.
+        "To pay the fee, please scan our UPI QR code with any UPI app (GPay, PhonePe, Paytm, BHIM). " +
+        "For bank transfer details, please call {HostelPhone}.\n\n" +
         "After paying, please share the payment receipt or UTR number on {HostelPhone}. Thank you.";
 
     public const string DefaultAttendanceText =
