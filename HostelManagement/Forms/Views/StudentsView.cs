@@ -20,7 +20,8 @@ public sealed class StudentsView : UserControl
     private readonly ComboBox _collegeFilter;
     private readonly ComboBox _courseFilter;
     private readonly ComboBox _classFilter;
-    private readonly TabControl _tabs;
+    private readonly RadioButton _activeTab;
+    private readonly RadioButton _inactiveTab;
     private readonly DataGridView _grid;
     private readonly Button _editButton;
     private readonly Button _deleteButton;
@@ -56,10 +57,12 @@ public sealed class StudentsView : UserControl
         _courseFilter = CreateFilter(150);
         _classFilter = CreateFilter(120);
 
-        _tabs = new TabControl { Dock = DockStyle.Top, Font = UiTheme.BodyFont };
-        _tabs.TabPages.Add(new TabPage("Active students"));
-        _tabs.TabPages.Add(new TabPage("Inactive students"));
-        _tabs.Height = _tabs.ItemSize.Height + 6;
+        // Two large tab buttons (a TabControl strip can come out only a few pixels high on some screens).
+        _activeTab = CreateTab("Active students");
+        _inactiveTab = CreateTab("Inactive students");
+        _activeTab.Checked = true;
+        FlowLayoutPanel tabRow = FormFields.CreateButtonRow(_activeTab, _inactiveTab);
+        tabRow.Dock = DockStyle.Top;
 
         FlowLayoutPanel filterRow = FormFields.CreateButtonRow(
             _searchBox, _collegeFilter, _courseFilter, _classFilter);
@@ -174,7 +177,7 @@ public sealed class StudentsView : UserControl
         body.Controls.Add(_grid);
         body.Controls.Add(buttonRow);
         body.Controls.Add(filterRow);
-        body.Controls.Add(_tabs);
+        body.Controls.Add(tabRow);
         Panel card = FormFields.CreateCard($"Students of {hostel.HostelName}", body);
         card.Dock = DockStyle.Fill;
         Controls.Add(card);
@@ -184,7 +187,17 @@ public sealed class StudentsView : UserControl
         {
             filter.SelectedIndexChanged += (_, _) => ShowStudents();
         }
-        _tabs.SelectedIndexChanged += (_, _) => ShowStudents();
+        foreach (RadioButton tab in new[] { _activeTab, _inactiveTab })
+        {
+            tab.CheckedChanged += (_, _) =>
+            {
+                StyleTab(tab);
+                if (tab.Checked)
+                {
+                    ShowStudents();
+                }
+            };
+        }
         ShowTabButtons();
 
         Load += (_, _) => LoadStudents();
@@ -203,7 +216,35 @@ public sealed class StudentsView : UserControl
     }
 
     /// <summary>True on the "Inactive students" tab (students who have checked out).</summary>
-    private bool ShowingInactive => _tabs.SelectedIndex == 1;
+    private bool ShowingInactive => _inactiveTab.Checked;
+
+    private static RadioButton CreateTab(string text)
+    {
+        var tab = new RadioButton
+        {
+            Text = text,
+            Appearance = Appearance.Button,
+            AutoSize = false,
+            Font = UiTheme.BodyBoldFont,
+            TextAlign = ContentAlignment.MiddleCenter,
+            FlatStyle = FlatStyle.Flat,
+            Height = 40,
+            Margin = new Padding(0, 4, 8, 4),
+            Cursor = Cursors.Hand,
+        };
+        tab.Width = TextRenderer.MeasureText(text, tab.Font).Width + 48;
+        tab.FlatAppearance.BorderColor = UiTheme.NavSelected;
+        StyleTab(tab);
+        return tab;
+    }
+
+    /// <summary>The chosen tab is filled; the other is outlined.</summary>
+    private static void StyleTab(RadioButton tab)
+    {
+        tab.BackColor = tab.Checked ? UiTheme.NavSelected : Color.White;
+        tab.ForeColor = tab.Checked ? Color.White : UiTheme.NavSelected;
+        tab.FlatAppearance.CheckedBackColor = UiTheme.NavSelected;
+    }
 
     /// <summary>Shows the buttons that belong to the selected tab.</summary>
     private void ShowTabButtons()
@@ -408,7 +449,7 @@ public sealed class StudentsView : UserControl
         try
         {
             StudentService.MakeActive(student.StudentId);
-            _tabs.SelectedIndex = 0;
+            _activeTab.Checked = true;
             LoadStudents(student.StudentId);
         }
         catch (ValidationException ex)

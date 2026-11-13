@@ -27,6 +27,9 @@ public sealed class LayoutTests : TestDatabase
         return (InvoiceService.GetInvoice(invoice.InvoiceId)!, payment, room);
     }
 
+    private static IEnumerable<Control> AllControls(Control parent) =>
+        parent.Controls.Cast<Control>().SelectMany(c => new[] { c }.Concat(AllControls(c)));
+
     [Fact]
     public void EveryScreen_FitsWithoutCutOffOrOverlappingControls()
     {
@@ -46,6 +49,18 @@ public sealed class LayoutTests : TestDatabase
                 button.PerformClick();
                 Application.DoEvents();
                 problems.AddRange(LayoutChecker.Check(form, button.Text));
+
+                // The Students screen's second tab (inactive students) must be visible and usable too.
+                if (AllControls(form).OfType<RadioButton>().FirstOrDefault(r => r.Text == "Inactive students") is RadioButton inactive)
+                {
+                    if (inactive.Height < 30 || !inactive.Visible)
+                    {
+                        problems.Add($"{button.Text}: the Inactive students tab is not visible ({inactive.Height} px high)");
+                    }
+                    inactive.Checked = true;
+                    Application.DoEvents();
+                    problems.AddRange(LayoutChecker.Check(form, button.Text + " (inactive)"));
+                }
             }
             form.Close();
         });
