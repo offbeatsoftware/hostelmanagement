@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using HostelManagement.Data;
 using HostelManagement.Models;
 using HostelManagement.Utilities;
@@ -12,7 +13,7 @@ namespace HostelManagement.Services;
 /// computer, and after a restore elsewhere it has to be entered again. The payment QR image is copied into
 /// Documents\WhatsApp, so backups include it.
 /// </summary>
-public static class WhatsAppSettingsService
+public static partial class WhatsAppSettingsService
 {
     private const string TokenPrefix = "dpapi:";
     private static readonly string[] QrExtensions = [".png", ".jpg", ".jpeg"];
@@ -32,6 +33,10 @@ public static class WhatsAppSettingsService
             AttendanceTemplate = Value("WhatsApp.AttendanceTemplate", WhatsAppSettings.DefaultAttendanceTemplate),
             Language = Value("WhatsApp.Language", WhatsAppSettings.DefaultLanguage),
             PaymentQrPath = Value("WhatsApp.PaymentQr", ""),
+            Mode = Value("WhatsApp.Mode", WhatsAppMode.Manual) == WhatsAppMode.Api ? WhatsAppMode.Api : WhatsAppMode.Manual,
+            OpenIn = Value("WhatsApp.OpenIn", WhatsAppOpenIn.DesktopApp) == WhatsAppOpenIn.Web ? WhatsAppOpenIn.Web : WhatsAppOpenIn.DesktopApp,
+            FeeText = Value("WhatsApp.FeeText", WhatsAppSettings.DefaultFeeText),
+            AttendanceText = Value("WhatsApp.AttendanceText", WhatsAppSettings.DefaultAttendanceText),
         };
     }
 
@@ -51,6 +56,10 @@ public static class WhatsAppSettingsService
             AttendanceTemplate = Validators.Clean(input.AttendanceTemplate).ToLowerInvariant(),
             Language = Validators.Clean(input.Language),
             PaymentQrPath = saved.PaymentQrPath,
+            Mode = input.Mode == WhatsAppMode.Api ? WhatsAppMode.Api : WhatsAppMode.Manual,
+            OpenIn = input.OpenIn == WhatsAppOpenIn.Web ? WhatsAppOpenIn.Web : WhatsAppOpenIn.DesktopApp,
+            FeeText = Normalise(input.FeeText),
+            AttendanceText = Normalise(input.AttendanceText),
         };
         Validate(settings);
         if (newQrFile is not null)
@@ -73,6 +82,10 @@ public static class WhatsAppSettingsService
             ["WhatsApp.AttendanceTemplate"] = settings.AttendanceTemplate,
             ["WhatsApp.Language"] = settings.Language,
             ["WhatsApp.PaymentQr"] = settings.PaymentQrPath,
+            ["WhatsApp.Mode"] = settings.Mode,
+            ["WhatsApp.OpenIn"] = settings.OpenIn,
+            ["WhatsApp.FeeText"] = settings.FeeText,
+            ["WhatsApp.AttendanceText"] = settings.AttendanceText,
         });
         AppLogger.Info("WhatsApp settings saved.");
         return settings;
@@ -82,8 +95,16 @@ public static class WhatsAppSettingsService
     public static string? PaymentQrFile(WhatsAppSettings settings) =>
         StudentFileService.Exists(settings.PaymentQrPath) ? StudentFileService.FullPath(settings.PaymentQrPath) : null;
 
+    /// <summary>The manual messages are needed in manual mode; Meta's IDs, token and template names only in API mode.</summary>
     private static void Validate(WhatsAppSettings settings)
     {
+        ValidateText(settings.FeeText, WhatsAppSettings.FeeFields, "fee reminder");
+        ValidateText(settings.AttendanceText, WhatsAppSettings.AttendanceFields, "attendance");
+        if (settings.IsManual)
+        {
+            return;
+        }
+
         if (settings.PhoneNumberId.Length == 0 || !settings.PhoneNumberId.All(char.IsAsciiDigit))
         {
             throw new ValidationException("Please enter the Phone Number ID (only digits) from Meta's WhatsApp API Setup page.");
@@ -119,6 +140,30 @@ public static class WhatsAppSettingsService
         Validators.CheckLength(settings.BusinessAccountId, 30, "WhatsApp Business Account ID");
         Validators.CheckLength(settings.Language, 10, "Language code");
     }
+
+    private static void ValidateText(string text, IReadOnlyList<string> fields, string name)
+    {
+        if (text.Trim().Length == 0)
+        {
+            throw new ValidationException($"Please enter the {name} WhatsApp message.");
+        }
+        // WhatsApp accepts long messages; a link to open a chat with the text stays well within browser limits at this size.
+        Validators.CheckLength(text, 1500, $"The {name} WhatsApp message");
+        List<string> unknown = FieldPattern().Matches(text).Select(m => m.Groups[1].Value)
+            .Where(f => !fields.Contains(f)).Distinct().ToList();
+        if (unknown.Count > 0)
+        {
+            throw new ValidationException(
+                $"The {name} WhatsApp message uses {string.Join(", ", unknown.Select(f => "{" + f + "}"))}, which is not available. " +
+                $"Available: {string.Join(", ", fields.Select(f => "{" + f + "}"))}.");
+        }
+    }
+
+    private static string Normalise(string text) =>
+        string.Join("\n", text.ReplaceLineEndings("\n").Split('\n').Select(l => l.TrimEnd())).Trim();
+
+    [GeneratedRegex(@"\{([A-Za-z]+)\}")]
+    private static partial Regex FieldPattern();
 
     private static void ValidateQr(string file)
     {

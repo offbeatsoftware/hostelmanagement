@@ -180,6 +180,24 @@
 <div class="note">If the Gmail password is ever changed, Google cancels the app password: create a new one and enter it again. The app password is also needed again after moving to another PC.</div>
 
 <h2>9a. WhatsApp (fee reminders and attendance)</h2>
+<p>There are two ways to send, chosen on <b>Settings</b> &gt; <b>Email Settings</b> &gt; <b>WhatsApp</b>:</p>
+<ul>
+  <li><b>WhatsApp on this PC</b> (normal choice): the program opens each parent's chat in WhatsApp on this PC with the message already typed, and you press Send. It uses the hostel's own WhatsApp; no Meta account, approval or charge.</li>
+  <li><b>Meta's WhatsApp API</b>: messages are sent automatically. This needs an approved WhatsApp Business Platform account (below).</li>
+</ul>
+<h3>WhatsApp on this PC</h3>
+<ol>
+  <li>Install <b>WhatsApp</b> (or WhatsApp Business) for Windows on this PC and link it to the hostel's phone (scan the QR code on the PC with the phone). Or use <b>WhatsApp Web</b> in the browser.</li>
+  <li>On the <b>WhatsApp</b> tab choose <i>WhatsApp on this PC</i>, choose where chats open (the WhatsApp app or WhatsApp Web), check the two messages and click <b class="ui">Save WhatsApp Settings</b>. Words in curly brackets such as <code>{Pending}</code> are filled in for each parent; <b class="ui">Restore Default Texts</b> brings back the original messages. Optionally choose the payment QR image.</li>
+  <li>On <b>Fee Reminders</b> tick the students and click <b class="ui">Send WhatsApp</b> (or on <b>Attendance</b> click <b class="ui">WhatsApp Parents</b>). A window shows the first parent's message:
+    <ul>
+      <li><b class="ui">Open in WhatsApp</b> opens that parent's chat with the message typed. Check it and press <b>Send</b> in WhatsApp. (<b class="ui">Copy QR Image</b> puts the payment QR on the clipboard: paste it into the chat with Ctrl+V.)</li>
+      <li>Come back and click <b class="ui">Sent - Next</b>; the message is recorded in Email history and the next parent is shown. <b class="ui">Skip</b> goes to the next parent without recording.</li>
+    </ul>
+  </li>
+</ol>
+<div class="note">Send only to parents who gave their number for hostel messages, and only what they expect (fees, attendance). Many unexpected messages from one number can get it limited by WhatsApp.</div>
+<h3>Meta's WhatsApp API</h3>
 <p>WhatsApp messages are sent from the hostel's WhatsApp number through Meta's WhatsApp Business Platform, as two message <b>templates</b> that Meta approves once: <code>fee_reminder</code> and <code>attendance_alert</code> (category Utility, English). Meta charges for each delivered message, roughly ₹0.11 to ₹0.12 each; nothing is sent automatically.</p>
 <h3>Set up on Meta (once)</h3>
 <ol>
@@ -190,7 +208,7 @@
 </ol>
 <h3>Enter it in the program</h3>
 <ol>
-  <li><b>Settings</b> &gt; <b>Email Settings</b> &gt; <b>WhatsApp</b> tab: Phone Number ID, WhatsApp Business Account ID, the access token, the two template names (<code>fee_reminder</code>, <code>attendance_alert</code>) and the language <code>en</code>.</li>
+  <li><b>Settings</b> &gt; <b>Email Settings</b> &gt; <b>WhatsApp</b> tab: choose <i>Meta's WhatsApp API</i>, then Phone Number ID, WhatsApp Business Account ID, the access token, the two template names (<code>fee_reminder</code>, <code>attendance_alert</code>) and the language <code>en</code>.</li>
   <li>If the fee reminder template has the QR code as its header image, click <b class="ui">Choose QR...</b> and pick the payment QR image (PNG or JPG). Without an image header, leave it as <i>None</i>.</li>
   <li>Click <b class="ui">Save WhatsApp Settings</b>, type a mobile number in <b>Send test to mobile</b> and click <b class="ui">Send Test Message</b>: Meta's "hello world" message should arrive.</li>
 </ol>

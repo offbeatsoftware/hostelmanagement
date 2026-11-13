@@ -93,6 +93,15 @@ public sealed class LayoutTests : TestDatabase
                 ("Payment history", () => new PaymentHistoryForm("Payment change history", changes)),
                 ("Take photo", () => new CameraForm()),
                 ("Sign agreement", () => new AgreementSignForm(student)),
+                ("Manual WhatsApp", () => new ManualWhatsAppForm(
+                [
+                    new WhatsAppMessage
+                    {
+                        MessageType = EmailType.WhatsAppReminder, StudentName = "Aman Sharma", RecipientName = "Rakesh Sharma",
+                        Relation = "Father", Mobile = "919812345678",
+                        Preview = WhatsAppSettings.DefaultFeeText.Replace("{ParentName}", "Rakesh Sharma", StringComparison.Ordinal),
+                    },
+                ], new WhatsAppSettings(), "fee reminder")),
                 ("I-card valid till", () => new IdCardValidTillForm(transport: true, 12, IdCardService.DefaultValidTill(DateTime.Today))),
             };
 

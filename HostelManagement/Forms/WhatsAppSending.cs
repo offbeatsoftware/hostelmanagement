@@ -22,6 +22,13 @@ internal static class WhatsAppSending
             return;
         }
 
+        WhatsAppSettings current = WhatsAppSettingsService.Get();
+        if (current.IsManual)
+        {
+            SendManually(screen, messages, problems, what, current);
+            return;
+        }
+
         WhatsAppMessage first = messages[0];
         string skipped = problems.Count > 0 ? $"{Environment.NewLine}{problems.Count} student(s) cannot be messaged and will be listed afterwards." : "";
         if (!Dialogs.Confirm(
@@ -95,6 +102,26 @@ internal static class WhatsAppSending
         }
         string header = sent > 0 ? $"{sent} WhatsApp messages were sent, {failures.Count} were not:" : "The WhatsApp messages could not be sent:";
         Dialogs.Warning(header + Environment.NewLine + Environment.NewLine + List(failures));
+    }
+
+    /// <summary>Manual mode: the admin sends each message from WhatsApp on this PC, one parent at a time.</summary>
+    private static void SendManually(Control screen, IReadOnlyList<WhatsAppMessage> messages, IReadOnlyList<string> problems,
+        string what, WhatsAppSettings settings)
+    {
+        using var window = new ManualWhatsAppForm(messages, settings, what);
+        window.ShowDialog(screen.FindForm());
+
+        var summary = new List<string> { $"{window.SentCount} sent, {window.SkippedCount} skipped" + (window.NotDoneCount > 0 ? $", {window.NotDoneCount} not done." : ".") };
+        if (problems.Count > 0)
+        {
+            summary.Add(string.Empty);
+            summary.Add("These students could not be messaged:");
+            summary.Add(List(problems));
+        }
+        if (problems.Count > 0 || window.NotDoneCount > 0 || window.SkippedCount > 0)
+        {
+            Dialogs.Info(string.Join(Environment.NewLine, summary));
+        }
     }
 
     private static string List(IReadOnlyList<string> lines)

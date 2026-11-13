@@ -45,6 +45,7 @@ public sealed class WhatsAppServiceTests : TestDatabase
     private static WhatsAppSettings SetUpWhatsApp(string? qrFile = null) =>
         WhatsAppSettingsService.Save(new WhatsAppSettings
         {
+            Mode = WhatsAppMode.Api,
             PhoneNumberId = "1413266881875222",
             BusinessAccountId = "1510854370884023",
             AccessToken = Token,
@@ -97,16 +98,16 @@ public sealed class WhatsAppServiceTests : TestDatabase
 
         WhatsAppSettingsService.Save(new WhatsAppSettings
         {
-            PhoneNumberId = "1413266881875222", AccessToken = "", FeeTemplate = "Fee_Reminder", AttendanceTemplate = "attendance_alert", Language = "en",
+            Mode = WhatsAppMode.Api, PhoneNumberId = "1413266881875222", AccessToken = "", FeeTemplate = "Fee_Reminder", AttendanceTemplate = "attendance_alert", Language = "en",
         });
         WhatsAppSettings settings = WhatsAppSettingsService.Get();
         Assert.Equal(Token, settings.AccessToken);
         Assert.Equal("fee_reminder", settings.FeeTemplate);
 
         Assert.Contains("Phone Number ID", Assert.Throws<ValidationException>(() => WhatsAppSettingsService.Save(
-            new WhatsAppSettings { PhoneNumberId = "abc", AccessToken = Token })).Message);
+            new WhatsAppSettings { Mode = WhatsAppMode.Api, PhoneNumberId = "abc", AccessToken = Token })).Message);
         Assert.Contains("template name", Assert.Throws<ValidationException>(() => WhatsAppSettingsService.Save(
-            new WhatsAppSettings { PhoneNumberId = "1", AccessToken = Token, FeeTemplate = "fee reminder" })).Message);
+            new WhatsAppSettings { Mode = WhatsAppMode.Api, PhoneNumberId = "1", AccessToken = Token, FeeTemplate = "fee reminder" })).Message);
     }
 
     [Fact]
@@ -123,11 +124,100 @@ public sealed class WhatsAppServiceTests : TestDatabase
     }
 
     [Fact]
-    public void NotSetUp_TellsTheAdminToOpenTheSettings()
+    public void ApiModeNotSetUp_TellsTheAdminToOpenTheSettings()
     {
         int aman = StudentWithFee();
+        AppSettingRepository.SaveAll(new Dictionary<string, string> { ["WhatsApp.Mode"] = WhatsAppMode.Api });
         Assert.Contains("not set up", Assert.Throws<ValidationException>(() =>
             WhatsAppService.PrepareFeeReminders([DueOf(aman)])).Message);
+    }
+
+    // ---- Manual mode (WhatsApp on this PC) ----
+
+    [Fact]
+    public void Manual_IsTheDefault_AndNeedsNoMetaAccount()
+    {
+        WhatsAppSettings settings = WhatsAppSettingsService.Get();
+        Assert.True(settings.IsManual);
+        Assert.True(settings.IsConfigured);
+        Assert.Equal(WhatsAppOpenIn.DesktopApp, settings.OpenIn);
+
+        // Saving manual settings needs no Phone Number ID or token.
+        WhatsAppSettingsService.Save(new WhatsAppSettings { Mode = WhatsAppMode.Manual, OpenIn = WhatsAppOpenIn.Web });
+        Assert.Equal(WhatsAppOpenIn.Web, WhatsAppSettingsService.Get().OpenIn);
+    }
+
+    [Fact]
+    public void Manual_FeeReminderText_IsFilledForEachParent_AndRecordedWhenSent()
+    {
+        int aman = StudentWithFee();
+
+        (List<WhatsAppMessage> messages, List<string> problems) = WhatsAppService.PrepareFeeReminders([DueOf(aman)]);
+
+        Assert.Empty(problems);
+        WhatsAppMessage message = Assert.Single(messages);
+        Assert.Equal("919812345678", message.Mobile);
+        Assert.StartsWith("Dear Rakesh Aman,", message.Text);
+        Assert.Contains($"for Aman for the academic year {AcademicYear.Label(AcademicYear.Current)}", message.Text);
+        Assert.Contains("Total fee: ₹62,000", message.Text);
+        Assert.Contains("Pending: ₹47,000", message.Text);
+        Assert.Contains("IFSC: HDFC0008528", message.Text);
+        Assert.Contains("on 98290 12345", message.Text);
+        Assert.DoesNotContain("{", message.Text);
+        Assert.False(message.WithPaymentQr);
+
+        WhatsAppService.LogManual(message);
+
+        Assert.Empty(_whatsApp.Sent);
+        EmailHistoryEntry history = Assert.Single(EmailService.GetHistory());
+        Assert.Equal((EmailType.WhatsAppReminder, "+919812345678", EmailStatus.Sent), (history.EmailType, history.RecipientEmail, history.Status));
+        Assert.Equal(DateTime.Today, DueOf(aman).LastReminderDate?.Date);
+    }
+
+    [Fact]
+    public void Manual_TextsCanBeChanged_ButOnlyWithKnownFields()
+    {
+        WhatsAppSettingsService.Save(new WhatsAppSettings
+        {
+            FeeText = "Hello {ParentName}, {StudentName} owes ₹{Pending}.",
+            AttendanceText = "{StudentName} was absent on {AttendanceDate}.",
+        });
+        int aman = StudentWithFee();
+        Assert.Equal("Hello Rakesh Aman, Aman owes ₹47,000.", Assert.Single(WhatsAppService.PrepareFeeReminders([DueOf(aman)]).Messages).Text);
+
+        Assert.Contains("{RoomNumber}", Assert.Throws<ValidationException>(() =>
+            WhatsAppSettingsService.Save(new WhatsAppSettings { AttendanceText = "{StudentName} in {RoomNumber}" })).Message);
+        Assert.Contains("fee reminder", Assert.Throws<ValidationException>(() =>
+            WhatsAppSettingsService.Save(new WhatsAppSettings { FeeText = "  " })).Message);
+    }
+
+    [Fact]
+    public void Manual_ChatLinks_OpenTheParentsChatWithTheTextTyped()
+    {
+        Assert.Equal("whatsapp://send?phone=919812345678&text=Dear%20Rakesh%2C%0AFee%3A%20%E2%82%B947%2C000%20%26%20more",
+            WhatsAppService.ChatLink(WhatsAppOpenIn.DesktopApp, "919812345678", "Dear Rakesh,\nFee: ₹47,000 & more"));
+        Assert.Equal("https://web.whatsapp.com/send?phone=919812345678&text=Hi",
+            WhatsAppService.ChatLink(WhatsAppOpenIn.Web, "919812345678", "Hi"));
+    }
+
+    [Fact]
+    public void Manual_Attendance_GoesToTheMother_OncePerDate_LikeTheApi()
+    {
+        HostelService.Save(new Hostel { HostelId = HostelId, HostelName = "Shri Balaji Hostel", Phone = "98290 12345" });
+        int aman = AddStudentWithParents("Aman", admission: DateTime.Today.AddDays(-5));
+        AllocationService.CheckIn(aman, AddRoom("101").RoomId, DateTime.Today.AddDays(-5));
+        AttendanceSheet sheet = AttendanceService.GetSheet(HostelId, DateTime.Today);
+        sheet.Entries.Single(e => e.StudentId == aman).IsPresent = false;
+        AttendanceService.Save(HostelId, DateTime.Today, sheet.Entries);
+
+        WhatsAppMessage message = Assert.Single(WhatsAppService.PrepareAbsences(HostelId, DateTime.Today).Messages);
+        Assert.Equal("919812345679", message.Mobile);
+        Assert.StartsWith("Dear Sunita Aman,", message.Text);
+        Assert.Contains("Aman was absent from Shri Balaji Hostel on " +
+            DateTime.Today.ToString("dd MMM yyyy", System.Globalization.CultureInfo.InvariantCulture), message.Text);
+
+        WhatsAppService.LogManual(message);
+        Assert.Empty(WhatsAppService.PrepareAbsences(HostelId, DateTime.Today).Messages);
     }
 
     [Fact]

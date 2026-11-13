@@ -206,8 +206,8 @@ public static class WhatsAppService
         if (!settings.IsConfigured)
         {
             throw new ValidationException(
-                "WhatsApp is not set up yet (or its access token must be entered again on this computer). " +
-                "Open Email Settings > WhatsApp first.");
+                "WhatsApp is set to Meta's API but not set up yet (or its access token must be entered again on this " +
+                "computer). Open Email Settings > WhatsApp, or choose \"WhatsApp on this PC\".");
         }
         return settings;
     }
@@ -219,7 +219,7 @@ public static class WhatsAppService
     public static (List<WhatsAppMessage> Messages, List<string> Problems) PrepareFeeReminders(IEnumerable<StudentDue> dues)
     {
         WhatsAppSettings settings = GetConfiguredSettings();
-        bool withQr = WhatsAppSettingsService.PaymentQrFile(settings) is not null;
+        bool withQr = !settings.IsManual && WhatsAppSettingsService.PaymentQrFile(settings) is not null;
         var messages = new List<WhatsAppMessage>();
         var problems = new List<string>();
         foreach (StudentDue due in dues)
@@ -260,8 +260,20 @@ public static class WhatsAppService
                 TemplateName = settings.FeeTemplate,
                 Parameters = parameters,
                 WithPaymentQr = withQr,
-                HistoryText = settings.FeeTemplate,
-                Preview = Fill(FeeReminderText, parameters),
+                HistoryText = settings.IsManual ? "manual fee reminder" : settings.FeeTemplate,
+                Preview = settings.IsManual
+                    ? FillFields(settings.FeeText, new Dictionary<string, string>
+                    {
+                        ["ParentName"] = parameters[0],
+                        ["HostelName"] = parameters[1],
+                        ["StudentName"] = parameters[2],
+                        ["AcademicYear"] = parameters[3],
+                        ["TotalAmount"] = parameters[4],
+                        ["PaidAmount"] = parameters[5],
+                        ["Pending"] = parameters[6],
+                        ["HostelPhone"] = parameters[7],
+                    })
+                    : Fill(FeeReminderText, parameters),
             });
         }
         return (messages, problems);
@@ -278,7 +290,8 @@ public static class WhatsAppService
         AttendanceSheet sheet = AttendanceService.GetSheet(hostelId, date);
         Hostel hostel = HostelService.GetHostel(hostelId) ?? throw new ValidationException("Please select the hostel.");
         string dateText = sheet.Date.ToString("dd MMM yyyy", CultureInfo.InvariantCulture);
-        string historyText = $"{settings.AttendanceTemplate} {dateText}";
+        // The same text for both modes, so a parent is not messaged twice for a date.
+        string historyText = $"attendance {dateText}";
         HashSet<int> alreadySent = includeAlreadySent ? [] : EmailHistoryRepository.GetStudentsSent(EmailType.WhatsAppAbsence, historyText);
 
         var messages = new List<WhatsAppMessage>();
@@ -304,7 +317,16 @@ public static class WhatsAppService
                 TemplateName = settings.AttendanceTemplate,
                 Parameters = parameters,
                 HistoryText = historyText,
-                Preview = Fill(AttendanceText, parameters),
+                Preview = settings.IsManual
+                    ? FillFields(settings.AttendanceText, new Dictionary<string, string>
+                    {
+                        ["ParentName"] = parameters[0],
+                        ["StudentName"] = parameters[1],
+                        ["HostelName"] = parameters[2],
+                        ["AttendanceDate"] = parameters[3],
+                        ["HostelPhone"] = parameters[4],
+                    })
+                    : Fill(AttendanceText, parameters),
             });
         }
         return (messages, problems);
@@ -405,6 +427,25 @@ public static class WhatsAppService
             "Could not connect to WhatsApp. Check the internet connection and try again.",
         _ => "The WhatsApp message could not be sent. Technical details were written to the log file.",
     };
+
+    /// <summary>
+    /// The link that opens the parent's chat with the message already typed (manual mode): in the WhatsApp app on this
+    /// PC (whatsapp://send) or in WhatsApp Web. The admin checks it and presses Send.
+    /// </summary>
+    public static string ChatLink(string openIn, string mobile, string text)
+    {
+        string encoded = Uri.EscapeDataString(text);
+        return openIn == WhatsAppOpenIn.Web
+            ? $"https://web.whatsapp.com/send?phone={mobile}&text={encoded}"
+            : $"whatsapp://send?phone={mobile}&text={encoded}";
+    }
+
+    /// <summary>A manual message the admin sent is recorded like any WhatsApp message (skipped ones are not recorded).</summary>
+    public static void LogManual(WhatsAppMessage message) => Log(message, null);
+
+    /// <summary>Replaces each {Field} in a manual message with its value.</summary>
+    public static string FillFields(string text, IReadOnlyDictionary<string, string> values) =>
+        EmailSettingsService.Fill(text, values);
 
     /// <summary>The template text with {{1}}, {{2}}... replaced by the values.</summary>
     public static string Fill(string text, IReadOnlyList<string> values)
