@@ -49,10 +49,13 @@ public sealed class ManualWhatsAppForm : Form
             MaximumSize = new Size(680, 0),
             ForeColor = UiTheme.TextMuted,
             Margin = new Padding(0, 0, 0, 8),
-            Text = "1. Click Open in WhatsApp: the parent's chat opens with this message typed.\n" +
-                   "2. Check it and press Send in WhatsApp" +
-                   (_qrFile is null ? "." : " (to add the payment QR code, click Copy QR Image here and paste it into the chat).") + "\n" +
-                   "3. Come back and click Sent - Next.",
+            Text = _qrFile is null
+                ? "1. Click Open in WhatsApp: the parent's chat opens with this message typed.\n" +
+                  "2. Check it and press Send in WhatsApp.\n" +
+                  "3. Come back and click Sent - Next."
+                : "1. Click Open in WhatsApp: the parent's chat opens with this message typed, and the payment QR image is copied.\n" +
+                  "2. Press Send in WhatsApp, then Ctrl+V and Send again to add the QR code below the message.\n" +
+                  "3. Come back and click Sent - Next.",
         };
         _headingLabel = new Label { AutoSize = true, MaximumSize = new Size(680, 0), Font = UiTheme.BodyBoldFont, Margin = new Padding(0, 4, 0, 6) };
         _textBox = new TextBox
@@ -120,6 +123,8 @@ public sealed class ManualWhatsAppForm : Form
 
     private void OpenChat()
     {
+        // The chat link can only carry text, so the QR image goes on the clipboard, ready for Ctrl+V in the chat.
+        CopyQr();
         string link = WhatsAppService.ChatLink(_settings.OpenIn, Current.Mobile, Current.Text);
         try
         {
@@ -152,7 +157,7 @@ public sealed class ManualWhatsAppForm : Form
             using var stream = new MemoryStream(File.ReadAllBytes(_qrFile));
             using Image image = Image.FromStream(stream);
             Clipboard.SetImage(new Bitmap(image));
-            _progressLabel.Text = "QR image copied: paste it into the chat (Ctrl+V).";
+            _progressLabel.Text = "QR copied: after Send, press Ctrl+V and Send.";
         }
         catch (Exception ex) when (ex is IOException or ArgumentException or ExternalException)
         {
